@@ -1,7 +1,7 @@
 /**
  * Veltravia Wallet — onboarding entry point.
  *
- * Trust Wallet-style welcome: full-white surface, a swipeable illustration
+ * Trust Wallet-style welcome: theme-aware surface (white / deep navy), a swipeable illustration
  * carousel (4 slides), dot indicator, then the two primary CTAs.
  *
  * The illustration slots take either a static PNG (current) or a Lottie
@@ -19,6 +19,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Image,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -73,7 +74,8 @@ export default function WelcomeScreen({
   };
 
   return (
-    <SafeAreaView edges={['left', 'right']} style={[styles.root, { backgroundColor: '#FFFFFF' }]}>
+    <SafeAreaView edges={['left', 'right']} style={[styles.root, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
       <FlatList
         ref={listRef}
         data={SLIDES}
@@ -115,7 +117,7 @@ export default function WelcomeScreen({
           <Text style={styles.primaryBtnText}>Create a new wallet</Text>
         </Pressable>
         <Pressable
-          style={({ pressed }) => [styles.secondaryBtn, { opacity: pressed ? 0.6 : 1 }]}
+          style={({ pressed }) => [styles.secondaryBtn, { borderColor: theme.border, opacity: pressed ? 0.6 : 1 }]}
           onPress={onImport}
         >
           <Text style={[styles.secondaryBtnText, { color: theme.ink }]}>
@@ -160,7 +162,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingVertical: 15,
     alignItems: 'center',
-    borderColor: '#E4E6F0',
   },
   secondaryBtnText: { fontSize: 16, fontWeight: '600' },
 });
