@@ -66,24 +66,48 @@ function MainTabs() {
     <Tabs.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        // Floating pill bar: icons only, active tab sits in a tinted pill
+        tabBarShowLabel: false,
         tabBarActiveTintColor: '#6C4CF5',
         tabBarInactiveTintColor: theme.inkMuted,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 2 },
         tabBarStyle: {
+          position: 'absolute',
+          left: 24,
+          right: 24,
+          bottom: 20,
+          height: 64,
+          borderRadius: 32,
           backgroundColor: theme.surface,
           borderTopWidth: 0,
+          borderWidth: 1,
+          borderColor: theme.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(6,14,44,0.06)',
           elevation: 12,
-          shadowColor: '#000',
-          shadowOpacity: theme.mode === 'dark' ? 0.5 : 0.08,
-          shadowRadius: 14,
-          shadowOffset: { width: 0, height: -2 },
-          height: 66,
-          paddingTop: 8,
-          paddingBottom: 8,
+          shadowColor: '#060E2C',
+          shadowOpacity: theme.mode === 'dark' ? 0.4 : 0.12,
+          shadowRadius: 16,
+          shadowOffset: { width: 0, height: 6 },
+          paddingTop: 6,
+          paddingBottom: 6,
+        },
+        tabBarItemStyle: {
+          borderRadius: 26,
         },
         tabBarIcon: ({ color, focused }) => {
           const Icon = TAB_ICONS[route.name as keyof MainTabParamList];
-          return <Icon size={24} color={color} filled={focused} />;
+          return (
+            <View
+              style={{
+                width: 46,
+                height: 46,
+                borderRadius: 23,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: focused ? 'rgba(108,76,245,0.12)' : 'transparent',
+              }}
+            >
+              <Icon size={24} color={color} filled={focused} />
+            </View>
+          );
         },
       })}
     >
