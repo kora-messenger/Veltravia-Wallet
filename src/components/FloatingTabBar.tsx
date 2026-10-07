@@ -36,21 +36,31 @@ const SIDE_TABS: Array<keyof typeof TAB_ICONS> = ['Home', 'Markets', 'Discover',
 const PILL_H = 64; // pill height (also the corner radius: fully rounded ends)
 const PILL_BOTTOM = 20; // gap between pill and the bottom edge of the screen
 const PILL_SIDE = 24; // side margins
-const NOTCH_R = 33; // radius of the circular cut-out around the Swap button
+const NOTCH_R = 36; // radius of the dip around the Swap button (button radius + gap)
 const SWAP_SIZE = 58;
-const SWAP_BOTTOM = 36; // raised: the circle clears the pill's top edge
+// Swap circle is centered ON the dip: its center sits exactly on the pill's top edge
+const SWAP_BOTTOM = PILL_BOTTOM + PILL_H - SWAP_SIZE / 2;
 
-/** Rounded pill outline with a full-height circular notch in the middle. */
+/**
+ * Rounded pill whose TOP edge dips smoothly around the Swap circle.
+ * The dip is a circular arc of radius NOTCH_R centred on the top edge,
+ * joined to the straight top edge by small fillets so it reads as one curve.
+ */
 function pillPath(w: number): string {
   const r = PILL_H / 2;
   const cx = w / 2;
-  const outer =
-    `M0 ${r} A${r} ${r} 0 0 1 ${r} 0 H ${w - r} A${r} ${r} 0 0 1 ${w} ${r} ` +
-    `A${r} ${r} 0 0 1 ${w - r} ${PILL_H} H ${r} A${r} ${r} 0 0 1 0 ${r} Z`;
-  const notch =
-    `M ${cx - NOTCH_R} ${r} A${NOTCH_R} ${NOTCH_R} 0 0 1 ${cx + NOTCH_R} ${r} ` +
-    `A${NOTCH_R} ${NOTCH_R} 0 0 1 ${cx - NOTCH_R} ${r} Z`;
-  return `${outer} ${notch}`;
+  const f = 10; // fillet radius where the dip meets the top edge
+  const a = NOTCH_R + f;
+  return (
+    `M0 ${r} A${r} ${r} 0 0 1 ${r} 0 ` +
+    `H ${cx - a} ` +
+    `Q ${cx - NOTCH_R} 0 ${cx - NOTCH_R} ${f} ` +
+    `A${NOTCH_R} ${NOTCH_R} 0 0 0 ${cx + NOTCH_R} ${f} ` +
+    `Q ${cx + NOTCH_R} 0 ${cx + a} 0 ` +
+    `H ${w - r} A${r} ${r} 0 0 1 ${w} ${r} ` +
+    `A${r} ${r} 0 0 1 ${w - r} ${PILL_H} ` +
+    `H ${r} A${r} ${r} 0 0 1 0 ${r} Z`
+  );
 }
 
 export default function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
@@ -111,7 +121,6 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
               fill={theme.surface}
               stroke={borderColor}
               strokeWidth={1}
-              fillRule="evenodd"
             />
           </Svg>
         )}
