@@ -1,6 +1,10 @@
 package com.veltravia.wallet
 
 import android.os.Bundle
+import android.view.View
+import android.view.ViewGroup
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
@@ -15,6 +19,18 @@ class MainActivity : ReactActivity() {
     installSplashScreen()
     // null (not savedInstanceState): react-native-screens can't restore fragments.
     super.onCreate(null)
+
+    // Edge-to-edge is forced on by RN, which lets JS content slide under the
+    // status bar (and JS-side inset lookups can report 0). Pad the content
+    // root natively by the real status-bar height so the app always starts
+    // below the clock / battery row.
+    val content = findViewById<ViewGroup>(android.R.id.content)
+    ViewCompat.setOnApplyWindowInsetsListener(content) { v: View, insets: WindowInsetsCompat ->
+      val bars = insets.getInsets(WindowInsetsCompat.Type.statusBars())
+      v.setPadding(0, bars.top, 0, 0)
+      insets
+    }
+    ViewCompat.requestApplyInsets(content)
   }
 
   /**

@@ -9,7 +9,7 @@ import { useTheme } from '../theme/ThemeProvider';
 export default function DiscoverScreen() {
   const { theme } = useTheme();
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: theme.background }]}>
+    <SafeAreaView edges={['left', 'right']} style={[styles.root, { backgroundColor: theme.background }]}>
       <View style={styles.center}>
         <Text style={[styles.title, { color: theme.ink }]}>Discover</Text>
         <Text style={[styles.sub, { color: theme.inkMuted }]}>

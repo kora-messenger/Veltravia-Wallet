@@ -24,7 +24,6 @@ import {
   Image,
   useWindowDimensions,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { useTheme } from '../theme/ThemeProvider';
 import Sparkline from '../components/Sparkline';
@@ -78,8 +77,7 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const [hidden, setHidden] = useState(false);
 
-  const insets = useSafeAreaInsets();
-  const topInset = Math.max(insets.top, StatusBar.currentHeight ?? 0);
+  const topInset = 0; // status bar offset is applied natively in MainActivity
   const H_PAD = 16;
   const cardW = width - H_PAD * 2;
   const mask = '••••••';

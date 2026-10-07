@@ -73,7 +73,7 @@ export default function WelcomeScreen({
   };
 
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: '#FFFFFF' }]}>
+    <SafeAreaView edges={['left', 'right']} style={[styles.root, { backgroundColor: '#FFFFFF' }]}>
       <FlatList
         ref={listRef}
         data={SLIDES}

@@ -19,7 +19,7 @@ export default function SettingsScreen() {
   ];
 
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: theme.background }]}>
+    <SafeAreaView edges={['left', 'right']} style={[styles.root, { backgroundColor: theme.background }]}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={[styles.title, { color: theme.ink }]}>Settings</Text>
 

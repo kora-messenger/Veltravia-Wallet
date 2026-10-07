@@ -10,7 +10,7 @@ import { useTheme } from '../theme/ThemeProvider';
 export default function MarketsScreen() {
   const { theme } = useTheme();
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: theme.background }]}>
+    <SafeAreaView edges={['left', 'right']} style={[styles.root, { backgroundColor: theme.background }]}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={[styles.title, { color: theme.ink }]}>Markets</Text>
         <Text style={[styles.sub, { color: theme.inkMuted }]}>
