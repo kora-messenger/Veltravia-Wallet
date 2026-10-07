@@ -18,6 +18,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import { useTheme } from '../theme/ThemeProvider';
 import { IS_TESTNET } from '../config/env';
+import type { NavigationContainerRef } from '@react-navigation/native';
+
+const navigationRef = React.createRef<NavigationContainerRef<RootStackParamList>>();
 
 // Placeholder until screen files land in Phase 2 — typed to force wiring.
 const HomeScreen = require('../screens/HomeScreen').default;
@@ -69,7 +72,7 @@ function MainTabs() {
 export default function Navigation() {
   const { theme } = useTheme();
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       {IS_TESTNET && (
         <View
           pointerEvents="none"
@@ -90,7 +93,15 @@ export default function Navigation() {
         </View>
       )}
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Onboarding" component={WelcomeScreen} />
+        <Stack.Screen name="Onboarding">
+          {() => (
+            <WelcomeScreen
+              // Phase 2 replaces these with the real seed/PIN and import flows.
+              onCreate={() => navigationRef.current?.navigate('MainTabs')}
+              onImport={() => navigationRef.current?.navigate('MainTabs')}
+            />
+          )}
+        </Stack.Screen>
         <Stack.Screen name="MainTabs" component={MainTabs} />
       </Stack.Navigator>
     </NavigationContainer>
