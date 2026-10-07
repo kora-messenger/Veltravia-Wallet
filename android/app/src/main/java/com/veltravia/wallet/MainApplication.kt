@@ -1,4 +1,4 @@
-package com.veltraviawallet
+package com.veltravia.wallet
 
 import android.app.Application
 import com.facebook.react.PackageList
