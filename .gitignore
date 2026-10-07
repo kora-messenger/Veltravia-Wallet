@@ -1,0 +1,40 @@
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Metro / RN
+.metro-health-check*
+*.jsbundle
+bundle-report.html
+
+# Env (never commit backend domains or secrets)
+.env
+.env.*
+!.env.example
+
+# Android
+android/.gradle/
+android/app/build/
+android/build/
+android/app/.cxx/
+*.keystore
+!debug.keystore
+local.properties
+
+# iOS
+ios/build/
+ios/Pods/
+ios/*.xcworkspace/xcuserdata/
+**/*.xcuserstate
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Testing
+coverage/

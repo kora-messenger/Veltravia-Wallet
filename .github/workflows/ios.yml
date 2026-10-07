@@ -1,0 +1,44 @@
+name: iOS Build
+
+# Manual for now: iOS requires a macOS runner and (for device/TestFlight
+# distribution) an Apple Developer account + signing certificates.
+# This job archives without code signing to prove the project compiles.
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Archive (unsigned)
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install CocoaPods dependencies
+        run: |
+          cd ios && pod install
+
+      - name: Archive
+        run: |
+          cd ios
+          xcodebuild -workspace VeltraviaWallet.xcworkspace \
+            -scheme VeltraviaWallet \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO
+
+      - name: Upload archive artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: veltravia-wallet-ios-archive
+          path: ios/build/Build/Products/Release-iphoneos/VeltraviaWallet.app
+          retention-days: 30

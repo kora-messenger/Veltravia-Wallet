@@ -1,0 +1,48 @@
+name: Android APK Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Release APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create environment file
+        run: |
+          cat > .env <<EOF
+          ENV=development
+          API_BASE_URL=${{ secrets.API_BASE_URL }}
+          WS_BASE_URL=${{ secrets.WS_BASE_URL }}
+          EOF
+
+      - name: Build Release APK
+        run: |
+          cd android && ./gradlew assembleRelease
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: veltravia-wallet-debug-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 30
