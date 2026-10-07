@@ -1,16 +1,18 @@
 /**
- * Veltravia Wallet — floating pill tab bar with a raised center Swap button.
+ * Veltravia Wallet — floating tab bar overlay.
  *
- * Layout (bottom up): 20pt margin → 64pt pill holding Home, Markets,
- * Discover and Settings → the Swap button is a 58pt circle anchored to the
- * pill's center that pokes out above its top edge. The container is
- * transparent; only the pill and the raised button catch touches.
+ * The bar is a pure overlay: scenes render full-height behind it, so the
+ * screen background runs to the bottom edge of the device. The pill is a
+ * white rounded shape with a circular notch cut out of its center (the
+ * Swap button floats in that notch, raised above the pill's top edge).
+ * No footer strip, no extra surface behind anything.
  */
 
 import React from 'react';
 import { Pressable, View, StyleSheet } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 
 import { useTheme } from '../theme/ThemeProvider';
 import {
@@ -28,18 +30,33 @@ const TAB_ICONS: Record<string, React.ComponentType<any>> = {
   Settings: SettingsTabIcon,
 };
 
-/** Icons shown inside the pill, in order. Swap lives outside, raised. */
+/** Icons inside the pill, in order. Swap lives in the center notch. */
 const SIDE_TABS: Array<keyof typeof TAB_ICONS> = ['Home', 'Markets', 'Discover', 'Settings'];
 
-const PILL_H = 64;
-const PILL_BOTTOM = 20;
+const PILL_H = 64; // pill height (also the corner radius: fully rounded ends)
+const PILL_BOTTOM = 20; // gap between pill and the bottom edge of the screen
+const PILL_SIDE = 24; // side margins
+const NOTCH_R = 33; // radius of the circular cut-out around the Swap button
 const SWAP_SIZE = 58;
-const SWAP_BOTTOM = 36; // raised: top edge clears the pill's top edge
-const BAR_H = PILL_BOTTOM + PILL_H + (SWAP_BOTTOM + SWAP_SIZE - PILL_BOTTOM - PILL_H) + 8;
+const SWAP_BOTTOM = 36; // raised: the circle clears the pill's top edge
+
+/** Rounded pill outline with a full-height circular notch in the middle. */
+function pillPath(w: number): string {
+  const r = PILL_H / 2;
+  const cx = w / 2;
+  const outer =
+    `M0 ${r} A${r} ${r} 0 0 1 ${r} 0 H ${w - r} A${r} ${r} 0 0 1 ${w} ${r} ` +
+    `A${r} ${r} 0 0 1 ${w - r} ${PILL_H} H ${r} A${r} ${r} 0 0 1 0 ${r} Z`;
+  const notch =
+    `M ${cx - NOTCH_R} ${r} A${NOTCH_R} ${NOTCH_R} 0 0 1 ${cx + NOTCH_R} ${r} ` +
+    `A${NOTCH_R} ${NOTCH_R} 0 0 1 ${cx - NOTCH_R} ${r} Z`;
+  return `${outer} ${notch}`;
+}
 
 export default function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const [pillW, setPillW] = React.useState(0);
   const focusedName = state.routes[state.index]?.name as string;
 
   const go = (name: string) => {
@@ -57,12 +74,7 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
     const focused = focusedName === name;
     const Icon = TAB_ICONS[name];
     return (
-      <Pressable
-        key={name}
-        onPress={() => go(name)}
-        hitSlop={4}
-        style={styles.tabItem}
-      >
+      <Pressable key={name} onPress={() => go(name)} hitSlop={4} style={styles.tabItem}>
         <View
           style={[
             styles.iconWrap,
@@ -76,33 +88,41 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
   };
 
   const swapFocused = focusedName === 'Swap';
+  const borderColor =
+    theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(6,14,44,0.07)';
 
   return (
-    <View
-      pointerEvents="box-none"
-      style={{ height: BAR_H + insets.bottom, backgroundColor: 'transparent' }}
-    >
-      {/* pill */}
+    <View pointerEvents="box-none" style={styles.overlay}>
+      {/* pill with notched center */}
       <View
         style={[
           styles.pill,
           {
             bottom: PILL_BOTTOM + insets.bottom,
-            backgroundColor: theme.surface,
-            borderColor:
-              theme.mode === 'dark'
-                ? 'rgba(255,255,255,0.06)'
-                : 'rgba(6,14,44,0.06)',
             shadowOpacity: theme.mode === 'dark' ? 0.4 : 0.12,
           },
         ]}
+        onLayout={(e) => setPillW(e.nativeEvent.layout.width)}
       >
-        {SIDE_TABS.slice(0, 2).map(renderSide)}
-        <View style={{ width: SWAP_SIZE + 8 }} />
-        {SIDE_TABS.slice(2).map(renderSide)}
+        {pillW > 0 && (
+          <Svg width={pillW} height={PILL_H} style={StyleSheet.absoluteFill}>
+            <Path
+              d={pillPath(pillW)}
+              fill={theme.surface}
+              stroke={borderColor}
+              strokeWidth={1}
+              fillRule="evenodd"
+            />
+          </Svg>
+        )}
+        <View style={styles.row} pointerEvents="box-none">
+          {SIDE_TABS.slice(0, 2).map(renderSide)}
+          <View style={{ width: NOTCH_R * 2 + 16 }} />
+          {SIDE_TABS.slice(2).map(renderSide)}
+        </View>
       </View>
 
-      {/* raised center Swap button */}
+      {/* raised center Swap button, floating in the notch */}
       <Pressable
         onPress={() => go('Swap')}
         style={({ pressed }) => [
@@ -110,10 +130,7 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
           {
             bottom: SWAP_BOTTOM + insets.bottom,
             backgroundColor: theme.surface,
-            borderColor:
-              theme.mode === 'dark'
-                ? 'rgba(255,255,255,0.08)'
-                : 'rgba(6,14,44,0.07)',
+            borderColor,
             shadowOpacity: (theme.mode === 'dark' ? 0.4 : 0.14) * (pressed ? 0.6 : 1),
           },
         ]}
@@ -129,20 +146,25 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
 }
 
 const styles = StyleSheet.create({
+  overlay: {
+    position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'transparent',
+  },
   pill: {
     position: 'absolute',
-    left: 24,
-    right: 24,
+    left: PILL_SIDE,
+    right: PILL_SIDE,
     height: PILL_H,
-    borderRadius: 32,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-evenly',
-    borderWidth: 1,
     elevation: 12,
     shadowColor: '#060E2C',
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 6 },
+  },
+  row: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
   },
   swapBtn: {
     position: 'absolute',

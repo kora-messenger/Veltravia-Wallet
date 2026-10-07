@@ -54,7 +54,7 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  content: { padding: 20 },
+  content: { padding: 20, paddingBottom: 120 },
   title: { fontSize: 24, fontWeight: '800', marginBottom: 20 },
   row: { borderRadius: 16, padding: 16, marginBottom: 10 },
   rowLabel: { fontSize: 15, fontWeight: '600' },

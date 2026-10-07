@@ -23,7 +23,7 @@ export default function MarketsScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  content: { padding: 20 },
+  content: { padding: 20, paddingBottom: 120 },
   title: { fontSize: 24, fontWeight: '800', marginBottom: 8 },
   sub: { fontSize: 14 },
 });
