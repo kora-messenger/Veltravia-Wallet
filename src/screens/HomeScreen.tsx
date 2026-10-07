@@ -78,6 +78,7 @@ export default function HomeScreen() {
   const [hidden, setHidden] = useState(false);
 
   const topInset = 0; // status bar offset is applied natively in MainActivity
+  const chipBg = theme.mode === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(60,64,90,0.10)';
   const H_PAD = 16;
   const cardW = width - H_PAD * 2;
   const mask = '••••••';
@@ -87,7 +88,7 @@ export default function HomeScreen() {
       {/* RN 0.87 is always edge-to-edge; only the icon style is ours. */}
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingHorizontal: H_PAD, paddingTop: topInset + 64 }]}
+        contentContainerStyle={[styles.content, { paddingHorizontal: H_PAD, paddingTop: topInset + 68 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* ---------- Balance card ---------- */}
@@ -176,7 +177,7 @@ export default function HomeScreen() {
       </ScrollView>
         {/* ---------- Header ---------- */}
         <View style={[styles.headerFloat, { top: topInset + 4 }]}>
-          <View style={styles.brandRow}>
+          <View style={[styles.brandRow, { backgroundColor: chipBg }]}>
             <Image
               source={require('../assets/veltravia-logo.png')}
               style={styles.logo}
@@ -185,13 +186,17 @@ export default function HomeScreen() {
             <Text style={[styles.brand, { color: theme.ink }]}>Veltravia Wallet</Text>
           </View>
           <View style={styles.headerRight}>
-            <Pressable hitSlop={12} onPress={() => {}}>
-              <BellIcon size={24} color={theme.ink} />
+            <Pressable
+              hitSlop={8}
+              onPress={() => {}}
+              style={[styles.scanBtn, { backgroundColor: chipBg }]}
+            >
+              <BellIcon size={22} color={theme.ink} />
             </Pressable>
             <Pressable
               hitSlop={8}
               onPress={() => {}}
-              style={[styles.scanBtn, { backgroundColor: theme.surfaceAlt }]}
+              style={[styles.scanBtn, { backgroundColor: chipBg }]}
             >
               <ScanIcon size={22} color={theme.ink} strokeWidth={2.2} />
             </Pressable>
@@ -216,14 +221,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: 4,
   },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    height: 46,
+    paddingLeft: 6,
+    paddingRight: 18,
+    borderRadius: 23,
+  },
   brand: { fontSize: 17, fontWeight: '700', letterSpacing: -0.2 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 18 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   logo: { width: 34, height: 34 },
   scanBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
   },
