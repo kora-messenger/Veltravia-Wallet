@@ -24,7 +24,7 @@ import {
   Image,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { useTheme } from '../theme/ThemeProvider';
 import Sparkline from '../components/Sparkline';
@@ -78,19 +78,18 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const [hidden, setHidden] = useState(false);
 
+  const insets = useSafeAreaInsets();
+  const topInset = Math.max(insets.top, StatusBar.currentHeight ?? 0);
   const H_PAD = 16;
   const cardW = width - H_PAD * 2;
   const mask = '••••••';
 
   return (
-    <SafeAreaView
-      edges={['top']}
-      style={[styles.root, { backgroundColor: theme.background }]}
-    >
+    <View style={[styles.root, { backgroundColor: theme.background }]}>
       {/* RN 0.87 is always edge-to-edge; only the icon style is ours. */}
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingHorizontal: H_PAD }]}
+        contentContainerStyle={[styles.content, { paddingHorizontal: H_PAD, paddingTop: topInset + 64 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* ---------- Balance card ---------- */}
@@ -178,7 +177,7 @@ export default function HomeScreen() {
         })}
       </ScrollView>
         {/* ---------- Header ---------- */}
-        <View style={styles.headerFloat}>
+        <View style={[styles.headerFloat, { top: topInset + 4 }]}>
           <View style={styles.brandRow}>
             <Image
               source={require('../assets/veltravia-logo.png')}
@@ -201,7 +200,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-    </SafeAreaView>
+    </View>
   );
 }
 
