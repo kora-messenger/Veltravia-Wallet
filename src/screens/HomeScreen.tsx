@@ -107,8 +107,12 @@ export default function HomeScreen() {
             <Pressable hitSlop={12} onPress={() => {}}>
               <BellIcon size={24} color={theme.ink} />
             </Pressable>
-            <Pressable hitSlop={12} onPress={() => {}}>
-              <ScanIcon size={26} color={theme.ink} />
+            <Pressable
+              hitSlop={8}
+              onPress={() => {}}
+              style={[styles.scanBtn, { backgroundColor: theme.surfaceAlt }]}
+            >
+              <ScanIcon size={22} color={theme.ink} strokeWidth={2.2} />
             </Pressable>
           </View>
         </View>
@@ -216,6 +220,13 @@ const styles = StyleSheet.create({
   brand: { fontSize: 17, fontWeight: '700', letterSpacing: -0.2 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 18 },
   logo: { width: 34, height: 34 },
+  scanBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
   card: {
     alignSelf: 'center',
