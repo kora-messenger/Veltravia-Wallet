@@ -16,28 +16,50 @@ export const palette = {
   blue: '#4A90D9',
 
   // Semantic
-  green: '#2ECC71',
+  green: '#1DB88E',
   red: '#E74C3C',
   amber: '#F5A623',
 
-  // Light surfaces
+  // Light surfaces — pure white page, per mockup
   light: {
-    background: '#F4F5FB',
+    background: '#FFFFFF',
     surface: '#FFFFFF',
-    surfaceAlt: '#EDEEF8',
+    surfaceAlt: '#F3F4FA',
     ink: '#14152B',
-    inkMuted: '#6B6D8C',
-    border: '#E2E3F2',
+    inkMuted: '#7B7E96',
+    border: '#EEF0F6',
   },
 
-  // Dark surfaces (near-black navy, Trust-style)
+  // Dark surfaces — near-black (#02070E measured from mockup)
   dark: {
-    background: '#0B0D1A',
-    surface: '#141629',
-    surfaceAlt: '#1C1E33',
+    background: '#02070E',
+    surface: '#07101E',
+    surfaceAlt: '#0D1626',
     ink: '#FFFFFF',
-    inkMuted: '#9AA0B8',
-    border: '#23253C',
+    inkMuted: '#8E96AD',
+    border: '#121C2E',
+  },
+
+  // Balance card gradient (measured): left→right
+  card: {
+    light: ['#6A4BFC', '#1FA0FD'],
+    dark: ['#3A22CC', '#1368E0'],
+  },
+
+  // Quick-action tiles (measured): [background, icon]
+  tiles: {
+    light: {
+      send: ['#E9E5FE', '#6C4CF5'],
+      receive: ['#D9F0FC', '#1E9BE8'],
+      swap: ['#E4EAFD', '#4D55F2'],
+      buy: ['#DDEBFD', '#2F6FF0'],
+    },
+    dark: {
+      send: ['#121B47', '#8B6CFF'],
+      receive: ['#0B1F63', '#5AB4FF'],
+      swap: ['#092053', '#4FA6FF'],
+      buy: ['#082156', '#6C8BFF'],
+    },
   },
 } as const;
 
@@ -54,6 +76,8 @@ export type Theme = {
   positive: string;
   negative: string;
   warning: string;
+  cardGradient: readonly [string, string];
+  tiles: Record<'send' | 'receive' | 'swap' | 'buy', readonly [string, string]>;
 };
 
 export const themes: Record<'light' | 'dark', Theme> = {
@@ -70,6 +94,8 @@ export const themes: Record<'light' | 'dark', Theme> = {
     positive: palette.green,
     negative: palette.red,
     warning: palette.amber,
+    cardGradient: palette.card.light as unknown as readonly [string, string],
+    tiles: palette.tiles.light as unknown as Theme['tiles'],
   },
   dark: {
     mode: 'dark',
@@ -84,6 +110,8 @@ export const themes: Record<'light' | 'dark', Theme> = {
     positive: palette.green,
     negative: palette.red,
     warning: palette.amber,
+    cardGradient: palette.card.dark as unknown as readonly [string, string],
+    tiles: palette.tiles.dark as unknown as Theme['tiles'],
   },
 };
 

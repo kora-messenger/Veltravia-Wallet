@@ -18,6 +18,13 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import { useTheme } from '../theme/ThemeProvider';
 import { IS_TESTNET } from '../config/env';
+import {
+  HomeTabIcon,
+  MarketsTabIcon,
+  SwapIcon,
+  DiscoverTabIcon,
+  SettingsTabIcon,
+} from '../components/icons';
 import type { NavigationContainerRef } from '@react-navigation/native';
 
 const navigationRef = React.createRef<NavigationContainerRef<RootStackParamList>>();
@@ -46,19 +53,40 @@ export type MainTabParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tabs = createBottomTabNavigator<MainTabParamList>();
 
+const TAB_ICONS: Record<keyof MainTabParamList, React.ComponentType<any>> = {
+  Home: HomeTabIcon,
+  Markets: MarketsTabIcon,
+  Swap: SwapIcon,
+  Discover: DiscoverTabIcon,
+  Settings: SettingsTabIcon,
+};
+
 function MainTabs() {
   const { theme } = useTheme();
   return (
     <Tabs.Navigator
-      screenOptions={{
+      screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: theme.brand,
+        tabBarActiveTintColor: '#6C4CF5',
         tabBarInactiveTintColor: theme.inkMuted,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 2 },
         tabBarStyle: {
           backgroundColor: theme.surface,
-          borderTopColor: theme.border,
+          borderTopWidth: 0,
+          elevation: 12,
+          shadowColor: '#000',
+          shadowOpacity: theme.mode === 'dark' ? 0.5 : 0.08,
+          shadowRadius: 14,
+          shadowOffset: { width: 0, height: -2 },
+          height: 66,
+          paddingTop: 8,
+          paddingBottom: 8,
         },
-      }}
+        tabBarIcon: ({ color, focused }) => {
+          const Icon = TAB_ICONS[route.name as keyof MainTabParamList];
+          return <Icon size={24} color={color} filled={focused} />;
+        },
+      })}
     >
       <Tabs.Screen name="Home" component={HomeScreen} />
       <Tabs.Screen name="Markets" component={MarketsScreen} />
