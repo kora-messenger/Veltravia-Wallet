@@ -17,13 +17,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import { useTheme } from '../theme/ThemeProvider';
-import {
-  HomeTabIcon,
-  MarketsTabIcon,
-  SwapIcon,
-  DiscoverTabIcon,
-  SettingsTabIcon,
-} from '../components/icons';
+import FloatingTabBar from '../components/FloatingTabBar';
 import type { NavigationContainerRef } from '@react-navigation/native';
 
 const navigationRef = React.createRef<NavigationContainerRef<RootStackParamList>>();
@@ -52,64 +46,12 @@ export type MainTabParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tabs = createBottomTabNavigator<MainTabParamList>();
 
-const TAB_ICONS: Record<keyof MainTabParamList, React.ComponentType<any>> = {
-  Home: HomeTabIcon,
-  Markets: MarketsTabIcon,
-  Swap: SwapIcon,
-  Discover: DiscoverTabIcon,
-  Settings: SettingsTabIcon,
-};
-
 function MainTabs() {
   const { theme } = useTheme();
   return (
     <Tabs.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        // Floating pill bar: icons only, active tab sits in a tinted pill
-        tabBarShowLabel: false,
-        tabBarActiveTintColor: '#6C4CF5',
-        tabBarInactiveTintColor: theme.inkMuted,
-        tabBarStyle: {
-          position: 'absolute',
-          left: 24,
-          right: 24,
-          bottom: 20,
-          height: 64,
-          borderRadius: 32,
-          backgroundColor: theme.surface,
-          borderTopWidth: 0,
-          borderWidth: 1,
-          borderColor: theme.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(6,14,44,0.06)',
-          elevation: 12,
-          shadowColor: '#060E2C',
-          shadowOpacity: theme.mode === 'dark' ? 0.4 : 0.12,
-          shadowRadius: 16,
-          shadowOffset: { width: 0, height: 6 },
-          paddingTop: 6,
-          paddingBottom: 6,
-        },
-        tabBarItemStyle: {
-          borderRadius: 26,
-        },
-        tabBarIcon: ({ color, focused }) => {
-          const Icon = TAB_ICONS[route.name as keyof MainTabParamList];
-          return (
-            <View
-              style={{
-                width: 46,
-                height: 46,
-                borderRadius: 23,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: focused ? 'rgba(108,76,245,0.12)' : 'transparent',
-              }}
-            >
-              <Icon size={24} color={color} filled={focused} />
-            </View>
-          );
-        },
-      })}
+      tabBar={(props) => <FloatingTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
     >
       <Tabs.Screen name="Home" component={HomeScreen} />
       <Tabs.Screen name="Markets" component={MarketsScreen} />
