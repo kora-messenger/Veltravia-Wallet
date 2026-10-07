@@ -93,30 +93,6 @@ export default function HomeScreen() {
         contentContainerStyle={[styles.content, { paddingHorizontal: H_PAD }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ---------- Header ---------- */}
-        <View style={styles.header}>
-          <View style={styles.brandRow}>
-            <Image
-              source={require('../assets/veltravia-logo.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            <Text style={[styles.brand, { color: theme.ink }]}>Veltravia Wallet</Text>
-          </View>
-          <View style={styles.headerRight}>
-            <Pressable hitSlop={12} onPress={() => {}}>
-              <BellIcon size={24} color={theme.ink} />
-            </Pressable>
-            <Pressable
-              hitSlop={8}
-              onPress={() => {}}
-              style={[styles.scanBtn, { backgroundColor: theme.surfaceAlt }]}
-            >
-              <ScanIcon size={22} color={theme.ink} strokeWidth={2.2} />
-            </Pressable>
-          </View>
-        </View>
-
         {/* ---------- Balance card ---------- */}
         <LinearGradient
           colors={[theme.cardGradient[0], theme.cardGradient[1]]}
@@ -201,19 +177,46 @@ export default function HomeScreen() {
           );
         })}
       </ScrollView>
+        {/* ---------- Header ---------- */}
+        <View style={styles.headerFloat}>
+          <View style={styles.brandRow}>
+            <Image
+              source={require('../assets/veltravia-logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <Text style={[styles.brand, { color: theme.ink }]}>Veltravia Wallet</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <Pressable hitSlop={12} onPress={() => {}}>
+              <BellIcon size={24} color={theme.ink} />
+            </Pressable>
+            <Pressable
+              hitSlop={8}
+              onPress={() => {}}
+              style={[styles.scanBtn, { backgroundColor: theme.surfaceAlt }]}
+            >
+              <ScanIcon size={22} color={theme.ink} strokeWidth={2.2} />
+            </Pressable>
+          </View>
+        </View>
+
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  content: { paddingTop: 8, paddingBottom: 120 },
+  content: { paddingTop: 72, paddingBottom: 120 },
 
-  header: {
+  headerFloat: {
+    position: 'absolute',
+    top: 0,
+    left: 16,
+    right: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 18,
     paddingTop: 4,
   },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
