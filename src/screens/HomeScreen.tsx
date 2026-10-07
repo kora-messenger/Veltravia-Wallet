@@ -30,6 +30,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import Sparkline from '../components/Sparkline';
 import {
   BellIcon,
+  PersonIcon,
   EyeIcon,
   ChevronRight,
   SendIcon,
@@ -107,13 +108,14 @@ export default function HomeScreen() {
               <BellIcon size={24} color={theme.ink} />
             </Pressable>
             <Pressable hitSlop={8} onPress={() => {}}>
-              <View style={[styles.avatar, { backgroundColor: theme.surfaceAlt }]}>
-                <Image
-                  source={require('../assets/veltravia-logo.png')}
-                  style={styles.avatarLogo}
-                  resizeMode="contain"
-                />
-              </View>
+              <LinearGradient
+                colors={['#6C63FF', '#27B3FF']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.avatar}
+              >
+                <PersonIcon size={22} color="rgba(255,255,255,0.95)" />
+              </LinearGradient>
             </Pressable>
           </View>
         </View>
@@ -228,7 +230,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  avatarLogo: { width: 30, height: 30 },
   logo: { width: 34, height: 34 },
 
   card: {

@@ -66,6 +66,16 @@ export const BuyIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProp
 );
 
 /* ---------------- header ---------------- */
+/** Profile avatar placeholder — replaced by the user's photo in Phase 2. */
+export const PersonIcon = ({ size = 24, color = '#000' }: IconProps) => (
+  <Svg {...base(size)}>
+    <Circle cx="12" cy="8.2" r="3.6" fill={color} />
+    <Path
+      d="M5 19.5c.8-3.4 3.6-5 7-5s6.2 1.6 7 5c.2.8-.4 1.5-1.2 1.5H6.2c-.8 0-1.4-.7-1.2-1.5z"
+      fill={color}
+    />
+  </Svg>
+);
 export const BellIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
   <Svg {...base(size)}>
     <Path
