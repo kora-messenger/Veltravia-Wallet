@@ -21,6 +21,7 @@ import {
   ScrollView,
   Pressable,
   StatusBar,
+  Image,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -28,7 +29,6 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useTheme } from '../theme/ThemeProvider';
 import Sparkline from '../components/Sparkline';
 import {
-  VeltraviaMark,
   BellIcon,
   EyeIcon,
   ChevronRight,
@@ -95,7 +95,11 @@ export default function HomeScreen() {
         {/* ---------- Header ---------- */}
         <View style={styles.header}>
           <View style={styles.brandRow}>
-            <VeltraviaMark size={34} />
+            <Image
+              source={require('../assets/veltravia-logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
             <Text style={[styles.brand, { color: theme.ink }]}>Veltravia Wallet</Text>
           </View>
           <View style={styles.headerRight}>
@@ -103,14 +107,13 @@ export default function HomeScreen() {
               <BellIcon size={24} color={theme.ink} />
             </Pressable>
             <Pressable hitSlop={8} onPress={() => {}}>
-              <LinearGradient
-                colors={['#6C63FF', '#27B3FF']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.avatar}
-              >
-                <Text style={styles.avatarText}>V</Text>
-              </LinearGradient>
+              <View style={[styles.avatar, { backgroundColor: theme.surfaceAlt }]}>
+                <Image
+                  source={require('../assets/veltravia-logo.png')}
+                  style={styles.avatarLogo}
+                  resizeMode="contain"
+                />
+              </View>
             </Pressable>
           </View>
         </View>
@@ -223,8 +226,10 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  avatarText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  avatarLogo: { width: 30, height: 30 },
+  logo: { width: 34, height: 34 },
 
   card: {
     alignSelf: 'center',

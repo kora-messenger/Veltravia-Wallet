@@ -17,7 +17,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import { useTheme } from '../theme/ThemeProvider';
-import { IS_TESTNET } from '../config/env';
 import {
   HomeTabIcon,
   MarketsTabIcon,
@@ -101,26 +100,7 @@ export default function Navigation() {
   const { theme } = useTheme();
   return (
     <NavigationContainer ref={navigationRef}>
-      {IS_TESTNET && (
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: 8,
-            alignSelf: 'center',
-            zIndex: 999,
-            backgroundColor: theme.warning,
-            paddingHorizontal: 12,
-            paddingVertical: 2,
-            borderRadius: 999,
-          }}
-        >
-          <Text style={{ color: '#000', fontSize: 11, fontWeight: '700' }}>
-            TESTNET
-          </Text>
-        </View>
-      )}
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Onboarding">
           {() => (
             <WelcomeScreen
