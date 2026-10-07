@@ -86,6 +86,17 @@ export const BellIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconP
   </Svg>
 );
 
+/** QR scan (header action, replaces the profile slot). */
+export const ScanIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M4 8V6a2 2 0 012-2h2" {...stroke(color, strokeWidth)} />
+    <Path d="M16 4h2a2 2 0 012 2v2" {...stroke(color, strokeWidth)} />
+    <Path d="M20 16v2a2 2 0 01-2 2h-2" {...stroke(color, strokeWidth)} />
+    <Path d="M8 20H6a2 2 0 01-2-2v-2" {...stroke(color, strokeWidth)} />
+    <Path d="M4 12h16" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
 export const EyeIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
   <Svg {...base(size)}>
     <Path

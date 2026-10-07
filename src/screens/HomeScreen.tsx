@@ -30,7 +30,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import Sparkline from '../components/Sparkline';
 import {
   BellIcon,
-  PersonIcon,
+  ScanIcon,
   EyeIcon,
   ChevronRight,
   SendIcon,
@@ -107,15 +107,8 @@ export default function HomeScreen() {
             <Pressable hitSlop={12} onPress={() => {}}>
               <BellIcon size={24} color={theme.ink} />
             </Pressable>
-            <Pressable hitSlop={8} onPress={() => {}}>
-              <LinearGradient
-                colors={['#6C63FF', '#27B3FF']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.avatar}
-              >
-                <PersonIcon size={22} color="rgba(255,255,255,0.95)" />
-              </LinearGradient>
+            <Pressable hitSlop={12} onPress={() => {}}>
+              <ScanIcon size={26} color={theme.ink} />
             </Pressable>
           </View>
         </View>
@@ -222,14 +215,6 @@ const styles = StyleSheet.create({
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   brand: { fontSize: 17, fontWeight: '700', letterSpacing: -0.2 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 18 },
-  avatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
   logo: { width: 34, height: 34 },
 
   card: {
