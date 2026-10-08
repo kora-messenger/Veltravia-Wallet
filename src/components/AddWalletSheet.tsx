@@ -1,10 +1,12 @@
 /**
- * Veltravia Wallet — Add Wallet bottom sheet (Trust-style).
+ * Veltravia Wallet — Add Wallet bottom sheet.
  *
- * Dimmed backdrop (tap to dismiss), white/dark rounded sheet, X button,
- * Veltravia illustration, then two options:
- *   Create new wallet  — "New secret phrase"
- *   Add existing wallet — "Restore secret phrase"
+ * Structure follows the reference wallet switcher:
+ *   rounded-top sheet over a dimmed Wallets screen,
+ *   centered "Add wallet" title with a grey close circle on the same row,
+ *   borderless illustration,
+ *   two list rows, each a round icon + bold title + muted subtitle
+ *   (no filled buttons).
  */
 
 import React from 'react';
@@ -15,12 +17,10 @@ import {
   Modal,
   Pressable,
   Image,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
-import { CloseIcon } from './icons';
+import { CloseIcon, PlusIcon, ImportIcon } from './icons';
 
 export default function AddWalletSheet({
   visible,
@@ -35,90 +35,115 @@ export default function AddWalletSheet({
 }) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const sheet = theme.mode === 'dark' ? theme.surface : '#FFFFFF';
+  const dark = theme.mode === 'dark';
+  const sheet = dark ? theme.surface : '#FFFFFF';
+  const closeBg = dark ? 'rgba(255,255,255,0.10)' : 'rgba(60,64,90,0.08)';
+  const importBg = dark ? 'rgba(108,99,255,0.16)' : '#EFEDFF';
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose} statusBarTranslucent>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-        {/* Tap anywhere on the dim to close */}
-        <Pressable style={[styles.backdrop, { backgroundColor: 'rgba(2,6,16,0.55)' }]} onPress={onClose} />
+      <View style={styles.flex}>
+        <Pressable style={styles.backdrop} onPress={onClose} />
 
-        <View style={[styles.sheet, { backgroundColor: sheet, paddingBottom: insets.bottom + 18 }]}>
-          {/* X — top right, over the sheet */}
-          <View style={styles.xRow}>
-            <Pressable hitSlop={12} onPress={onClose} style={styles.xBtn}>
-              <CloseIcon size={18} color={theme.ink} />
+        <View style={[styles.sheet, { backgroundColor: sheet, paddingBottom: insets.bottom + 20 }]}>
+          {/* Title row: centered title, close on the right */}
+          <View style={styles.titleRow}>
+            <Text style={[styles.title, { color: theme.ink }]}>Add wallet</Text>
+            <Pressable hitSlop={12} onPress={onClose} style={[styles.closeBtn, { backgroundColor: closeBg }]}>
+              <CloseIcon size={20} color={theme.ink} />
             </Pressable>
           </View>
 
-          {/* Illustration on a rounded card so it reads on light + dark */}
-          <View style={styles.artCard}>
-            <Image
-              source={require('../assets/add-wallet-illustration.png')}
-              style={styles.art}
-              resizeMode="contain"
-            />
-          </View>
+          <Image
+            source={require('../assets/add-wallet-illustration.png')}
+            style={styles.art}
+            resizeMode="contain"
+          />
 
+          {/* Option rows */}
           <Pressable
-            style={({ pressed }) => [styles.option, { backgroundColor: theme.brandGradient[0], opacity: pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [styles.option, { opacity: pressed ? 0.6 : 1 }]}
             onPress={onCreate}
           >
-            <Text style={styles.optionTitle}>Create new wallet</Text>
-            <Text style={styles.optionSub}>New secret phrase</Text>
+            <View style={[styles.optionIcon, { backgroundColor: theme.brandGradient[0] }]}>
+              <PlusIcon size={24} color="#FFFFFF" />
+            </View>
+            <View style={styles.optionText}>
+              <Text style={[styles.optionTitle, { color: theme.ink }]}>Create new wallet</Text>
+              <Text style={[styles.optionSub, { color: theme.inkMuted }]}>New secret phrase</Text>
+            </View>
           </Pressable>
 
           <Pressable
-            style={({ pressed }) => [
-              styles.option,
-              { backgroundColor: theme.mode === 'dark' ? theme.surfaceAlt : '#F3F4FA', opacity: pressed ? 0.75 : 1 },
-            ]}
+            style={({ pressed }) => [styles.option, { opacity: pressed ? 0.6 : 1 }]}
             onPress={onImport}
           >
-            <Text style={[styles.optionTitle, { color: theme.ink }]}>Add existing wallet</Text>
-            <Text style={[styles.optionSub, { color: theme.inkMuted }]}>Restore secret phrase</Text>
+            <View style={[styles.optionIcon, { backgroundColor: importBg }]}>
+              <ImportIcon size={22} color={theme.brandGradient[0]} />
+            </View>
+            <View style={styles.optionText}>
+              <Text style={[styles.optionTitle, { color: theme.ink }]}>Add existing wallet</Text>
+              <Text style={[styles.optionSub, { color: theme.inkMuted }]} numberOfLines={1}>
+                Restore secret phrase or private key
+              </Text>
+            </View>
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { flex: 1 },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(2,6,16,0.5)' },
+
   sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 24,
+    paddingTop: 20,
   },
-  xRow: { flexDirection: 'row', justifyContent: 'flex-end', paddingTop: 12 },
-  xBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(140,146,170,0.18)',
+
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+  },
+  title: { fontSize: 17, fontWeight: '700', letterSpacing: -0.2 },
+  closeBtn: {
+    position: 'absolute',
+    right: -4,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  artCard: {
+
+  art: {
     alignSelf: 'center',
-    width: 190,
-    height: 190,
-    borderRadius: 24,
-    marginTop: 6,
-    marginBottom: 18,
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
+    width: 210,
+    height: 210,
+    marginTop: 10,
+    marginBottom: 14,
   },
-  art: { width: '100%', height: '100%' },
 
   option: {
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    gap: 16,
   },
-  optionTitle: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-  optionSub: { color: 'rgba(255,255,255,0.85)', fontSize: 13, marginTop: 2 },
+  optionIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  optionText: { flex: 1, gap: 3 },
+  optionTitle: { fontSize: 17, fontWeight: '600', letterSpacing: -0.2 },
+  optionSub: { fontSize: 14 },
 });

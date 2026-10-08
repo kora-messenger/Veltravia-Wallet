@@ -214,6 +214,14 @@ export const SlidersIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: Ic
   </Svg>
 );
 
+/** Import / restore: arrow into a tray. */
+export const ImportIcon = ({ size = 24, color = '#000', strokeWidth = 1.9 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M12 4v11M7.5 10.5L12 15l4.5-4.5" {...stroke(color, strokeWidth)} />
+    <Path d="M5 19h14" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
 export const ShieldCheckIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
   <Svg {...base(size)}>
     <Path d="M12 3l7 3v5.5c0 4.6-3 8-7 9.5-4-1.5-7-4.9-7-9.5V6l7-3z" {...stroke(color, strokeWidth)} />
