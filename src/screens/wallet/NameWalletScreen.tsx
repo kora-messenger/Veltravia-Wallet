@@ -22,6 +22,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useWallets } from '../../wallets/WalletsProvider';
+import { BackIcon, CloseIcon } from '../../components/icons';
 import {
   WALLET_GLYPHS,
   WALLET_COLORS,
@@ -71,7 +72,7 @@ export default function NameWalletScreen({
       {/* ---------- Header ---------- */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable hitSlop={10} onPress={() => navigation.goBack()} style={[styles.backBtn]}>
-          <Text style={{ fontSize: 22, color: theme.ink, lineHeight: 24 }}>‹</Text>
+          <BackIcon size={24} color={theme.ink} />
         </Pressable>
         <Text style={[styles.title, { color: theme.ink }]}>Name your wallet</Text>
         <View style={{ width: 40 }} />
@@ -136,7 +137,7 @@ export default function NameWalletScreen({
             />
             {name.length > 0 && (
               <Pressable hitSlop={8} onPress={() => setName('')} style={styles.clear}>
-                <Text style={{ color: theme.inkMuted, fontSize: 12, fontWeight: '700' }}>✕</Text>
+                <CloseIcon size={14} color={theme.inkMuted} strokeWidth={2.4} />
               </Pressable>
             )}
             <Text style={[styles.counter, { color: theme.inkMuted }]}>
@@ -189,7 +190,7 @@ export default function NameWalletScreen({
         <View style={styles.loading}>
           <View style={[styles.loadingCard, { backgroundColor: surface }]}>
             <ActivityIndicator color={theme.brandGradient[0]} size="large" />
-            <Text style={[styles.loadingText, { color: theme.ink }]}>Creating wallet…</Text>
+            <Text style={[styles.loadingText, { color: theme.ink }]}>Creating wallet</Text>
           </View>
         </View>
       )}

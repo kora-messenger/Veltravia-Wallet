@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
+import { CloseIcon } from './icons';
 
 export default function AddWalletSheet({
   visible,
@@ -46,7 +47,7 @@ export default function AddWalletSheet({
           {/* X — top right, over the sheet */}
           <View style={styles.xRow}>
             <Pressable hitSlop={12} onPress={onClose} style={styles.xBtn}>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: theme.ink }}>✕</Text>
+              <CloseIcon size={18} color={theme.ink} />
             </Pressable>
           </View>
 

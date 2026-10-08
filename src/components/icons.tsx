@@ -156,11 +156,68 @@ export const DiscoverTabIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }
 
 export const SettingsTabIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
   <Svg {...base(size)}>
-    <Circle cx="12" cy="12" r="3" {...stroke(color, strokeWidth)} />
-    <Path
-      d="M12 2.8l1.6 2.2 2.7-.5.9 2.6 2.5 1.2-.7 2.7 1.7 2.1-1.9 2 .2 2.8-2.7.8-1.3 2.4-2.6-1-2.6 1-1.3-2.4-2.7-.8.2-2.8-1.9-2 1.7-2.1-.7-2.7 2.5-1.2.9-2.6 2.7.5L12 2.8z"
-      {...stroke(color, strokeWidth)}
-    />
+    <Path d="M4 7h9M17 7h3" {...stroke(color, strokeWidth)} />
+    <Circle cx="15" cy="7" r="2" {...stroke(color, strokeWidth)} />
+    <Path d="M4 12h3M11 12h9" {...stroke(color, strokeWidth)} />
+    <Circle cx="9" cy="12" r="2" {...stroke(color, strokeWidth)} />
+    <Path d="M4 17h9M17 17h3" {...stroke(color, strokeWidth)} />
+    <Circle cx="15" cy="17" r="2" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/* ---------------- UI chrome (close / back / plus / support / sliders / more / shield) ---------------- */
+export const CloseIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M6 6l12 12M18 6L6 18" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+export const BackIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M15 5l-7 7 7 7" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+export const PlusIcon = ({ size = 24, color = '#000', strokeWidth = 2.2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M12 5v14M5 12h14" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+export const MoreIcon = ({ size = 24, color = '#000' }: IconProps) => (
+  <Svg {...base(size)}>
+    <Circle cx="5.5" cy="12" r="1.7" fill={color} />
+    <Circle cx="12" cy="12" r="1.7" fill={color} />
+    <Circle cx="18.5" cy="12" r="1.7" fill={color} />
+  </Svg>
+);
+
+/** Customer-support headset. */
+export const SupportIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M4 14v-2a8 8 0 0 1 16 0v2" {...stroke(color, strokeWidth)} />
+    <Rect x="3" y="13" width="4" height="6" rx="1.6" {...stroke(color, strokeWidth)} />
+    <Rect x="17" y="13" width="4" height="6" rx="1.6" {...stroke(color, strokeWidth)} />
+    <Path d="M19 19c0 1.7-1.8 2.5-4.5 2.5H13" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/** Settings: three horizontal sliders (clean, professional; no gear teeth). */
+export const SlidersIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M4 7h9M17 7h3" {...stroke(color, strokeWidth)} />
+    <Circle cx="15" cy="7" r="2" {...stroke(color, strokeWidth)} />
+    <Path d="M4 12h3M11 12h9" {...stroke(color, strokeWidth)} />
+    <Circle cx="9" cy="12" r="2" {...stroke(color, strokeWidth)} />
+    <Path d="M4 17h9M17 17h3" {...stroke(color, strokeWidth)} />
+    <Circle cx="15" cy="17" r="2" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+export const ShieldCheckIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M12 3l7 3v5.5c0 4.6-3 8-7 9.5-4-1.5-7-4.9-7-9.5V6l7-3z" {...stroke(color, strokeWidth)} />
+    <Path d="M8.8 12.2l2.4 2.4 4.2-4.6" {...stroke(color, strokeWidth)} />
   </Svg>
 );
 

@@ -14,6 +14,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { useWallets } from '../../wallets/WalletsProvider';
 import { WalletAvatar } from '../../wallets/WalletAvatar';
 import AddWalletSheet from '../../components/AddWalletSheet';
+import { CloseIcon, SupportIcon, SlidersIcon, MoreIcon, PlusIcon } from '../../components/icons';
 
 export default function WalletsScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
@@ -31,15 +32,15 @@ export default function WalletsScreen({ navigation }: { navigation: any }) {
       {/* ---------- Header ---------- */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable hitSlop={10} onPress={() => navigation.goBack()} style={[styles.headerBtn, { backgroundColor: chipBg }]}>
-          <Text style={[styles.x, { color: theme.ink }]}>✕</Text>
+          <CloseIcon size={20} color={theme.ink} />
         </Pressable>
         <Text style={[styles.title, { color: theme.ink }]}>Wallets</Text>
         <View style={styles.headerRight}>
           <Pressable hitSlop={10} style={[styles.headerBtn, { backgroundColor: chipBg }]}>
-            <Text style={{ fontSize: 18 }}>🎧</Text>
+            <SupportIcon size={21} color={theme.ink} />
           </Pressable>
           <Pressable hitSlop={10} style={[styles.headerBtn, { backgroundColor: chipBg }]}>
-            <Text style={{ fontSize: 17 }}>⚙︎</Text>
+            <SlidersIcon size={21} color={theme.ink} />
           </Pressable>
         </View>
       </View>
@@ -70,7 +71,7 @@ export default function WalletsScreen({ navigation }: { navigation: any }) {
                 )}
               </View>
               <Pressable hitSlop={12} onPress={() => {}} style={styles.moreBtn}>
-                <Text style={[styles.more, { color: theme.inkMuted }]}>•••</Text>
+                <MoreIcon size={22} color={theme.inkMuted} />
               </Pressable>
             </View>
           </Pressable>
@@ -81,7 +82,7 @@ export default function WalletsScreen({ navigation }: { navigation: any }) {
           onPress={() => setSheetOpen(true)}
         >
           <View style={[styles.plus, { backgroundColor: theme.brandGradient[0] }]}>
-            <Text style={styles.plusText}>＋</Text>
+            <PlusIcon size={24} color="#FFFFFF" />
           </View>
           <Text style={[styles.addLabel, { color: theme.ink }]}>Add wallet</Text>
         </Pressable>
@@ -119,7 +120,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  x: { fontSize: 16, fontWeight: '600' },
   title: { fontSize: 20, fontWeight: '800', letterSpacing: -0.3, flex: 1 },
   headerRight: { flexDirection: 'row', gap: 8 },
 
@@ -154,7 +154,6 @@ const styles = StyleSheet.create({
   },
   radioDot: { width: 11, height: 11, borderRadius: 5.5 },
   moreBtn: { width: 28, alignItems: 'center' },
-  more: { fontSize: 14, fontWeight: '700', letterSpacing: 1 },
 
   addBtn: {
     flexDirection: 'row',
@@ -175,6 +174,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  plusText: { color: '#fff', fontSize: 22, fontWeight: '600', marginTop: -2 },
   addLabel: { fontSize: 16, fontWeight: '600' },
 });

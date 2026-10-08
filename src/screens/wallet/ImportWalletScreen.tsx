@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
+import { BackIcon } from '../../components/icons';
 
 export default function ImportWalletScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
@@ -46,7 +47,7 @@ export default function ImportWalletScreen({ navigation }: { navigation: any }) 
 
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable hitSlop={10} onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={{ fontSize: 22, color: theme.ink, lineHeight: 24 }}>‹</Text>
+          <BackIcon size={24} color={theme.ink} />
         </Pressable>
         <Text style={[styles.title, { color: theme.ink }]}>Add existing wallet</Text>
         <View style={{ width: 40 }} />

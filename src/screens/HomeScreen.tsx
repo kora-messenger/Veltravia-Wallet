@@ -40,6 +40,8 @@ import {
   SwapIcon,
   BuyIcon,
   ArrowUpSmall,
+  ShieldCheckIcon,
+  CloseIcon,
   DashSmall,
   COIN_ICONS,
 } from '../components/icons';
@@ -123,16 +125,16 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         {!activeWallet.backedUp && !bannerDismissed && (
           <View style={[styles.backupBanner, { backgroundColor: theme.mode === 'dark' ? '#1A1608' : '#FFF8E6', borderColor: theme.mode === 'dark' ? '#3A2E10' : '#F2E3B3' }]}>
             <View style={styles.backupIcon}>
-              <Text style={{ fontSize: 16 }}>🛡️</Text>
+              <ShieldCheckIcon size={20} color={theme.warning} />
             </View>
             <View style={styles.backupTextWrap}>
               <Text style={[styles.backupTitle, { color: theme.ink }]}>Back up your wallet</Text>
               <Text style={[styles.backupSub, { color: theme.inkMuted }]}>
-                Keep your recovery phrase safe — it's the only way to restore your funds.
+                Keep your recovery phrase safe. It is the only way to restore your funds.
               </Text>
             </View>
             <Pressable hitSlop={10} onPress={() => setBannerDismissed(true)}>
-              <Text style={{ fontSize: 13, color: theme.inkMuted }}>✕</Text>
+              <CloseIcon size={16} color={theme.inkMuted} />
             </Pressable>
             <Pressable
               style={[styles.backupBtn, { backgroundColor: theme.brandGradient[0] }]}
