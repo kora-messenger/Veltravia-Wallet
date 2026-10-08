@@ -7,6 +7,7 @@
  */
 
 import React from 'react';
+import { Image } from 'react-native';
 import Svg, { Circle, Path, Polygon, Rect, Text as SvgText, G } from 'react-native-svg';
 
 interface GlyphProps {
@@ -31,6 +32,24 @@ export const WalletGlyph = (p: GlyphProps) =>
     </G>,
     p,
   );
+
+/** White logo silhouette; used when the wallet avatar has a chosen colour. */
+export const LogoGlyph = (p: GlyphProps) => (
+  <Image
+    source={require('../assets/veltravia-logo-white.png')}
+    style={{ width: p.size ?? 24, height: p.size ?? 24 }}
+    resizeMode="contain"
+  />
+);
+
+/** Full-colour logo (for grid tiles that are not on a coloured circle). */
+export const LogoColorGlyph = (p: GlyphProps) => (
+  <Image
+    source={require('../assets/veltravia-logo.png')}
+    style={{ width: p.size ?? 24, height: p.size ?? 24 }}
+    resizeMode="contain"
+  />
+);
 
 export const TextGlyph = (p: GlyphProps) =>
   wrap(
@@ -206,12 +225,13 @@ export const StarGlyph = (p: GlyphProps) =>
   );
 
 export type WalletGlyphKey =
-  | 'text' | 'wallet' | 'shield' | 'diamond' | 'rocket'
+  | 'veltravia' | 'text' | 'wallet' | 'shield' | 'diamond' | 'rocket'
   | 'btc' | 'bnb' | 'eth' | 'sol' | 'trx'
   | 'heart' | 'dollar' | 'card' | 'fire' | 'trophy'
   | 'piggy' | 'key' | 'plant' | 'gift' | 'star';
 
 export const WALLET_GLYPHS: Record<WalletGlyphKey, React.ComponentType<GlyphProps>> = {
+  veltravia: LogoGlyph,
   text: TextGlyph,
   wallet: WalletGlyph,
   shield: ShieldGlyph,
@@ -235,19 +255,21 @@ export const WALLET_GLYPHS: Record<WalletGlyphKey, React.ComponentType<GlyphProp
 };
 
 export const GLYPH_ORDER: WalletGlyphKey[] = [
-  'text', 'wallet', 'shield', 'diamond', 'rocket',
-  'btc', 'bnb', 'eth', 'sol', 'trx',
-  'heart', 'dollar', 'card', 'fire', 'trophy',
-  'piggy', 'key', 'plant', 'gift', 'star',
+  'veltravia', 'text', 'wallet', 'shield', 'diamond',
+  'rocket', 'btc', 'bnb', 'eth', 'sol',
+  'trx', 'heart', 'dollar', 'card', 'fire',
+  'trophy', 'piggy', 'key', 'plant', 'gift',
+  'star',
 ];
 
 // -- Avatar colours (Trust-style picker row) ------------------------------
 
 export type WalletColorKey =
-  | 'veltravia' | 'teal' | 'purple' | 'pink' | 'blue' | 'indigo'
+  | 'original' | 'veltravia' | 'teal' | 'purple' | 'pink' | 'blue' | 'indigo'
   | 'red' | 'orange' | 'amber' | 'green' | 'brown' | 'gray';
 
 export const WALLET_COLORS: Record<WalletColorKey, string> = {
+  original: '#FFFFFF', // the untouched full-colour logo (no tint)
   veltravia: '#6C63FF', // brand
   teal: '#26C6DA',
   purple: '#7E57C2',
@@ -263,6 +285,6 @@ export const WALLET_COLORS: Record<WalletColorKey, string> = {
 };
 
 export const COLOR_ORDER: WalletColorKey[] = [
-  'veltravia', 'teal', 'purple', 'pink', 'blue', 'indigo',
+  'original', 'veltravia', 'teal', 'purple', 'pink', 'blue', 'indigo',
   'red', 'orange', 'amber', 'green', 'brown', 'gray',
 ];

@@ -20,7 +20,7 @@ const STORAGE_SERVICE = 'com.veltravia.wallet.accounts';
 export const DEFAULT_WALLET: WalletAccount = {
   id: 'wallet-veltravia',
   name: 'Veltravia Wallet',
-  color: 'veltravia',
+  color: 'original',
   icon: 'veltravia',
   active: true,
   backedUp: false,
@@ -38,7 +38,7 @@ interface WalletsContextValue {
   createWallet: (name: string, icon: string, color: string, origin: 'created' | 'imported') => WalletAccount;
   switchWallet: (id: string) => void;
   updateWallet: (id: string, patch: Partial<Pick<WalletAccount, 'name' | 'icon' | 'color'>>) => void;
-  /** Remove a wallet. The built-in default can never be removed; if the active one goes, the first remaining becomes active. */
+  /** Remove any wallet. If the active one goes the first remaining becomes active; removing the last one leaves a fresh default. */
   removeWallet: (id: string) => void;
 }
 
@@ -85,12 +85,13 @@ export function WalletsProvider({ children }: { children: React.ReactNode }) {
   // -- helpers -------------------------------------------------------------
 
   const nextWalletName = useCallback(() => {
+    // "Wallet N": one more than the highest existing "Wallet N", never below 2
+    // (the original is "Veltravia Wallet", so the first new one is Wallet 2).
     const numbers = wallets
-      .filter((w) => w.origin !== 'default')
       .map((w) => /^Wallet (\d+)$/.exec(w.name)?.[1])
       .filter(Boolean)
       .map(Number);
-    const n = numbers.length ? Math.max(...numbers) + 1 : wallets.filter((w) => w.origin !== 'default').length + 2;
+    const n = numbers.length ? Math.max(...numbers) + 1 : 2;
     return `Wallet ${Math.max(2, n)}`;
   }, [wallets]);
 
@@ -136,10 +137,14 @@ export function WalletsProvider({ children }: { children: React.ReactNode }) {
 
   const removeWallet = useCallback(
     (id: string) => {
-      const target = wallets.find((w) => w.id === id);
-      if (!target || target.origin === 'default') return;
+      if (!wallets.some((w) => w.id === id)) return;
       let next = wallets.filter((w) => w.id !== id);
-      if (!next.some((w) => w.active)) next = next.map((w, i) => ({ ...w, active: i === 0 }));
+      if (next.length === 0) {
+        // Removing the last account leaves a fresh default so Home always has one.
+        next = [{ ...DEFAULT_WALLET, id: `wallet-${Date.now()}`, createdAt: Date.now() }];
+      } else if (!next.some((w) => w.active)) {
+        next = next.map((w, i) => ({ ...w, active: i === 0 }));
+      }
       persist(next);
     },
     [wallets, persist],

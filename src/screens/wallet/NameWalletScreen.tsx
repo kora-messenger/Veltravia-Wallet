@@ -23,8 +23,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useWallets } from '../../wallets/WalletsProvider';
 import { BackIcon, CloseIcon } from '../../components/icons';
+import { WalletAvatar } from '../../wallets/WalletAvatar';
 import {
   WALLET_GLYPHS,
+  LogoColorGlyph,
   WALLET_COLORS,
   GLYPH_ORDER,
   COLOR_ORDER,
@@ -46,8 +48,8 @@ export default function NameWalletScreen({
   const { nextWalletName, createWallet } = useWallets();
 
   const [name, setName] = useState(nextWalletName);
-  const [icon, setIcon] = useState<WalletGlyphKey>('wallet');
-  const [color, setColor] = useState<WalletColorKey>('veltravia');
+  const [icon, setIcon] = useState<WalletGlyphKey>('veltravia');
+  const [color, setColor] = useState<WalletColorKey>('original');
   const [creating, setCreating] = useState(false);
 
   const origin = route.params?.origin === 'imported' ? 'imported' : 'created';
@@ -86,9 +88,7 @@ export default function NameWalletScreen({
           {/* ---------- Colour circle picker (swipeable row) ---------- */}
           <View>
             <View style={styles.previewWrap} pointerEvents="none">
-              <View style={[styles.preview, { backgroundColor: WALLET_COLORS[color] }]}>
-                <PreviewGlyph size={44} color="rgba(255,255,255,0.96)" />
-              </View>
+              <WalletAvatar icon={icon} color={color} size={96} />
             </View>
             <ScrollView
               horizontal
@@ -106,8 +106,9 @@ export default function NameWalletScreen({
                     <View
                       style={[
                         styles.colorCircle,
+                        c === 'original' && styles.originalCircle,
                         {
-                          backgroundColor: WALLET_COLORS[c],
+                          backgroundColor: c === 'original' ? 'transparent' : WALLET_COLORS[c],
                           width: selected ? 40 : 28,
                           height: selected ? 40 : 28,
                           borderRadius: selected ? 20 : 14,
@@ -115,8 +116,12 @@ export default function NameWalletScreen({
                         selected && styles.colorSelected,
                       ]}
                     >
-                      {selected && WALLET_GLYPHS[icon] && (
-                        <>{React.createElement(WALLET_GLYPHS[icon], { size: 20, color: 'rgba(255,255,255,0.96)' })}</>
+                      {c === 'original' ? (
+                        <LogoColorGlyph size={selected ? 38 : 28} />
+                      ) : (
+                        selected && WALLET_GLYPHS[icon] && (
+                          <>{React.createElement(WALLET_GLYPHS[icon], { size: 20, color: 'rgba(255,255,255,0.96)' })}</>
+                        )
                       )}
                     </View>
                   </Pressable>
@@ -155,10 +160,17 @@ export default function NameWalletScreen({
                   <View
                     style={[
                       styles.gridTile,
-                      { backgroundColor: selected ? WALLET_COLORS[color] : 'transparent' },
+                      {
+                        backgroundColor:
+                          selected && !(g === 'veltravia' && color === 'original') ? WALLET_COLORS[color] : 'transparent',
+                      },
                     ]}
                   >
-                    <Glyph size={26} color={selected ? 'rgba(255,255,255,0.96)' : theme.ink} />
+                    {g === 'veltravia' && (!selected || color === 'original') ? (
+                      <LogoColorGlyph size={32} />
+                    ) : (
+                      <Glyph size={26} color={selected ? 'rgba(255,255,255,0.96)' : theme.ink} />
+                    )}
                   </View>
                 </Pressable>
               );
@@ -229,6 +241,7 @@ const styles = StyleSheet.create({
   colorRow: { alignItems: 'center', justifyContent: 'center', paddingBottom: 6 },
   colorTouch: { alignItems: 'center', justifyContent: 'center' },
   colorCircle: { alignItems: 'center', justifyContent: 'center' },
+  originalCircle: { borderWidth: 1.4, borderColor: 'rgba(140,146,170,0.55)' },
   colorSelected: {
     shadowColor: '#6C63FF',
     shadowOpacity: 0.35,

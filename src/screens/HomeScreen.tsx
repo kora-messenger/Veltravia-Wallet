@@ -21,7 +21,6 @@ import {
   ScrollView,
   Pressable,
   StatusBar,
-  Image,
   useWindowDimensions,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -83,7 +82,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [hidden, setHidden] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const { activeWallet, wallets } = useWallets();
-  const defaultActive = activeWallet.origin === 'default';
 
   const topInset = 0; // status bar offset is applied natively in MainActivity
   const chipBg = theme.mode === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(60,64,90,0.10)';
@@ -219,15 +217,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             style={({ pressed }) => [styles.brandRow, { backgroundColor: chipBg, opacity: pressed ? 0.8 : 1 }]}
             onPress={() => navigation.navigate('Wallets')}
           >
-            {defaultActive ? (
-              <Image
-                source={require('../assets/veltravia-logo.png')}
-                style={styles.logo}
-                resizeMode="contain"
-              />
-            ) : (
-              <WalletAvatar icon={activeWallet.icon} color={activeWallet.color} size={34} />
-            )}
+            <WalletAvatar icon={activeWallet.icon} color={activeWallet.color} size={34} />
             <Text style={[styles.brand, { color: theme.ink }]} numberOfLines={1}>
               {activeWallet.name}
             </Text>
@@ -279,7 +269,6 @@ const styles = StyleSheet.create({
   },
   brand: { fontSize: 17, fontWeight: '700', letterSpacing: -0.2 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  logo: { width: 34, height: 34 },
   scanBtn: {
     width: 46,
     height: 46,

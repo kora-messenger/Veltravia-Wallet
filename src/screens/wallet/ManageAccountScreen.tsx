@@ -29,7 +29,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useWallets } from '../../wallets/WalletsProvider';
-import { WALLET_COLORS, COLOR_ORDER, GLYPH_ORDER, WalletColorKey } from '../../wallets/WalletGlyphs';
+import { WALLET_COLORS, COLOR_ORDER, GLYPH_ORDER, LogoColorGlyph, WalletColorKey } from '../../wallets/WalletGlyphs';
 import { WalletAvatar } from '../../wallets/WalletAvatar';
 import SecretPhraseGateSheet from '../../components/SecretPhraseGateSheet';
 import {
@@ -65,7 +65,6 @@ export default function ManageAccountScreen({
   if (!wallet) return null;
 
   const dark = theme.mode === 'dark';
-  const isDefault = wallet.origin === 'default';
   const chipBg = dark ? 'rgba(255,255,255,0.10)' : 'rgba(60,64,90,0.08)';
   const fieldBg = dark ? 'rgba(255,255,255,0.08)' : '#EEEEF2';
   const rowIconBg = dark ? 'rgba(255,255,255,0.08)' : '#EFEFF3';
@@ -82,16 +81,11 @@ export default function ManageAccountScreen({
   };
 
   const cycleIcon = () => {
-    if (isDefault) return;
     const i = GLYPH_ORDER.indexOf(wallet.icon as (typeof GLYPH_ORDER)[number]);
     updateWallet(wallet.id, { icon: GLYPH_ORDER[(i + 1) % GLYPH_ORDER.length] });
   };
 
   const confirmRemove = () => {
-    if (isDefault) {
-      Alert.alert('Cannot remove', 'The Veltravia Wallet is your primary account and cannot be removed.');
-      return;
-    }
     Alert.alert(
       'Remove account?',
       wallet.backedUp
@@ -148,42 +142,41 @@ export default function ManageAccountScreen({
         contentContainerStyle={styles.body}
       >
         {/* ---------- Avatar carousel ---------- */}
-        {isDefault ? (
-          <View style={styles.singleAvatar}>
-            <View style={styles.ring}>
-              <WalletAvatar icon={wallet.icon} color={wallet.color} size={BIG} />
-            </View>
-          </View>
-        ) : (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.carousel}
-            keyboardShouldPersistTaps="handled"
-          >
-            {COLOR_ORDER.map((c) => {
-              const selected = c === wallet.color;
-              const hex = WALLET_COLORS[c as WalletColorKey];
-              if (selected) {
-                return (
-                  <Pressable key={c} onPress={cycleIcon} style={styles.ring}>
-                    <WalletAvatar icon={wallet.icon} color={c} size={BIG} />
-                    <View style={styles.pencil}>
-                      <PencilIcon size={14} color="#FFFFFF" />
-                    </View>
-                  </Pressable>
-                );
-              }
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.carousel}
+          keyboardShouldPersistTaps="handled"
+        >
+          {COLOR_ORDER.map((c) => {
+            const selected = c === (wallet.color === 'veltravia' && wallet.icon === 'veltravia' ? 'original' : wallet.color);
+            const hex = WALLET_COLORS[c as WalletColorKey];
+            if (selected) {
               return (
-                <Pressable
-                  key={c}
-                  onPress={() => updateWallet(wallet.id, { color: c })}
-                  style={[styles.dot, { backgroundColor: hex }]}
-                />
+                <Pressable key={c} onPress={cycleIcon} style={styles.ring}>
+                  <WalletAvatar icon={wallet.icon} color={c} size={BIG} />
+                  <View style={styles.pencil}>
+                    <PencilIcon size={14} color="#FFFFFF" />
+                  </View>
+                </Pressable>
               );
-            })}
-          </ScrollView>
-        )}
+            }
+            return (
+              <Pressable
+                key={c}
+                onPress={() => updateWallet(wallet.id, { color: c })}
+                style={[
+                  styles.dot,
+                  c === 'original'
+                    ? { borderWidth: 1.4, borderColor: 'rgba(140,146,170,0.55)', alignItems: 'center', justifyContent: 'center' }
+                    : { backgroundColor: hex },
+                ]}
+              >
+                {c === 'original' && <LogoColorGlyph size={SMALL - 14} />}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
 
         {/* ---------- Name field ---------- */}
         <Pressable
@@ -262,7 +255,7 @@ export default function ManageAccountScreen({
           onPress={confirmRemove}
           style={({ pressed }) => [
             styles.remove,
-            { backgroundColor: dark ? 'rgba(229,57,53,0.16)' : '#F8D9D9', opacity: isDefault ? 0.5 : pressed ? 0.8 : 1 },
+            { backgroundColor: dark ? 'rgba(229,57,53,0.16)' : '#F8D9D9', opacity: pressed ? 0.8 : 1 },
           ]}
         >
           <Text style={styles.removeText}>Remove account</Text>

@@ -1,8 +1,11 @@
 /**
  * Veltravia Wallet — wallet avatar.
  *
- * Coloured circle with the chosen glyph inside. The special 'veltravia'
- * icon shows the app logo instead of a glyph.
+ * - icon 'veltravia' + colour 'original': the untouched full-colour logo,
+ *   no circle (the default for every new wallet).
+ * - any other colour: coloured circle with the chosen glyph; the logo glyph
+ *   renders as a white silhouette so it can be recoloured.
+ * Legacy records (colour 'veltravia' with icon 'veltravia') read as original.
  */
 
 import React from 'react';
@@ -18,22 +21,21 @@ export function WalletAvatar({
   color: string;
   size?: number;
 }) {
-  if (icon === 'veltravia') {
+  const isOriginal = icon === 'veltravia' && (color === 'original' || color === 'veltravia');
+  if (isOriginal) {
     return (
-      <View style={[styles.circle, { width: size, height: size, borderRadius: size / 2, backgroundColor: '#FFFFFF' }]}>
-        <Image
-          source={require('../assets/veltravia-logo.png')}
-          style={{ width: size * 0.78, height: size * 0.78 }}
-          resizeMode="contain"
-        />
-      </View>
+      <Image
+        source={require('../assets/veltravia-logo.png')}
+        style={{ width: size, height: size }}
+        resizeMode="contain"
+      />
     );
   }
   const Glyph = WALLET_GLYPHS[icon as keyof typeof WALLET_GLYPHS];
   const bg = WALLET_COLORS[color as keyof typeof WALLET_COLORS] ?? WALLET_COLORS.veltravia;
   return (
     <View style={[styles.circle, { width: size, height: size, borderRadius: size / 2, backgroundColor: bg }]}>
-      {Glyph ? <Glyph size={size * 0.52} color="rgba(255,255,255,0.96)" /> : null}
+      {Glyph ? <Glyph size={size * (icon === 'veltravia' ? 0.66 : 0.52)} color="rgba(255,255,255,0.96)" /> : null}
     </View>
   );
 }
