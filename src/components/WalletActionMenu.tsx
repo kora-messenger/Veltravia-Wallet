@@ -2,7 +2,7 @@
  * Veltravia Wallet — wallet action popup.
  *
  * Floating white card anchored under the tapped "..." button, right-aligned
- * to it, over a light dim. Rows: Manage, Back up to cloud (red badge while the
+ * to it, over a light dim. Rows: Manage, Back up to Google Drive (red badge while the
  * wallet is not backed up).
  */
 
@@ -63,7 +63,7 @@ export default function WalletActionMenu({
               <CloudIcon size={20} color={theme.ink} />
               {showBackupBadge && <View style={[styles.badge, { borderColor: card }]} />}
             </View>
-            <Text style={[styles.label, { color: theme.ink }]}>Back up to cloud</Text>
+            <Text style={[styles.label, { color: theme.ink }]}>Back up to Google Drive</Text>
           </Pressable>
         </View>
       </Pressable>
