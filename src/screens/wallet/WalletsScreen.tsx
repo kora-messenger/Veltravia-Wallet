@@ -121,7 +121,7 @@ export default function WalletsScreen({ navigation }: { navigation: any }) {
         onManage={() => {
           const id = menuWalletId;
           setMenuWalletId(null);
-          if (id) navigation.navigate('ManageWallet', { walletId: id });
+          if (id) navigation.navigate('ManageAccount', { walletId: id });
         }}
         onBackup={() => {
           setMenuWalletId(null);

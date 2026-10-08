@@ -38,6 +38,8 @@ interface WalletsContextValue {
   createWallet: (name: string, icon: string, color: string, origin: 'created' | 'imported') => WalletAccount;
   switchWallet: (id: string) => void;
   updateWallet: (id: string, patch: Partial<Pick<WalletAccount, 'name' | 'icon' | 'color'>>) => void;
+  /** Remove a wallet. The built-in default can never be removed; if the active one goes, the first remaining becomes active. */
+  removeWallet: (id: string) => void;
 }
 
 const WalletsContext = createContext<WalletsContextValue | null>(null);
@@ -132,11 +134,22 @@ export function WalletsProvider({ children }: { children: React.ReactNode }) {
     [wallets, persist],
   );
 
+  const removeWallet = useCallback(
+    (id: string) => {
+      const target = wallets.find((w) => w.id === id);
+      if (!target || target.origin === 'default') return;
+      let next = wallets.filter((w) => w.id !== id);
+      if (!next.some((w) => w.active)) next = next.map((w, i) => ({ ...w, active: i === 0 }));
+      persist(next);
+    },
+    [wallets, persist],
+  );
+
   const activeWallet = wallets.find((w) => w.active) ?? wallets[0];
 
   return (
     <WalletsContext.Provider
-      value={{ wallets, activeWallet, ready, nextWalletName, createWallet, switchWallet, updateWallet }}
+      value={{ wallets, activeWallet, ready, nextWalletName, createWallet, switchWallet, updateWallet, removeWallet }}
     >
       {children}
     </WalletsContext.Provider>

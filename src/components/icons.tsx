@@ -243,6 +243,77 @@ export const CloudIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: Icon
   </Svg>
 );
 
+/** Pencil (edit badge on the avatar). */
+export const PencilIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19l-4 1z" {...stroke(color, strokeWidth)} />
+    <Path d="M14.5 6.5l3 3" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/** Cloud with an up arrow: the backup row icon. */
+export const CloudUploadIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M7 18.5h10.2a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.3 9.6 4.5 4.5 0 0 0 7 18.5z" {...stroke(color, strokeWidth)} />
+    <Path d="M12 16v-5M9.8 12.9L12 10.7l2.2 2.2" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/** Face / biometric scan frame: the "Show secret phrase" row icon. */
+export const ScanFaceIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M4 8V6.5A2.5 2.5 0 0 1 6.5 4H8M16 4h1.5A2.5 2.5 0 0 1 20 6.5V8M20 16v1.5a2.5 2.5 0 0 1-2.5 2.5H16M8 20H6.5A2.5 2.5 0 0 1 4 17.5V16" {...stroke(color, strokeWidth)} />
+    <Path d="M9 10v1.2M15 10v1.2M12 10v3.2h-1M9.2 15.6c1.7 1.4 4 1.4 5.6 0" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/** Filled info / alert circle (warning card). */
+export const AlertCircleIcon = ({ size = 24, color = '#000' }: IconProps) => (
+  <Svg {...base(size)}>
+    <Circle cx="12" cy="12" r="10" fill={color} />
+    <Path d="M12 7v6" stroke="#FFFFFF" strokeWidth={2.2} strokeLinecap="round" />
+    <Circle cx="12" cy="16.6" r="1.25" fill="#FFFFFF" />
+  </Svg>
+);
+
+/** Outline info circle (muted notes). */
+export const InfoCircleIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Circle cx="12" cy="12" r="9" {...stroke(color, strokeWidth)} />
+    <Path d="M12 11v5" {...stroke(color, strokeWidth + 0.2)} />
+    <Circle cx="12" cy="7.7" r="1.1" fill={color} />
+  </Svg>
+);
+
+/** Check mark (checkbox tick). */
+export const CheckIcon = ({ size = 24, color = '#000', strokeWidth = 2.6 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M5 12.5l4.6 4.6L19 7.5" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/** Shield with a fingerprint-style lock, used on the secret-phrase gate sheet. */
+export const SecretShieldArt = ({ size = 150 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 160 160">
+    <Defs>
+      <SvgGradient id="ssA" x1="0" y1="0" x2="1" y2="1">
+        <Stop offset="0" stopColor="#6C63FF" />
+        <Stop offset="1" stopColor="#4A90D9" />
+      </SvgGradient>
+      <SvgGradient id="ssB" x1="0" y1="0" x2="0" y2="1">
+        <Stop offset="0" stopColor="#7CF2C4" />
+        <Stop offset="1" stopColor="#3FA9F5" />
+      </SvgGradient>
+    </Defs>
+    <Path d="M80 14l50 20v38c0 32-21 55-50 68-29-13-50-36-50-68V34l50-20z" fill="url(#ssB)" />
+    <Path d="M80 14l50 20v38c0 32-21 55-50 68V14z" fill="url(#ssA)" opacity={0.85} />
+    <Rect x="56" y="62" width="58" height="34" rx="6" fill="#FFFFFF" opacity={0.95} />
+    <Path d="M66 79h6M78 79h6M90 79h6" stroke="#6C63FF" strokeWidth={4} strokeLinecap="round" />
+    <Rect x="64" y="38" width="52" height="30" rx="6" fill="none" stroke="#FFFFFF" strokeWidth={3} opacity={0.9} />
+    <Path d="M90 44c-5 0-9 4-9 9v6M90 48c-3 0-5 2-5 5v6M90 52v7M96 49c2 1 4 3 4 6v5" stroke="#FFFFFF" strokeWidth={2.4} strokeLinecap="round" fill="none" />
+  </Svg>
+);
+
 export const ShieldCheckIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
   <Svg {...base(size)}>
     <Path d="M12 3l7 3v5.5c0 4.6-3 8-7 9.5-4-1.5-7-4.9-7-9.5V6l7-3z" {...stroke(color, strokeWidth)} />

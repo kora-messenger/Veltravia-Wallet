@@ -22,7 +22,7 @@ import type { NavigationContainerRef } from '@react-navigation/native';
 import WalletsScreen from '../screens/wallet/WalletsScreen';
 import NameWalletScreen from '../screens/wallet/NameWalletScreen';
 import ImportWalletScreen from '../screens/wallet/ImportWalletScreen';
-import ManageWalletScreen from '../screens/wallet/ManageWalletScreen';
+import ManageAccountScreen from '../screens/wallet/ManageAccountScreen';
 
 const navigationRef = React.createRef<NavigationContainerRef<RootStackParamList>>();
 
@@ -40,7 +40,7 @@ export type RootStackParamList = {
   Wallets: undefined;
   NameWallet: { origin?: 'created' | 'imported' } | undefined;
   ImportWallet: undefined;
-  ManageWallet: { walletId: string };
+  ManageAccount: { walletId: string };
 };
 
 export type MainTabParamList = {
@@ -88,7 +88,7 @@ export default function Navigation() {
         <Stack.Screen name="Wallets" component={WalletsScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="NameWallet" component={NameWalletScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="ImportWallet" component={ImportWalletScreen} options={{ animation: 'slide_from_right' }} />
-        <Stack.Screen name="ManageWallet" component={ManageWalletScreen} options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="ManageAccount" component={ManageAccountScreen} options={{ animation: 'slide_from_right' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
