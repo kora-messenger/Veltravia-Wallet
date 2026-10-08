@@ -13,7 +13,7 @@
  * Name, colour and icon save as you change them.
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -25,18 +25,21 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useWallets } from '../../wallets/WalletsProvider';
-import { WALLET_COLORS, COLOR_ORDER, GLYPH_ORDER, LogoColorGlyph, WalletColorKey } from '../../wallets/WalletGlyphs';
+import LinearGradient from 'react-native-linear-gradient';
+import { WALLET_GRADIENTS, COLOR_ORDER, LogoColorGlyph, WalletColorKey } from '../../wallets/WalletGlyphs';
 import { WalletAvatar } from '../../wallets/WalletAvatar';
 import SecretPhraseGateSheet from '../../components/SecretPhraseGateSheet';
+import EditIconSheet from '../../components/EditIconSheet';
 import {
   BackIcon,
   CloseIcon,
   PencilIcon,
-  CloudUploadIcon,
+  DriveTriangleIcon,
   ScanFaceIcon,
   AlertCircleIcon,
 } from '../../components/icons';
@@ -60,7 +63,24 @@ export default function ManageAccountScreen({
 
   const [name, setName] = useState(wallet?.name ?? '');
   const [gateOpen, setGateOpen] = useState(false);
+  const [iconOpen, setIconOpen] = useState(false);
   const inputRef = useRef<{ focus: () => void } | null>(null);
+  const stripRef = useRef<{ scrollTo: (o: { x: number; animated: boolean }) => void } | null>(null);
+  const { width: screenW } = useWindowDimensions();
+
+  const currentColor = wallet
+    ? wallet.color === 'veltravia' && wallet.icon === 'veltravia'
+      ? 'original'
+      : wallet.color
+    : 'original';
+
+  useEffect(() => {
+    // Keep the selected circle in the exact middle of the strip.
+    const i = COLOR_ORDER.indexOf(currentColor as WalletColorKey);
+    const itemW = SMALL + GAP;
+    const x = Math.max(0, 20 + i * itemW + (BIG + 12) / 2 - screenW / 2);
+    stripRef.current?.scrollTo({ x, animated: true });
+  }, [currentColor, screenW]);
 
   if (!wallet) return null;
 
@@ -78,11 +98,6 @@ export default function ManageAccountScreen({
       return;
     }
     if (trimmed !== wallet.name) updateWallet(wallet.id, { name: trimmed });
-  };
-
-  const cycleIcon = () => {
-    const i = GLYPH_ORDER.indexOf(wallet.icon as (typeof GLYPH_ORDER)[number]);
-    updateWallet(wallet.id, { icon: GLYPH_ORDER[(i + 1) % GLYPH_ORDER.length] });
   };
 
   const confirmRemove = () => {
@@ -143,17 +158,19 @@ export default function ManageAccountScreen({
       >
         {/* ---------- Avatar carousel ---------- */}
         <ScrollView
+          ref={(r) => {
+            stripRef.current = r as unknown as { scrollTo: (o: { x: number; animated: boolean }) => void } | null;
+          }}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.carousel}
           keyboardShouldPersistTaps="handled"
         >
           {COLOR_ORDER.map((c) => {
-            const selected = c === (wallet.color === 'veltravia' && wallet.icon === 'veltravia' ? 'original' : wallet.color);
-            const hex = WALLET_COLORS[c as WalletColorKey];
+            const selected = c === currentColor;
             if (selected) {
               return (
-                <Pressable key={c} onPress={cycleIcon} style={styles.ring}>
+                <Pressable key={c} onPress={() => setIconOpen(true)} style={styles.ring}>
                   <WalletAvatar icon={wallet.icon} color={c} size={BIG} />
                   <View style={styles.pencil}>
                     <PencilIcon size={14} color="#FFFFFF" />
@@ -161,18 +178,25 @@ export default function ManageAccountScreen({
                 </Pressable>
               );
             }
+            if (c === 'original') {
+              return (
+                <Pressable
+                  key={c}
+                  onPress={() => updateWallet(wallet.id, { color: c, icon: 'veltravia' })}
+                  style={[styles.dot, styles.dotOriginal]}
+                >
+                  <LogoColorGlyph size={SMALL - 14} />
+                </Pressable>
+              );
+            }
             return (
-              <Pressable
-                key={c}
-                onPress={() => updateWallet(wallet.id, { color: c })}
-                style={[
-                  styles.dot,
-                  c === 'original'
-                    ? { borderWidth: 1.4, borderColor: 'rgba(140,146,170,0.55)', alignItems: 'center', justifyContent: 'center' }
-                    : { backgroundColor: hex },
-                ]}
-              >
-                {c === 'original' && <LogoColorGlyph size={SMALL - 14} />}
+              <Pressable key={c} onPress={() => updateWallet(wallet.id, { color: c })}>
+                <LinearGradient
+                  colors={WALLET_GRADIENTS[c as WalletColorKey]}
+                  start={{ x: 0.15, y: 0 }}
+                  end={{ x: 0.85, y: 1 }}
+                  style={styles.dot}
+                />
               </Pressable>
             );
           })}
@@ -212,7 +236,7 @@ export default function ManageAccountScreen({
         {/* ---------- Back up row ---------- */}
         <View style={styles.row}>
           <View style={[styles.rowIcon, { backgroundColor: rowIconBg }]}>
-            <CloudUploadIcon size={24} color={theme.ink} />
+            <DriveTriangleIcon size={24} color={theme.ink} />
             {!wallet.backedUp && <View style={[styles.redDot, { borderColor: rowIconBg }]} />}
           </View>
           <View style={styles.rowText}>
@@ -262,6 +286,21 @@ export default function ManageAccountScreen({
         </Pressable>
       </View>
 
+      <EditIconSheet
+        visible={iconOpen}
+        selected={wallet.icon}
+        onClose={() => setIconOpen(false)}
+        onSelect={(key) => {
+          // Choosing a glyph on the original (uncoloured) logo switches to the brand colour so it shows.
+          const patch: { icon: string; color?: string } = { icon: key };
+          if (wallet.color === 'original' || (wallet.color === 'veltravia' && wallet.icon === 'veltravia')) {
+            patch.color = 'veltravia';
+          }
+          updateWallet(wallet.id, patch);
+          setIconOpen(false);
+        }}
+      />
+
       <SecretPhraseGateSheet
         visible={gateOpen}
         onClose={() => setGateOpen(false)}
@@ -288,7 +327,7 @@ const styles = StyleSheet.create({
 
   body: { paddingBottom: 24 },
 
-  carousel: { alignItems: 'center', paddingHorizontal: 20, gap: GAP, paddingVertical: 14 },
+  carousel: { alignItems: 'center', paddingHorizontal: 20, paddingRight: 160, gap: GAP, paddingVertical: 14 },
   singleAvatar: { alignItems: 'center', paddingVertical: 14 },
   ring: {
     width: BIG + 12,
@@ -313,6 +352,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dot: { width: SMALL, height: SMALL, borderRadius: SMALL / 2 },
+  dotOriginal: {
+    borderWidth: 1.4,
+    borderColor: 'rgba(140,146,170,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
   field: {
     flexDirection: 'row',

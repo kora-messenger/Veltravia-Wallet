@@ -23,11 +23,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useWallets } from '../../wallets/WalletsProvider';
 import { BackIcon, CloseIcon } from '../../components/icons';
+import LinearGradient from 'react-native-linear-gradient';
 import { WalletAvatar } from '../../wallets/WalletAvatar';
 import {
   WALLET_GLYPHS,
   LogoColorGlyph,
   WALLET_COLORS,
+  WALLET_GRADIENTS,
   GLYPH_ORDER,
   COLOR_ORDER,
   WalletGlyphKey,
@@ -103,12 +105,14 @@ export default function NameWalletScreen({
                     onPress={() => setColor(c)}
                     style={[styles.colorTouch, { width: selected ? 84 : 66 }]}
                   >
-                    <View
+                    <LinearGradient
+                      colors={WALLET_GRADIENTS[c]}
+                      start={{ x: 0.15, y: 0 }}
+                      end={{ x: 0.85, y: 1 }}
                       style={[
                         styles.colorCircle,
                         c === 'original' && styles.originalCircle,
                         {
-                          backgroundColor: c === 'original' ? 'transparent' : WALLET_COLORS[c],
                           width: selected ? 40 : 28,
                           height: selected ? 40 : 28,
                           borderRadius: selected ? 20 : 14,
@@ -123,7 +127,7 @@ export default function NameWalletScreen({
                           <>{React.createElement(WALLET_GLYPHS[icon], { size: 20, color: 'rgba(255,255,255,0.96)' })}</>
                         )
                       )}
-                    </View>
+                    </LinearGradient>
                   </Pressable>
                 );
               })}
@@ -162,7 +166,7 @@ export default function NameWalletScreen({
                       styles.gridTile,
                       {
                         backgroundColor:
-                          selected && !(g === 'veltravia' && color === 'original') ? WALLET_COLORS[color] : 'transparent',
+                          selected && !(g === 'veltravia' && color === 'original') ? WALLET_GRADIENTS[color][1] : 'transparent',
                       },
                     ]}
                   >

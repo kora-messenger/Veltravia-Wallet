@@ -251,6 +251,15 @@ export const PencilIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconP
 );
 
 /** Cloud with an up arrow: the backup row icon. */
+/** Drive-style triangle mark (monochrome) for the backup row. */
+export const DriveTriangleIcon = ({ size = 24, color = '#000' }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M8.6 3.5h6.8l6.1 10.5h-6.8L8.6 3.5z" fill={color} />
+    <Path d="M8 4.6L1.7 15.4l3.4 5.9L11.4 10.5 8 4.6z" fill={color} />
+    <Path d="M6.4 21.3h12.8l3.3-5.9H9.7l-3.3 5.9z" fill={color} />
+  </Svg>
+);
+
 export const CloudUploadIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
   <Svg {...base(size)}>
     <Path d="M7 18.5h10.2a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.3 9.6 4.5 4.5 0 0 0 7 18.5z" {...stroke(color, strokeWidth)} />

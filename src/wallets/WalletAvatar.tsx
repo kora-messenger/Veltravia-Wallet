@@ -10,7 +10,8 @@
 
 import React from 'react';
 import { View, Image, StyleSheet } from 'react-native';
-import { WALLET_GLYPHS, WALLET_COLORS } from './WalletGlyphs';
+import LinearGradient from 'react-native-linear-gradient';
+import { WALLET_GLYPHS, WALLET_GRADIENTS } from './WalletGlyphs';
 
 export function WalletAvatar({
   icon,
@@ -32,11 +33,16 @@ export function WalletAvatar({
     );
   }
   const Glyph = WALLET_GLYPHS[icon as keyof typeof WALLET_GLYPHS];
-  const bg = WALLET_COLORS[color as keyof typeof WALLET_COLORS] ?? WALLET_COLORS.veltravia;
+  const g = WALLET_GRADIENTS[color as keyof typeof WALLET_GRADIENTS] ?? WALLET_GRADIENTS.veltravia;
   return (
-    <View style={[styles.circle, { width: size, height: size, borderRadius: size / 2, backgroundColor: bg }]}>
+    <LinearGradient
+      colors={g}
+      start={{ x: 0.15, y: 0 }}
+      end={{ x: 0.85, y: 1 }}
+      style={[styles.circle, { width: size, height: size, borderRadius: size / 2 }]}
+    >
       {Glyph ? <Glyph size={size * (icon === 'veltravia' ? 0.66 : 0.52)} color="rgba(255,255,255,0.96)" /> : null}
-    </View>
+    </LinearGradient>
   );
 }
 

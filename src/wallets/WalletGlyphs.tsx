@@ -288,3 +288,21 @@ export const COLOR_ORDER: WalletColorKey[] = [
   'original', 'veltravia', 'teal', 'purple', 'pink', 'blue', 'indigo',
   'red', 'orange', 'amber', 'green', 'brown', 'gray',
 ];
+
+
+/** Light -> deep diagonal gradient pairs for the glossy avatar circles. */
+export const WALLET_GRADIENTS: Record<WalletColorKey, [string, string]> = {
+  original: ['#FFFFFF', '#FFFFFF'],
+  veltravia: ['#8B84FF', '#4A3FE8'],
+  teal: ['#4DD9E8', '#1AA3B8'],
+  purple: ['#A57CF0', '#7332C9'],
+  pink: ['#FF6FB5', '#E5307F'],
+  blue: ['#5FB4FF', '#2F7DE0'],
+  indigo: ['#6D6DFF', '#2E27E6'],
+  red: ['#F26A6A', '#D63B3B'],
+  orange: ['#FFB547', '#F08A00'],
+  amber: ['#FFE04D', '#EBB800'],
+  green: ['#6BEE86', '#18B04E'],
+  brown: ['#B08672', '#7A5546'],
+  gray: ['#B4C0C8', '#7F909B'],
+};
