@@ -8,13 +8,14 @@
  * Tapping a row switches to that wallet and returns to Home.
  */
 
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, StatusBar } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, StatusBar, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useWallets } from '../../wallets/WalletsProvider';
 import { WalletAvatar } from '../../wallets/WalletAvatar';
 import AddWalletSheet from '../../components/AddWalletSheet';
+import WalletActionMenu, { MenuAnchor } from '../../components/WalletActionMenu';
 import { CloseIcon, SupportIcon, GearIcon, MoreIcon } from '../../components/icons';
 
 export default function WalletsScreen({ navigation }: { navigation: any }) {
@@ -22,6 +23,17 @@ export default function WalletsScreen({ navigation }: { navigation: any }) {
   const insets = useSafeAreaInsets();
   const { wallets, activeWallet, switchWallet } = useWallets();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [menuWalletId, setMenuWalletId] = useState<string | null>(null);
+  const [anchor, setAnchor] = useState<MenuAnchor | null>(null);
+  const moreRefs = useRef<Record<string, { measureInWindow: (cb: (x: number, y: number, w: number, h: number) => void) => void } | null>>({});
+  const menuWallet = wallets.find((w) => w.id === menuWalletId) ?? null;
+
+  const openMenu = (id: string) => {
+    moreRefs.current[id]?.measureInWindow((x, y, w, h) => {
+      setAnchor({ y: y + h, right: x + w });
+      setMenuWalletId(id);
+    });
+  };
 
   const dark = theme.mode === 'dark';
   const chipBg = dark ? 'rgba(255,255,255,0.10)' : 'rgba(60,64,90,0.08)';
@@ -74,7 +86,15 @@ export default function WalletsScreen({ navigation }: { navigation: any }) {
               <Text style={[styles.rowName, { color: theme.ink }]} numberOfLines={1}>
                 {w.name}
               </Text>
-              <Pressable hitSlop={6} onPress={() => {}} style={[styles.moreBtn, { backgroundColor: pillBg }]}>
+              <Pressable
+                ref={(r) => {
+                  moreRefs.current[w.id] = r;
+                }}
+                collapsable={false}
+                hitSlop={6}
+                onPress={() => openMenu(w.id)}
+                style={[styles.moreBtn, { backgroundColor: pillBg }]}
+              >
                 <MoreIcon size={24} color={dotColor} />
                 {!w.backedUp && <View style={[styles.badge, { borderColor: pageBg }]} />}
               </Pressable>
@@ -92,6 +112,26 @@ export default function WalletsScreen({ navigation }: { navigation: any }) {
           <Text style={[styles.addLabel, { color: theme.ink }]}>Add wallet</Text>
         </Pressable>
       </View>
+
+      <WalletActionMenu
+        visible={!!menuWallet}
+        anchor={anchor}
+        showBackupBadge={!!menuWallet && !menuWallet.backedUp}
+        onClose={() => setMenuWalletId(null)}
+        onManage={() => {
+          const id = menuWalletId;
+          setMenuWalletId(null);
+          if (id) navigation.navigate('ManageWallet', { walletId: id });
+        }}
+        onBackup={() => {
+          setMenuWalletId(null);
+          Alert.alert(
+            'Back up wallet',
+            'Secure backup (recovery phrase reveal and verification) arrives with the Wallet Core integration.',
+            [{ text: 'OK' }],
+          );
+        }}
+      />
 
       <AddWalletSheet
         visible={sheetOpen}

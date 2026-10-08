@@ -233,6 +233,16 @@ export const GearIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconP
   </Svg>
 );
 
+/** Cloud outline for the backup action. */
+export const CloudIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path
+      d="M7 18.5h10.2a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.3 9.6 4.5 4.5 0 0 0 7 18.5z"
+      {...stroke(color, strokeWidth)}
+    />
+  </Svg>
+);
+
 export const ShieldCheckIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
   <Svg {...base(size)}>
     <Path d="M12 3l7 3v5.5c0 4.6-3 8-7 9.5-4-1.5-7-4.9-7-9.5V6l7-3z" {...stroke(color, strokeWidth)} />

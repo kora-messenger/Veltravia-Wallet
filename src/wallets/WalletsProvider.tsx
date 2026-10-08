@@ -37,6 +37,7 @@ interface WalletsContextValue {
   nextWalletName: () => string;
   createWallet: (name: string, icon: string, color: string, origin: 'created' | 'imported') => WalletAccount;
   switchWallet: (id: string) => void;
+  updateWallet: (id: string, patch: Partial<Pick<WalletAccount, 'name' | 'icon' | 'color'>>) => void;
 }
 
 const WalletsContext = createContext<WalletsContextValue | null>(null);
@@ -118,11 +119,24 @@ export function WalletsProvider({ children }: { children: React.ReactNode }) {
     [wallets, persist],
   );
 
+  const updateWallet = useCallback(
+    (id: string, patch: Partial<Pick<WalletAccount, 'name' | 'icon' | 'color'>>) => {
+      persist(
+        wallets.map((w) =>
+          w.id === id
+            ? { ...w, ...patch, name: (patch.name ?? w.name).trim() || w.name }
+            : w,
+        ),
+      );
+    },
+    [wallets, persist],
+  );
+
   const activeWallet = wallets.find((w) => w.active) ?? wallets[0];
 
   return (
     <WalletsContext.Provider
-      value={{ wallets, activeWallet, ready, nextWalletName, createWallet, switchWallet }}
+      value={{ wallets, activeWallet, ready, nextWalletName, createWallet, switchWallet, updateWallet }}
     >
       {children}
     </WalletsContext.Provider>
