@@ -8,7 +8,7 @@
  * source (later) — swap the <Image> for <LottieView> when we have the
  * motion assets and nothing else in this file changes.
  */
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -67,10 +67,41 @@ export default function WelcomeScreen({
   const { theme } = useTheme();
   const listRef = useRef<FlatList<Slide>>(null);
   const [page, setPage] = useState(0);
+  const pageRef = useRef(0); // latest page for the auto-advance timer
+  const resumeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoPauseRef = useRef(false);
 
-  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+  const goTo = useCallback((next: number, animated = true) => {
+    pageRef.current = next;
+    setPage(next);
+    listRef.current?.scrollToIndex({ index: next, animated });
+  }, []);
+
+  // Auto-swipe: advance every 3.5s, loop back to the first slide.
+  // Pauses while the user drags, resumes 5s after they let go.
+  useEffect(() => {
+    if (autoPauseRef.current) return;
+    const id = setInterval(() => {
+      goTo((pageRef.current + 1) % SLIDES.length);
+    }, 3500);
+    return () => clearInterval(id);
+  }, [goTo]);
+
+  useEffect(() => () => {
+    if (resumeRef.current) clearTimeout(resumeRef.current);
+  }, []);
+
+  const onDragStart = () => {
+    autoPauseRef.current = true;
+    if (resumeRef.current) clearTimeout(resumeRef.current);
+  };
+
+  const onDragEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const next = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);
-    if (next !== page) setPage(next);
+    pageRef.current = next;
+    setPage(next);
+    if (resumeRef.current) clearTimeout(resumeRef.current);
+    resumeRef.current = setTimeout(() => { autoPauseRef.current = false; }, 5000);
   };
 
   return (
@@ -83,7 +114,9 @@ export default function WelcomeScreen({
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         keyExtractor={(_, i) => String(i)}
-        onMomentumScrollEnd={onScroll}
+        onScrollBeginDrag={onDragStart}
+        onMomentumScrollEnd={onDragEnd}
+        onScrollEndDrag={onDragEnd}
         renderItem={({ item }) => (
           <View style={styles.slide}>
             <Image source={item.image} style={styles.art} resizeMode="contain" />
