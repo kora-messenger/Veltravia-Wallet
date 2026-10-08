@@ -19,6 +19,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../theme/ThemeProvider';
 import FloatingTabBar from '../components/FloatingTabBar';
 import type { NavigationContainerRef } from '@react-navigation/native';
+import WalletsScreen from '../screens/wallet/WalletsScreen';
+import NameWalletScreen from '../screens/wallet/NameWalletScreen';
+import ImportWalletScreen from '../screens/wallet/ImportWalletScreen';
 
 const navigationRef = React.createRef<NavigationContainerRef<RootStackParamList>>();
 
@@ -33,6 +36,9 @@ const WelcomeScreen = require('../screens/onboarding/WelcomeScreen').default;
 export type RootStackParamList = {
   Onboarding: undefined;
   MainTabs: undefined;
+  Wallets: undefined;
+  NameWallet: { origin?: 'created' | 'imported' } | undefined;
+  ImportWallet: undefined;
 };
 
 export type MainTabParamList = {
@@ -77,6 +83,9 @@ export default function Navigation() {
           )}
         </Stack.Screen>
         <Stack.Screen name="MainTabs" component={MainTabs} />
+        <Stack.Screen name="Wallets" component={WalletsScreen} options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="NameWallet" component={NameWalletScreen} options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="ImportWallet" component={ImportWalletScreen} options={{ animation: 'slide_from_right' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

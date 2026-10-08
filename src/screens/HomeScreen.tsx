@@ -25,7 +25,10 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import { Alert } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
+import { useWallets } from '../wallets/WalletsProvider';
+import { WalletAvatar } from '../wallets/WalletAvatar';
 import Sparkline from '../components/Sparkline';
 import {
   BellIcon,
@@ -72,10 +75,13 @@ const ACTIONS: { key: ActionKey; label: string; Icon: React.ComponentType<any> }
   { key: 'buy', label: 'Buy', Icon: BuyIcon },
 ];
 
-export default function HomeScreen() {
+export default function HomeScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
   const { width } = useWindowDimensions();
   const [hidden, setHidden] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const { activeWallet, wallets } = useWallets();
+  const defaultActive = activeWallet.origin === 'default';
 
   const topInset = 0; // status bar offset is applied natively in MainActivity
   const chipBg = theme.mode === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(60,64,90,0.10)';
@@ -112,6 +118,36 @@ export default function HomeScreen() {
             <Sparkline data={PORTFOLIO_SERIES} width={cardW * 0.42} height={58} />
           </View>
         </LinearGradient>
+
+        {/* ---------- Backup nudge (Trust-style) ---------- */}
+        {!activeWallet.backedUp && !bannerDismissed && (
+          <View style={[styles.backupBanner, { backgroundColor: theme.mode === 'dark' ? '#1A1608' : '#FFF8E6', borderColor: theme.mode === 'dark' ? '#3A2E10' : '#F2E3B3' }]}>
+            <View style={styles.backupIcon}>
+              <Text style={{ fontSize: 16 }}>🛡️</Text>
+            </View>
+            <View style={styles.backupTextWrap}>
+              <Text style={[styles.backupTitle, { color: theme.ink }]}>Back up your wallet</Text>
+              <Text style={[styles.backupSub, { color: theme.inkMuted }]}>
+                Keep your recovery phrase safe — it's the only way to restore your funds.
+              </Text>
+            </View>
+            <Pressable hitSlop={10} onPress={() => setBannerDismissed(true)}>
+              <Text style={{ fontSize: 13, color: theme.inkMuted }}>✕</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.backupBtn, { backgroundColor: theme.brandGradient[0] }]}
+              onPress={() =>
+                Alert.alert(
+                  'Back up your wallet',
+                  'The secure backup flow (seed phrase reveal and verification) arrives with the Wallet Core integration. Until then, keep your device safe.',
+                  [{ text: 'Got it' }],
+                )
+              }
+            >
+              <Text style={styles.backupBtnText}>Back up</Text>
+            </Pressable>
+          </View>
+        )}
 
         {/* ---------- Quick actions ---------- */}
         <View style={styles.actions}>
@@ -175,16 +211,25 @@ export default function HomeScreen() {
           );
         })}
       </ScrollView>
-        {/* ---------- Header ---------- */}
+        {/* ---------- Header (pill = active wallet, opens Wallets) ---------- */}
         <View style={[styles.headerFloat, { top: topInset + 4 }]}>
-          <View style={[styles.brandRow, { backgroundColor: chipBg }]}>
-            <Image
-              source={require('../assets/veltravia-logo.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            <Text style={[styles.brand, { color: theme.ink }]}>Veltravia Wallet</Text>
-          </View>
+          <Pressable
+            style={({ pressed }) => [styles.brandRow, { backgroundColor: chipBg, opacity: pressed ? 0.8 : 1 }]}
+            onPress={() => navigation.navigate('Wallets')}
+          >
+            {defaultActive ? (
+              <Image
+                source={require('../assets/veltravia-logo.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            ) : (
+              <WalletAvatar icon={activeWallet.icon} color={activeWallet.color} size={34} />
+            )}
+            <Text style={[styles.brand, { color: theme.ink }]} numberOfLines={1}>
+              {activeWallet.name}
+            </Text>
+          </Pressable>
           <View style={styles.headerRight}>
             <Pressable
               hitSlop={8}
@@ -240,6 +285,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
+  backupBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 20,
+  },
+  backupIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(245,166,35,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backupTextWrap: { flex: 1, gap: 2 },
+  backupTitle: { fontSize: 14, fontWeight: '700' },
+  backupSub: { fontSize: 12, lineHeight: 16 },
+  backupBtn: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  backupBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
 
   card: {
     alignSelf: 'center',
