@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '800', letterSpacing: -0.3 },
+  title: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600', letterSpacing: -0.2 },
 
   body: { paddingHorizontal: 20, paddingBottom: 24 },
 

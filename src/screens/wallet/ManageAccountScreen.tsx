@@ -45,9 +45,12 @@ import {
 } from '../../components/icons';
 
 const NAME_LIMIT = 24;
-const BIG = 76;
-const SMALL = 62;
-const GAP = 22;
+const BIG = 76;   // avatar inside the fixed ring
+const SMALL = 64; // scrolling circles
+const GAP = 20;
+const ITEM = SMALL + GAP; // snap interval
+const RING = BIG + 14;
+const STRIP_H = 104;
 
 export default function ManageAccountScreen({
   navigation,
@@ -73,14 +76,24 @@ export default function ManageAccountScreen({
       ? 'original'
       : wallet.color
     : 'original';
+  const currentIndex = Math.max(0, COLOR_ORDER.indexOf(currentColor as WalletColorKey));
+
+  // Side padding so the first/last circle can reach the centre ring.
+  const sidePad = Math.max(0, (screenW - SMALL) / 2);
 
   useEffect(() => {
-    // Keep the selected circle in the exact middle of the strip.
-    const i = COLOR_ORDER.indexOf(currentColor as WalletColorKey);
-    const itemW = SMALL + GAP;
-    const x = Math.max(0, 20 + i * itemW + (BIG + 12) / 2 - screenW / 2);
-    stripRef.current?.scrollTo({ x, animated: true });
-  }, [currentColor, screenW]);
+    // Initial position (and external changes): put the selected circle in the ring.
+    stripRef.current?.scrollTo({ x: currentIndex * ITEM, animated: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const settleOn = (offsetX: number) => {
+    const i = Math.min(COLOR_ORDER.length - 1, Math.max(0, Math.round(offsetX / ITEM)));
+    const c = COLOR_ORDER[i];
+    if (wallet && c !== currentColor) {
+      updateWallet(wallet.id, c === 'original' ? { color: c, icon: 'veltravia' } : { color: c });
+    }
+  };
 
   if (!wallet) return null;
 
@@ -156,51 +169,58 @@ export default function ManageAccountScreen({
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.body}
       >
-        {/* ---------- Avatar carousel ---------- */}
-        <ScrollView
-          ref={(r) => {
-            stripRef.current = r as unknown as { scrollTo: (o: { x: number; animated: boolean }) => void } | null;
-          }}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.carousel}
-          keyboardShouldPersistTaps="handled"
-        >
-          {COLOR_ORDER.map((c) => {
-            const selected = c === currentColor;
-            if (selected) {
-              return (
-                <Pressable key={c} onPress={() => setIconOpen(true)} style={styles.ring}>
-                  <WalletAvatar icon={wallet.icon} color={c} size={BIG} />
-                  <View style={styles.pencil}>
-                    <PencilIcon size={14} color="#FFFFFF" />
+        {/* ---------- Avatar strip: fixed centre ring, scrolling circles ---------- */}
+        <View style={styles.stripWrap}>
+          <ScrollView
+            ref={(r) => {
+              stripRef.current = r as unknown as { scrollTo: (o: { x: number; animated: boolean }) => void } | null;
+            }}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={ITEM}
+            decelerationRate="fast"
+            disableIntervalMomentum
+            contentContainerStyle={{ alignItems: 'center', paddingHorizontal: sidePad, height: STRIP_H }}
+            onMomentumScrollEnd={(e) => settleOn(e.nativeEvent.contentOffset.x)}
+            onScrollEndDrag={(e) => {
+              // No momentum (slow release): settle on the nearest circle directly.
+              const v = e.nativeEvent.velocity?.x ?? 0;
+              if (Math.abs(v) < 0.05) settleOn(e.nativeEvent.contentOffset.x);
+            }}
+            keyboardShouldPersistTaps="handled"
+          >
+            {COLOR_ORDER.map((c, i) => (
+              <Pressable
+                key={c}
+                onPress={() => stripRef.current?.scrollTo({ x: i * ITEM, animated: true })}
+                style={{ width: ITEM, alignItems: 'center', justifyContent: 'center' }}
+              >
+                {c === 'original' ? (
+                  <View style={[styles.dot, styles.dotOriginal]}>
+                    <LogoColorGlyph size={SMALL - 16} />
                   </View>
-                </Pressable>
-              );
-            }
-            if (c === 'original') {
-              return (
-                <Pressable
-                  key={c}
-                  onPress={() => updateWallet(wallet.id, { color: c, icon: 'veltravia' })}
-                  style={[styles.dot, styles.dotOriginal]}
-                >
-                  <LogoColorGlyph size={SMALL - 14} />
-                </Pressable>
-              );
-            }
-            return (
-              <Pressable key={c} onPress={() => updateWallet(wallet.id, { color: c })}>
-                <LinearGradient
-                  colors={WALLET_GRADIENTS[c as WalletColorKey]}
-                  start={{ x: 0.15, y: 0 }}
-                  end={{ x: 0.85, y: 1 }}
-                  style={styles.dot}
-                />
+                ) : (
+                  <LinearGradient
+                    colors={WALLET_GRADIENTS[c as WalletColorKey]}
+                    start={{ x: 0.15, y: 0 }}
+                    end={{ x: 0.85, y: 1 }}
+                    style={styles.dot}
+                  />
+                )}
               </Pressable>
-            );
-          })}
-        </ScrollView>
+            ))}
+          </ScrollView>
+
+          {/* Fixed centre: ring + current avatar + pen. Never scrolls. */}
+          <View style={styles.centerRing} pointerEvents="box-none">
+            <Pressable onPress={() => setIconOpen(true)} style={styles.ringTouch}>
+              <WalletAvatar icon={wallet.icon} color={currentColor} size={BIG} />
+              <View style={styles.pencil}>
+                <PencilIcon size={14} color="#FFFFFF" />
+              </View>
+            </Pressable>
+          </View>
+        </View>
 
         {/* ---------- Name field ---------- */}
         <Pressable
@@ -321,20 +341,29 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
 
   header: { paddingHorizontal: 16, paddingBottom: 12, minHeight: 64 },
-  backBtn: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   titleWrap: { position: 'absolute', left: 0, right: 0, height: 48, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
+  title: { fontSize: 17, fontWeight: '600', letterSpacing: -0.2 },
 
   body: { paddingBottom: 24 },
 
-  carousel: { alignItems: 'center', paddingHorizontal: 20, paddingRight: 160, gap: GAP, paddingVertical: 14 },
-  singleAvatar: { alignItems: 'center', paddingVertical: 14 },
-  ring: {
-    width: BIG + 12,
-    height: BIG + 12,
-    borderRadius: (BIG + 12) / 2,
+  stripWrap: { height: STRIP_H, marginTop: 4 },
+  centerRing: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ringTouch: {
+    width: RING,
+    height: RING,
+    borderRadius: RING / 2,
     borderWidth: 1.5,
     borderColor: 'rgba(140,146,170,0.45)',
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -362,15 +391,15 @@ const styles = StyleSheet.create({
   field: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 66,
-    borderRadius: 18,
+    height: 56,
+    borderRadius: 16,
     marginHorizontal: 20,
     marginTop: 8,
     marginBottom: 22,
     paddingHorizontal: 18,
   },
-  counter: { fontSize: 15, fontWeight: '600', width: 28 },
-  input: { flex: 1, textAlign: 'center', fontSize: 19, fontWeight: '800', letterSpacing: -0.3, paddingVertical: 0 },
+  counter: { fontSize: 13, fontWeight: '500', width: 28 },
+  input: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '600', letterSpacing: -0.2, paddingVertical: 0 },
   clear: {
     width: 26,
     height: 26,
@@ -381,7 +410,7 @@ const styles = StyleSheet.create({
   },
 
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10, gap: 14 },
-  rowIcon: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
+  rowIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   redDot: {
     position: 'absolute',
     top: 8,
@@ -393,10 +422,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   rowText: { flex: 1, gap: 3 },
-  rowTitle: { fontSize: 17, fontWeight: '700', letterSpacing: -0.2 },
-  rowSub: { fontSize: 14 },
-  pill: { height: 46, paddingHorizontal: 20, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
-  pillText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  rowTitle: { fontSize: 15, fontWeight: '600', letterSpacing: -0.1 },
+  rowSub: { fontSize: 13 },
+  pill: { height: 40, paddingHorizontal: 18, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  pillText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
 
   warning: {
     flexDirection: 'row',
@@ -407,9 +436,9 @@ const styles = StyleSheet.create({
     marginTop: 18,
     padding: 18,
   },
-  warningText: { flex: 1, fontSize: 15, fontWeight: '500', lineHeight: 21 },
+  warningText: { flex: 1, fontSize: 13, fontWeight: '400', lineHeight: 19 },
 
   footer: { paddingHorizontal: 20, paddingTop: 10 },
-  remove: { height: 62, borderRadius: 31, alignItems: 'center', justifyContent: 'center' },
-  removeText: { color: '#D32F2F', fontSize: 18, fontWeight: '700' },
+  remove: { height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center' },
+  removeText: { color: '#D32F2F', fontSize: 15, fontWeight: '600' },
 });
