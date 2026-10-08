@@ -225,7 +225,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           <View style={styles.headerRight}>
             <Pressable
               hitSlop={8}
-              onPress={() => {}}
+              onPress={() => navigation.navigate('Activity')}
               style={[styles.scanBtn, { backgroundColor: chipBg }]}
             >
               <BellIcon size={22} color={theme.ink} />

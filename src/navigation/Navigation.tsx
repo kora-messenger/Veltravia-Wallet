@@ -33,6 +33,7 @@ const SwapScreen = require('../screens/SwapScreen').default;
 const DiscoverScreen = require('../screens/DiscoverScreen').default;
 const SettingsScreen = require('../screens/SettingsScreen').default;
 const WelcomeScreen = require('../screens/onboarding/WelcomeScreen').default;
+const ActivityScreen = require('../screens/ActivityScreen').default;
 
 export type RootStackParamList = {
   Onboarding: undefined;
@@ -41,6 +42,7 @@ export type RootStackParamList = {
   NameWallet: { origin?: 'created' | 'imported' } | undefined;
   ImportWallet: undefined;
   ManageAccount: { walletId: string };
+  Activity: undefined;
 };
 
 export type MainTabParamList = {
@@ -89,6 +91,7 @@ export default function Navigation() {
         <Stack.Screen name="NameWallet" component={NameWalletScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="ImportWallet" component={ImportWalletScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="ManageAccount" component={ManageAccountScreen} options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="Activity" component={ActivityScreen} options={{ animation: 'slide_from_right' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -260,6 +260,13 @@ export const DriveTriangleIcon = ({ size = 24, color = '#000' }: IconProps) => (
   </Svg>
 );
 
+/** Filter: three descending lines (Activity header). */
+export const FilterLinesIcon = ({ size = 24, color = '#000', strokeWidth = 2.2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M4 7h16M7 12h10M10 17h4" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
 export const CloudUploadIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
   <Svg {...base(size)}>
     <Path d="M7 18.5h10.2a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.3 9.6 4.5 4.5 0 0 0 7 18.5z" {...stroke(color, strokeWidth)} />
