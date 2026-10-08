@@ -1,5 +1,6 @@
 package com.veltravia.wallet
 
+import android.content.res.Configuration
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
@@ -25,12 +26,26 @@ class MainActivity : ReactActivity() {
     // root natively by the real status-bar height so the app always starts
     // below the clock / battery row.
     val content = findViewById<ViewGroup>(android.R.id.content)
+    // The padded strip under the status bar shows this view's background:
+    // use the DayNight window colour so it matches the app surface.
+    paintContentBackground()
     ViewCompat.setOnApplyWindowInsetsListener(content) { v: View, insets: WindowInsetsCompat ->
       val bars = insets.getInsets(WindowInsetsCompat.Type.statusBars())
       v.setPadding(0, bars.top, 0, 0)
       insets
     }
     ViewCompat.requestApplyInsets(content)
+  }
+
+  private fun paintContentBackground() {
+    findViewById<ViewGroup>(android.R.id.content)
+        .setBackgroundColor(resources.getColor(R.color.splashBackground, theme))
+  }
+
+  // Fires when the in-app light/dark toggle changes the native night mode.
+  override fun onConfigurationChanged(newConfig: Configuration) {
+    super.onConfigurationChanged(newConfig)
+    paintContentBackground()
   }
 
   /**

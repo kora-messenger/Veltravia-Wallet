@@ -3,8 +3,8 @@
  * Follows OS setting by default, overridable in Settings (persisted).
  */
 
-import React, { createContext, useContext, useState } from 'react';
-import { useColorScheme } from 'react-native';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Appearance, StatusBar, useColorScheme } from 'react-native';
 import { Theme, themes } from './tokens';
 
 interface ThemeContextValue {
@@ -22,6 +22,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const mode = override ?? (system === 'dark' ? 'dark' : 'light');
   const theme = themes[mode];
+
+  // Keep the strip behind the status bar the same colour as the app surface,
+  // even when the in-app toggle differs from the phone's setting.
+  // Appearance.setColorScheme switches the native DayNight resources too, so the
+  // native window/content background (the strip under the status bar) follows
+  // the in-app toggle. null hands control back to the phone's setting.
+  useEffect(() => {
+    Appearance.setColorScheme(override ?? 'unspecified');
+    StatusBar.setBarStyle(mode === 'dark' ? 'light-content' : 'dark-content', true);
+  }, [override, mode]);
 
   const value: ThemeContextValue = {
     theme,
