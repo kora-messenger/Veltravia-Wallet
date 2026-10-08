@@ -222,6 +222,17 @@ export const ImportIcon = ({ size = 24, color = '#000', strokeWidth = 1.9 }: Ico
   </Svg>
 );
 
+/** Settings gear: ring with 8 rounded teeth and a centre hub. */
+export const GearIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path
+      d="M10.3 3.4a1.8 1.8 0 0 1 3.4 0l.3.9a1.8 1.8 0 0 0 2.4 1l.9-.4a1.8 1.8 0 0 1 2.4 2.4l-.4.9a1.8 1.8 0 0 0 1 2.4l.9.3a1.8 1.8 0 0 1 0 3.4l-.9.3a1.8 1.8 0 0 0-1 2.4l.4.9a1.8 1.8 0 0 1-2.4 2.4l-.9-.4a1.8 1.8 0 0 0-2.4 1l-.3.9a1.8 1.8 0 0 1-3.4 0l-.3-.9a1.8 1.8 0 0 0-2.4-1l-.9.4a1.8 1.8 0 0 1-2.4-2.4l.4-.9a1.8 1.8 0 0 0-1-2.4l-.9-.3a1.8 1.8 0 0 1 0-3.4l.9-.3a1.8 1.8 0 0 0 1-2.4l-.4-.9A1.8 1.8 0 0 1 6.7 4.9l.9.4a1.8 1.8 0 0 0 2.4-1l.3-.9z"
+      {...stroke(color, strokeWidth)}
+    />
+    <Circle cx="12" cy="12" r="3.2" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
 export const ShieldCheckIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
   <Svg {...base(size)}>
     <Path d="M12 3l7 3v5.5c0 4.6-3 8-7 9.5-4-1.5-7-4.9-7-9.5V6l7-3z" {...stroke(color, strokeWidth)} />

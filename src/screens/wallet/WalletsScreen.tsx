@@ -1,10 +1,11 @@
 /**
- * Veltravia Wallet — Wallets screen (Trust-style switcher).
+ * Veltravia Wallet — Wallets screen (wallet switcher).
  *
- * Opened by tapping the home header pill. Lists every wallet account under
- * "Multi-coin wallets": avatar, name, active radio dot, "..." affordance.
- * "Add wallet" at the bottom opens the Add Wallet sheet. Tapping a wallet
- * switches to it and closes the screen.
+ * Header: close · centered "Wallets" · support · settings.
+ * Body:   "Multi-coin wallets" section, one row per wallet
+ *         (radio · avatar · name · "..." in a grey circle).
+ * Footer: divider + full-width grey "Add wallet" pill pinned to the bottom.
+ * Tapping a row switches to that wallet and returns to Home.
  */
 
 import React, { useState } from 'react';
@@ -14,7 +15,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { useWallets } from '../../wallets/WalletsProvider';
 import { WalletAvatar } from '../../wallets/WalletAvatar';
 import AddWalletSheet from '../../components/AddWalletSheet';
-import { CloseIcon, SupportIcon, SlidersIcon, MoreIcon, PlusIcon } from '../../components/icons';
+import { CloseIcon, SupportIcon, GearIcon, MoreIcon } from '../../components/icons';
 
 export default function WalletsScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
@@ -22,36 +23,41 @@ export default function WalletsScreen({ navigation }: { navigation: any }) {
   const { wallets, activeWallet, switchWallet } = useWallets();
   const [sheetOpen, setSheetOpen] = useState(false);
 
-    const chipBg = theme.mode === 'dark' ? 'rgba(255,255,255,0.10)' : 'rgba(60,64,90,0.08)';
+  const dark = theme.mode === 'dark';
+  const chipBg = dark ? 'rgba(255,255,255,0.10)' : 'rgba(60,64,90,0.08)';
+  const pillBg = dark ? 'rgba(255,255,255,0.10)' : '#EDEDF1';
+  const dotColor = dark ? '#8E96AD' : '#6B6F85';
+  const pageBg = dark ? theme.background : '#FCFCFD';
 
   return (
-    <View style={[styles.root, { backgroundColor: theme.background }]}>
-      <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
+    <View style={[styles.root, { backgroundColor: pageBg }]}>
+      <StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />
 
       {/* ---------- Header ---------- */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable hitSlop={10} onPress={() => navigation.goBack()} style={[styles.headerBtn, { backgroundColor: chipBg }]}>
-          <CloseIcon size={20} color={theme.ink} />
+          <CloseIcon size={22} color={theme.ink} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.ink }]} pointerEvents="none">Wallets</Text>
+        <View style={[styles.titleWrap, { top: insets.top + 8 }]} pointerEvents="none">
+          <Text style={[styles.title, { color: theme.ink }]}>Wallets</Text>
+        </View>
         <View style={styles.headerRight}>
           <Pressable hitSlop={10} style={[styles.headerBtn, { backgroundColor: chipBg }]}>
-            <SupportIcon size={21} color={theme.ink} />
+            <SupportIcon size={22} color={theme.ink} />
           </Pressable>
           <Pressable hitSlop={10} style={[styles.headerBtn, { backgroundColor: chipBg }]}>
-            <SlidersIcon size={21} color={theme.ink} />
+            <GearIcon size={22} color={theme.ink} />
           </Pressable>
         </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
-        showsVerticalScrollIndicator={false}
-      >
+      {/* ---------- List ---------- */}
+      <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
         <Text style={[styles.section, { color: theme.ink }]}>Multi-coin wallets</Text>
 
         {wallets.map((w) => {
           const active = w.id === activeWallet.id;
+          const ring = active ? theme.brandGradient[0] : '#8A8EA3';
           return (
             <Pressable
               key={w.id}
@@ -61,31 +67,31 @@ export default function WalletsScreen({ navigation }: { navigation: any }) {
                 navigation.goBack();
               }}
             >
-              <View style={[styles.radio, { borderColor: active ? theme.brandGradient[0] : theme.inkMuted }]}>
-                {active && <View style={[styles.radioDot, { backgroundColor: theme.brandGradient[0] }]} />}
+              <View style={[styles.radio, { borderColor: ring }]}>
+                {active && <View style={[styles.radioDot, { backgroundColor: ring }]} />}
               </View>
-              <WalletAvatar icon={w.icon} color={w.color} size={44} />
+              <WalletAvatar icon={w.icon} color={w.color} size={48} />
               <Text style={[styles.rowName, { color: theme.ink }]} numberOfLines={1}>
                 {w.name}
               </Text>
-              <Pressable hitSlop={8} onPress={() => {}} style={[styles.moreBtn, { backgroundColor: chipBg }]}>
-                <MoreIcon size={22} color={theme.ink} />
+              <Pressable hitSlop={6} onPress={() => {}} style={[styles.moreBtn, { backgroundColor: pillBg }]}>
+                <MoreIcon size={24} color={dotColor} />
+                {!w.backedUp && <View style={[styles.badge, { borderColor: pageBg }]} />}
               </Pressable>
             </Pressable>
           );
         })}
+      </ScrollView>
 
+      {/* ---------- Pinned footer: divider + Add wallet pill ---------- */}
+      <View style={[styles.footer, { borderTopColor: theme.border, paddingBottom: insets.bottom + 12, backgroundColor: pageBg }]}>
         <Pressable
-          style={({ pressed }) => [styles.addBtn, { opacity: pressed ? 0.7 : 1 }]}
+          style={({ pressed }) => [styles.addPill, { backgroundColor: pillBg, opacity: pressed ? 0.7 : 1 }]}
           onPress={() => setSheetOpen(true)}
         >
-          <View style={{ width: 24 }} />
-          <View style={[styles.plus, { backgroundColor: theme.brandGradient[0] }]}>
-            <PlusIcon size={24} color="#FFFFFF" />
-          </View>
           <Text style={[styles.addLabel, { color: theme.ink }]}>Add wallet</Text>
         </Pressable>
-      </ScrollView>
+      </View>
 
       <AddWalletSheet
         visible={sheetOpen}
@@ -105,63 +111,88 @@ export default function WalletsScreen({ navigation }: { navigation: any }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingBottom: 14,
-    gap: 12,
+    paddingBottom: 10,
   },
   headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
-  headerRight: { flexDirection: 'row', gap: 10, marginLeft: 'auto' },
+  titleWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
+  headerRight: { flexDirection: 'row', gap: 12, marginLeft: 'auto' },
 
+  list: { paddingTop: 6, paddingBottom: 24 },
   section: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
+    letterSpacing: -0.2,
     paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 8,
+    paddingTop: 10,
+    paddingBottom: 12,
   },
 
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    gap: 14,
+    paddingLeft: 20,
+    paddingRight: 20,
+    paddingVertical: 8,
+    gap: 12,
   },
-  rowName: { flex: 1, fontSize: 17, fontWeight: '600', letterSpacing: -0.2 },
   radio: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  radioDot: { width: 12, height: 12, borderRadius: 6 },
-  moreBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-
-  addBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    gap: 14,
-  },
-  plus: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  radioDot: { width: 14, height: 14, borderRadius: 7 },
+  rowName: { flex: 1, fontSize: 17, fontWeight: '700', letterSpacing: -0.2 },
+  moreBtn: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addLabel: { fontSize: 16, fontWeight: '600' },
+
+  badge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#E53935',
+    borderWidth: 2,
+  },
+
+  footer: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 14,
+    paddingHorizontal: 20,
+  },
+  addPill: {
+    height: 58,
+    borderRadius: 29,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addLabel: { fontSize: 17, fontWeight: '700', letterSpacing: -0.2 },
 });
