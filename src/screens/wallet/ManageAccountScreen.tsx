@@ -223,7 +223,7 @@ export default function ManageAccountScreen({
             {!wallet.backedUp && <View style={[styles.redDot, { borderColor: rowIconBg }]} />}
           </View>
           <View style={styles.rowText}>
-            <Text style={[styles.rowTitle, { color: theme.ink }]}>Back up wallet</Text>
+            <Text style={[styles.rowTitle, { color: theme.ink }]}>Back up to cloud</Text>
             <Text style={[styles.rowSub, { color: theme.inkMuted }]}>Never lose access to your wallet.</Text>
           </View>
           <Pressable

@@ -234,16 +234,15 @@ export const GearIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconP
 );
 
 /** Cloud outline for the backup action. */
-export const CloudIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
+export const CloudIcon = ({ size = 24, color = '#000', strokeWidth = 1.7 }: IconProps) => (
   <Svg {...base(size)}>
     <Path
-      d="M7 18.5h10.2a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.3 9.6 4.5 4.5 0 0 0 7 18.5z"
+      d="M7.2 18.2h9.6a3.9 3.9 0 0 0 .5-7.77A5.4 5.4 0 0 0 6.9 9.7a4.25 4.25 0 0 0 .3 8.5z"
       {...stroke(color, strokeWidth)}
     />
   </Svg>
 );
 
-/** Pencil (edit badge on the avatar). */
 export const PencilIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
   <Svg {...base(size)}>
     <Path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19l-4 1z" {...stroke(color, strokeWidth)} />

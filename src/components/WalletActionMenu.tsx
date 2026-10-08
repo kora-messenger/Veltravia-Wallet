@@ -2,7 +2,7 @@
  * Veltravia Wallet — wallet action popup.
  *
  * Floating white card anchored under the tapped "..." button, right-aligned
- * to it, over a light dim. Rows: Manage, Back up wallet (red badge while the
+ * to it, over a light dim. Rows: Manage, Back up to cloud (red badge while the
  * wallet is not backed up).
  */
 
@@ -48,22 +48,22 @@ export default function WalletActionMenu({
             styles.card,
             {
               backgroundColor: card,
-              top: anchor.y + 8,
+              top: anchor.y + 4,
               right: Math.max(width - anchor.right, 12),
             },
           ]}
         >
           <Pressable style={({ pressed }) => [styles.item, { opacity: pressed ? 0.6 : 1 }]} onPress={onManage}>
-            <GearIcon size={22} color={theme.ink} />
+            <GearIcon size={20} color={theme.ink} />
             <Text style={[styles.label, { color: theme.ink }]}>Manage</Text>
           </Pressable>
 
           <Pressable style={({ pressed }) => [styles.item, { opacity: pressed ? 0.6 : 1 }]} onPress={onBackup}>
             <View>
-              <CloudIcon size={22} color={theme.ink} />
+              <CloudIcon size={20} color={theme.ink} />
               {showBackupBadge && <View style={[styles.badge, { borderColor: card }]} />}
             </View>
-            <Text style={[styles.label, { color: theme.ink }]}>Back up wallet</Text>
+            <Text style={[styles.label, { color: theme.ink }]}>Back up to cloud</Text>
           </Pressable>
         </View>
       </Pressable>
@@ -75,31 +75,31 @@ const styles = StyleSheet.create({
   dim: { flex: 1 },
   card: {
     position: 'absolute',
-    minWidth: 300,
-    borderRadius: 28,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+    minWidth: 262,
+    borderRadius: 24,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
     shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 12,
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
   },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 13,
   },
-  label: { fontSize: 17, fontWeight: '600', letterSpacing: -0.2 },
+  label: { fontSize: 15, fontWeight: '600', letterSpacing: -0.1 },
   badge: {
     position: 'absolute',
-    top: -3,
-    left: -3,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    top: -4,
+    left: -4,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
     backgroundColor: '#E53935',
     borderWidth: 1.5,
   },
