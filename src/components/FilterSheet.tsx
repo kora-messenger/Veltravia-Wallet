@@ -15,6 +15,18 @@
  *     "All networks" row (globe) with check, Popular list with real
  *     chain marks, "Apply" pill.
  *
+ * Geometry (re-measured from the 2026-10-09 Trust capture, 461px = 400dp,
+ * every value in dp from the sheet's top edge):
+ *   sheet            353dp tall (40% of screen), 32dp top corners, 21% scrim,
+ *                    extends behind the home indicator (no gap under it)
+ *   close circle     42dp, 25dp from the left edge, top at 18
+ *   title            16 SemiBold, vertically centred on the circle
+ *   Reset            right-aligned to the same 25dp inset
+ *   rows             56dp pitch, label glyph tops at 99 / 154 / 209,
+ *                    1px hairlines at 134 / 190 (inset to the text edge)
+ *   toggle           34x22 track, 18 knob (Trust draws a flat, small switch)
+ *   Show results     58dp tall pill, 16dp side margin, 32dp from the bottom
+ *
  * Brand: Veltravia violet (#6C63FF) replaces Trust's blue-violet for
  * toggles/checks; primary pills use the brand gradient.
  */
@@ -85,28 +97,28 @@ function filtersEqual(a: ActivityFilters, b: ActivityFilters): boolean {
   return an.every((n) => bn.includes(n));
 }
 
-/** Trust-style toggle: ~46x28 track, 24 knob, animated 160ms. */
+/** Trust-sized toggle: 34x22 track, 18 knob (measured 33x21 on the capture). */
 function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   const { theme } = useTheme();
   const anim = useRef(new Animated.Value(value ? 1 : 0)).current;
   useEffect(() => {
     Animated.timing(anim, { toValue: value ? 1 : 0, duration: 160, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
   }, [value, anim]);
-  const knobLeft = anim.interpolate({ inputRange: [0, 1], outputRange: [2, 20] });
+  const knobX = anim.interpolate({ inputRange: [0, 1], outputRange: [2, 14] });
   const trackOn = theme.brand;
-  const trackOff = theme.mode === 'dark' ? '#1C1E4A' : '#E9E7FF';
+  const trackOff = theme.mode === 'dark' ? '#2A2D55' : '#D9DBEA';
   return (
-    <Pressable hitSlop={8} onPress={() => onChange(!value)} accessibilityRole="switch">
-      <Animated.View style={[tgStyles.track, { backgroundColor: value ? trackOn : trackOff }]}>
-        <Animated.View style={[tgStyles.knob, { left: knobLeft }]} />
-      </Animated.View>
+    <Pressable hitSlop={10} onPress={() => onChange(!value)} accessibilityRole="switch">
+      <View style={[tgStyles.track, { backgroundColor: value ? trackOn : trackOff }]}>
+        <Animated.View style={[tgStyles.knob, { transform: [{ translateX: knobX }] }]} />
+      </View>
     </Pressable>
   );
 }
 
 const tgStyles = StyleSheet.create({
-  track: { width: 46, height: 28, borderRadius: 14, padding: 2 },
-  knob: { position: 'absolute', top: 2, width: 24, height: 24, borderRadius: 12, backgroundColor: '#FFFFFF' },
+  track: { width: 34, height: 22, borderRadius: 11, justifyContent: 'center' },
+  knob: { width: 18, height: 18, borderRadius: 9, backgroundColor: '#FFFFFF' },
 });
 
 export default function FilterSheet({
@@ -180,47 +192,49 @@ export default function FilterSheet({
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose} statusBarTranslucent>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {/* dim scrim (Trust: page dims ~20%) */}
-        <Pressable style={[fs.root, { backgroundColor: dark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.2)' }]} onPress={onClose} />
+        <Pressable style={[fs.root, { backgroundColor: dark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.21)' }]} onPress={onClose} />
 
-        <View style={[fs.sheet, { backgroundColor: sheetBg, paddingBottom: insets.bottom + SP.xs }]}>
+        <View style={[fs.sheet, { backgroundColor: sheetBg, paddingBottom: 0 }]}>
           {page === 'filters' ? (
             <>
-              {/* ---------- header ---------- */}
-              <View style={fs.headerRow}>
-                <Pressable hitSlop={10} onPress={onClose} style={[fs.circle, { backgroundColor: tertiary }]}>
-                  <CloseIcon size={20} color={theme.ink} />
+              {/* ---------- header: 42dp close circle, centred title, Reset ---------- */}
+              <View style={fs.fHeader}>
+                <Pressable hitSlop={10} onPress={onClose} style={[fs.fCircle, { backgroundColor: tertiary }]}>
+                  <CloseIcon size={22} color={theme.ink} />
                 </Pressable>
-                <Text style={[fs.sheetTitle, { color: theme.ink }]}>Filters</Text>
+                <View style={fs.fTitleWrap} pointerEvents="none">
+                  <Text style={[fs.fTitle, { color: theme.ink }]}>Filters</Text>
+                </View>
                 <Pressable hitSlop={12} onPress={reset} disabled={!dirty}>
-                  <Text style={[T.buttonLarge, { color: dirty ? theme.brand : theme.inkMuted }]}>Reset</Text>
+                  <Text style={[fs.fReset, { color: dirty ? theme.brand : theme.inkMuted, opacity: dirty ? 1 : 0.45 }]}>Reset</Text>
                 </Pressable>
               </View>
 
               {/* ---------- Network row ---------- */}
-              <Pressable style={({ pressed }) => [fs.row, { opacity: pressed ? 0.6 : 1 }]} onPress={() => setPage('networks')}>
-                <Text style={[T.subtitle, { color: theme.ink }]}>Network</Text>
+              <Pressable style={({ pressed }) => [fs.fRow, { opacity: pressed ? 0.6 : 1 }]} onPress={() => setPage('networks')}>
+                <Text style={[fs.fLabel, { color: theme.ink }]}>Network</Text>
                 <View style={fs.rowRight}>
-                  <Text style={[T.subtitle, { color: theme.inkMuted }]}>{networkValue}</Text>
+                  <Text style={[fs.fLabel, { color: theme.inkMuted }]}>{networkValue}</Text>
                   <ChevronRight size={16} color={theme.inkMuted} strokeWidth={2.4} />
                 </View>
               </Pressable>
-              <View style={[fs.hairline, { backgroundColor: hairline }]} />
+              <View style={[fs.fHair, { backgroundColor: hairline }]} />
 
               {/* ---------- toggle rows ---------- */}
-              <Pressable style={fs.row} onPress={toggleSmall}>
-                <Text style={[T.subtitle, { color: theme.ink }]}>Hide small receives</Text>
+              <Pressable style={fs.fRow} onPress={toggleSmall}>
+                <Text style={[fs.fLabel, { color: theme.ink }]}>Hide small receives</Text>
                 <Toggle value={draft.hideSmallReceives} onChange={toggleSmall} />
               </Pressable>
-              <View style={[fs.hairline, { backgroundColor: hairline }]} />
-              <Pressable style={fs.row} onPress={toggleContract}>
-                <Text style={[T.subtitle, { color: theme.ink }]}>Hide contract interactions</Text>
+              <View style={[fs.fHair, { backgroundColor: hairline }]} />
+              <Pressable style={fs.fRow} onPress={toggleContract}>
+                <Text style={[fs.fLabel, { color: theme.ink }]}>Hide contract interactions</Text>
                 <Toggle value={draft.hideContractInteractions} onChange={toggleContract} />
               </Pressable>
 
-              {/* ---------- Show results ---------- */}
-              <View style={{ paddingHorizontal: SP.mdsm, marginTop: SP.mdsm }}>
+              {/* ---------- Show results: 58dp pill, 16dp margins, 32dp from the bottom ---------- */}
+              <View style={[fs.fFooter, { paddingBottom: Math.max(insets.bottom, 32) }]}>
                 {dirty ? (
-                  <Pressable onPress={showResults} style={({ pressed }) => [fs.primaryBtn, { opacity: pressed ? 0.85 : 1 }]}>
+                  <Pressable onPress={showResults} style={({ pressed }) => [fs.fBtn, { opacity: pressed ? 0.85 : 1 }]}>
                     <LinearGradient
                       start={{ x: 0, y: 0.5 }}
                       end={{ x: 1, y: 0.5 }}
@@ -231,24 +245,23 @@ export default function FilterSheet({
                     </LinearGradient>
                   </Pressable>
                 ) : (
-                  <View style={[fs.primaryBtn, { backgroundColor: tertiary }]}>
-                    <Text style={[T.buttonLarge, { color: theme.inkMuted }]}>Show results</Text>
+                  <View style={[fs.fBtn, { backgroundColor: tertiary }]}>
+                    <Text style={[T.buttonLarge, { color: theme.inkMuted, opacity: 0.6 }]}>Show results</Text>
                   </View>
                 )}
               </View>
             </>
           ) : (
             <>
-              {/* ---------- header with subtitle ---------- */}
-              <View style={fs.headerRow}>
-                <Pressable hitSlop={10} onPress={() => setPage('filters')} style={[fs.circle, { backgroundColor: tertiary }]}>
-                  <BackIcon size={20} color={theme.ink} />
+              {/* ---------- header with subtitle (same 42dp circle + insets as Filters) ---------- */}
+              <View style={[fs.fHeader, { marginBottom: 12 }]}>
+                <Pressable hitSlop={10} onPress={() => setPage('filters')} style={[fs.fCircle, { backgroundColor: tertiary }]}>
+                  <BackIcon size={22} color={theme.ink} />
                 </Pressable>
-                <View style={fs.titleCol}>
-                  <Text style={[fs.sheetTitle, { color: theme.ink }]}>Networks</Text>
+                <View style={fs.fTitleWrap} pointerEvents="none">
+                  <Text style={[fs.fTitle, { color: theme.ink }]}>Networks</Text>
                   <Text style={[T.footnote, { color: theme.inkMuted, marginTop: -2 }]}>{networkValue}</Text>
                 </View>
-                <View style={{ width: 42 }} />
               </View>
 
               {/* ---------- search ---------- */}
@@ -265,7 +278,7 @@ export default function FilterSheet({
               </View>
 
               {/* ---------- list ---------- */}
-              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: SP.sm }} showsVerticalScrollIndicator={false}>
+              <ScrollView style={{ flex: 1, marginHorizontal: 13 }} contentContainerStyle={{ paddingBottom: SP.sm }} showsVerticalScrollIndicator={false}>
                 <Pressable style={fs.netRow} onPress={selectAll}>
                   <View style={[fs.netIcon, { backgroundColor: tertiary }]}>
                     <GlobeIcon size={22} color={theme.ink} />
@@ -293,8 +306,8 @@ export default function FilterSheet({
               </ScrollView>
 
               {/* ---------- Apply ---------- */}
-              <View style={{ paddingHorizontal: SP.mdsm, paddingTop: SP.sm }}>
-                <Pressable onPress={applyNetworks} style={({ pressed }) => [fs.primaryBtn, { opacity: pressed ? 0.85 : 1 }]}>
+              <View style={{ paddingTop: SP.sm, marginHorizontal: 4, paddingBottom: Math.max(insets.bottom, 32) }}>
+                <Pressable onPress={applyNetworks} style={({ pressed }) => [fs.fBtn, { opacity: pressed ? 0.85 : 1 }]}>
                   <LinearGradient
                     start={{ x: 0, y: 0.5 }}
                     end={{ x: 1, y: 0.5 }}
@@ -317,11 +330,24 @@ const fs = StyleSheet.create({
   root: { flex: 1 },
   sheet: {
     maxHeight: '80%',
-    borderTopLeftRadius: RADIUS.lg,
-    borderTopRightRadius: RADIUS.lg,
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
     paddingHorizontal: SP.mdsm,
     paddingTop: SP.sm,
+    overflow: 'hidden',
   },
+
+  // ---- Filters page (Trust-measured; dp from the sheet's top edge) ----
+  fHeader: { height: 42, marginTop: 10, marginBottom: 17, marginHorizontal: 13, justifyContent: 'center' },
+  fCircle: { position: 'absolute', left: 0, top: 0, width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  fTitleWrap: { position: 'absolute', left: 0, right: 0, top: 0, height: 42, alignItems: 'center', justifyContent: 'center' },
+  fTitle: { fontFamily: FONT.semiBold, fontSize: 16, lineHeight: 22 },
+  fReset: { alignSelf: 'flex-end', fontFamily: FONT.semiBold, fontSize: 16, lineHeight: 22, marginRight: 0 },
+  fRow: { height: 55.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 13 },
+  fLabel: { fontFamily: FONT.medium, fontSize: 16, lineHeight: 22 },
+  fHair: { height: StyleSheet.hairlineWidth, marginHorizontal: 13 },
+  fFooter: { marginTop: 19, marginHorizontal: 4 },
+  fBtn: { height: 58, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -355,6 +381,7 @@ const fs = StyleSheet.create({
     borderRadius: RADIUS.mdsm,
     paddingHorizontal: SP.mdsm,
     marginBottom: SP.sm,
+    marginHorizontal: 13,
   },
   searchInput: { flex: 1, fontFamily: FONT.medium, fontSize: 15, padding: 0 },
 
