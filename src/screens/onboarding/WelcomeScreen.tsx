@@ -42,6 +42,7 @@ const SLIDES: Slide[] = [
   },
   {
     image: require('../../assets/onboarding/slide2.png'),
+    imageDark: require('../../assets/onboarding/slide2_dark.png'),
     title: 'Multi-chain by default',
     body: 'Ethereum, BNB Chain and Polygon in one wallet.',
   },
