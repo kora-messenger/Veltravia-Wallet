@@ -61,7 +61,11 @@ export default function AddWalletSheet({
           </View>
 
           <Image
-            source={require('../assets/add-wallet-illustration.png')}
+            source={
+              dark
+                ? require('../assets/add-wallet-illustration-dark.png')
+                : require('../assets/add-wallet-illustration.png')
+            }
             style={styles.art}
             resizeMode="contain"
           />
