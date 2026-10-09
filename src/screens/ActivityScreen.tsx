@@ -185,11 +185,12 @@ const styles = StyleSheet.create({
 
   body: { alignItems: 'center', paddingHorizontal: SP.xxl, paddingTop: SP.lg, paddingBottom: SP.xl },
 
-  // Trust empty state: 87x76px at 461px capture = ~78dp wide illustration,
-  // ~40dp gap to the headline (24 Bold), description 16 Medium grey.
-  art: { width: 78, height: 72, marginBottom: 40 },
+  // Trust empty state (measured on a 461px capture): illustration top at
+  // y=194 (59dp below header), 68dp tall, 41dp gap to the headline (24 Bold),
+  // 8dp+leading to the description (16 Medium grey).
+  art: { width: 65, height: 68, marginTop: 59, marginBottom: 41 },
   headline: T.title2,
-  sub: { ...T.subtitle, marginTop: SP.xs, textAlign: 'center' },
+  sub: { ...T.subtitle, marginTop: 8, textAlign: 'center' },
 
   // Grey pill: 322x66px at 461px capture = ~288x59dp, radius 16.
   olderPill: {
