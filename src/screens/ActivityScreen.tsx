@@ -100,7 +100,7 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
       state.isConnected === true && state.isInternetReachable !== false;
     await new Promise<void>(r => setTimeout(r, 900)); // let the skeleton register
     if (!online) {
-      setLoadError('Network Error');
+      setLoadError('Request timed out');
     }
     setIsLoading(false);
   }, []);
@@ -144,7 +144,7 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
     const online =
       state.isConnected === true && state.isInternetReachable !== false;
     setRefreshing(false);
-    setLoadError(online ? null : 'Network Error');
+    setLoadError(online ? null : 'Request timed out');
   }, []);
 
   // Trust's formula: canLoadOlder = hasNextPage && !isFetchingNextPage && !isRefetching
