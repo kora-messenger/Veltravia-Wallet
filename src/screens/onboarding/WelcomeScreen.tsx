@@ -27,7 +27,8 @@ import { useTheme } from '../../theme/ThemeProvider';
 const { width: SCREEN_W } = Dimensions.get('window');
 
 interface Slide {
-  image: number; // require() asset id
+  image: number; // require() asset id (light theme)
+  imageDark?: number; // optional dark-theme variant; falls back to `image`
   title: string;
   body: string;
 }
@@ -45,6 +46,7 @@ const SLIDES: Slide[] = [
   },
   {
     image: require('../../assets/onboarding/slide3.png'),
+    imageDark: require('../../assets/onboarding/slide3_dark.png'),
     title: 'Markets at a glance',
     body: 'Live prices, trends and portfolio value the moment you open the app.',
   },
@@ -64,7 +66,7 @@ export default function WelcomeScreen({
   /** Phase 2: routes to the recovery-phrase import flow. */
   onImport: () => void;
 }) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const listRef = useRef<FlatList<Slide>>(null);
   const [page, setPage] = useState(0);
   const pageRef = useRef(0); // latest page for the auto-advance timer
@@ -117,9 +119,14 @@ export default function WelcomeScreen({
         onScrollBeginDrag={onDragStart}
         onMomentumScrollEnd={onDragEnd}
         onScrollEndDrag={onDragEnd}
+        extraData={isDark}
         renderItem={({ item }) => (
           <View style={styles.slide}>
-            <Image source={item.image} style={styles.art} resizeMode="contain" />
+            <Image
+              source={isDark && item.imageDark ? item.imageDark : item.image}
+              style={styles.art}
+              resizeMode="contain"
+            />
             <Text style={[styles.title, { color: theme.ink }]}>{item.title}</Text>
             <Text style={[styles.body, { color: theme.inkMuted }]}>{item.body}</Text>
           </View>
