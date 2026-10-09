@@ -24,6 +24,8 @@ import NameWalletScreen from '../screens/wallet/NameWalletScreen';
 import ImportWalletScreen from '../screens/wallet/ImportWalletScreen';
 import ManageAccountScreen from '../screens/wallet/ManageAccountScreen';
 import PasscodeScreen from '../screens/onboarding/PasscodeScreen';
+import SelectRecoveryMethodScreen from '../screens/SelectRecoveryMethodScreen';
+import NotificationSheet from '../components/NotificationSheet';
 import { setPasscode } from '../core/storage/passcode';
 
 const navigationRef = React.createRef<NavigationContainerRef<RootStackParamList>>();
@@ -44,6 +46,7 @@ export type RootStackParamList = {
   Wallets: undefined;
   NameWallet: { origin?: 'created' | 'imported' } | undefined;
   ImportWallet: undefined;
+  SelectRecoveryMethod: undefined;
   ManageAccount: { walletId: string };
   Activity: undefined;
 };
@@ -77,9 +80,13 @@ function MainTabs() {
 
 export default function Navigation() {
   const { theme } = useTheme();
+  // Shown once over the home screen right after the create-path account
+  // is created (biometric allowed or denied — both paths land on it).
+  const [notifPrompt, setNotifPrompt] = React.useState(false);
   return (
     <NavigationContainer ref={navigationRef}>
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <React.Fragment>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Onboarding">
           {({ route }) => (
             <WelcomeScreen
@@ -89,14 +96,14 @@ export default function Navigation() {
               onImport={() => navigationRef.current?.navigate('Passcode', { flow: 'import' })}
               // Back from the passcode: buttons spin 2s again, then the account is created.
               autoLoadFor={route.params?.finish ?? null}
-              onAutoLoadDone={(which: 'create' | 'import') =>
-                which === 'create'
-                  ? navigationRef.current?.reset({ index: 0, routes: [{ name: 'MainTabs' }] })
-                  : navigationRef.current?.reset({
-                      index: 1,
-                      routes: [{ name: 'MainTabs' }, { name: 'ImportWallet' }],
-                    })
-              }
+              onAutoLoadDone={(which: 'create' | 'import') => {
+                if (which === 'create') {
+                  navigationRef.current?.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+                  setNotifPrompt(true);
+                } else {
+                  navigationRef.current?.navigate('SelectRecoveryMethod');
+                }
+              }}
             />
           )}
         </Stack.Screen>
@@ -104,7 +111,7 @@ export default function Navigation() {
           {({ route }) => (
             <PasscodeScreen
               onBack={() => navigationRef.current?.goBack()}
-              onDone={async (code) => {
+              onDone={async (code, biometric) => {
                 try {
                   // yield one frame so the blue boxes paint before hashing
                   await new Promise<void>((r) => requestAnimationFrame(() => r()));
@@ -113,7 +120,18 @@ export default function Navigation() {
                   // Keychain unavailable (e.g. emulator without lock screen): continue; app still opens.
                 }
                 navigationRef.current?.navigate('Onboarding', { finish: route.params.flow });
+                // 'biometric' outcome is consumed later by settings;
+                // both allowed and denied continue to the same next step.
               }}
+            />
+          )}
+        </Stack.Screen>
+        <Stack.Screen name="SelectRecoveryMethod" options={{ animation: 'slide_from_right' }}>
+          {() => (
+            <SelectRecoveryMethodScreen
+              // Back arrow returns to the welcome screen (the stack root).
+              onBack={() => navigationRef.current?.goBack()}
+              onSecretPhrase={() => navigationRef.current?.navigate('ImportWallet')}
             />
           )}
         </Stack.Screen>
@@ -124,6 +142,8 @@ export default function Navigation() {
         <Stack.Screen name="ManageAccount" component={ManageAccountScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="Activity" component={ActivityScreen} options={{ animation: 'slide_from_right' }} />
       </Stack.Navigator>
+      <NotificationSheet visible={notifPrompt} onClose={() => setNotifPrompt(false)} />
+      </React.Fragment>
     </NavigationContainer>
   );
 }

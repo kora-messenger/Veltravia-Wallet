@@ -466,3 +466,87 @@ export const BackspaceIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: 
     <Path d="M12.5 9.5l5 5m0-5l-5 5" {...stroke(color, strokeWidth)} />
   </Svg>
 );
+
+/* ---------------- recovery methods + onboarding art ---------------- */
+
+/** Swift wallet — lightning bolt (not Trust's artwork, our own stroke). */
+export const BoltIcon = ({ size = 24, color = '#000', strokeWidth = 1.9 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M13 2.5 5.5 13h5l-1.5 8.5L17 11h-5l1-8.5z" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/** Private key — classic key outline. */
+export const KeyIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Circle cx={7.5} cy={15.5} r={4} {...stroke(color, strokeWidth)} />
+    <Path d="M10.4 12.6 20 3m-4 1 2.5 2.5M13.5 6.5 16 9" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/** Keystore — file with folded corner + bracket. */
+export const KeystoreFileIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M6 3h8l4 4v14H6z" {...stroke(color, strokeWidth)} />
+    <Path d="M14 3v4h4" {...stroke(color, strokeWidth)} />
+    <Path d="M10.5 12v5m-2-2.5h4" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/** Chevron up (Show less). */
+export const ChevronUpIcon = ({ size = 16, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M6 15l6-6 6 6" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/** Chevron down (Show more). */
+export const ChevronDownIcon = ({ size = 16, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M6 9l6 6 6-6" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/** Bell illustration art for the notification sheet (placeholder art slot,
+ *  Veltravia gradient, easily replaced by Ijezie's light/dark PNGs). */
+export const BellArt = ({ size = 132 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 120 120" fill="none">
+    <Defs>
+      <SvgGradient id="vBell" x1="0" y1="0" x2="1" y2="1">
+        <Stop offset="0" stopColor="#6C63FF" />
+        <Stop offset="1" stopColor="#4A90D9" />
+      </SvgGradient>
+    </Defs>
+    <Circle cx={60} cy={60} r={52} fill="url(#vBell)" opacity={0.12} />
+    <Circle cx={60} cy={60} r={40} fill="url(#vBell)" opacity={0.14} />
+    <Path
+      d="M60 34a20 20 0 0 1 20 20v12l4 8H36l4-8V54a20 20 0 0 1 20-20z"
+      stroke="url(#vBell)"
+      strokeWidth={4}
+      strokeLinejoin="round"
+      fill="rgba(108,99,255,0.10)"
+    />
+    <Path d="M52 78a8 8 0 0 0 16 0" stroke="url(#vBell)" strokeWidth={4} strokeLinecap="round" fill="none" />
+    <Path d="M60 26v6" stroke="url(#vBell)" strokeWidth={4} strokeLinecap="round" />
+    <Circle cx={84} cy={36} r={5} fill="url(#vBell)" />
+  </Svg>
+);
+
+/** Fingerprint illustration art for the Biometric Login popup. */
+export const FingerprintArt = ({ size = 108 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 120 120" fill="none">
+    <Defs>
+      <SvgGradient id="vFp" x1="0" y1="0" x2="1" y2="1">
+        <Stop offset="0" stopColor="#6C63FF" />
+        <Stop offset="1" stopColor="#4A90D9" />
+      </SvgGradient>
+    </Defs>
+    <Circle cx={60} cy={60} r={50} fill="url(#vFp)" opacity={0.10} />
+    <Path d="M60 32c-15.5 0-28 12.5-28 28v14" stroke="url(#vFp)" strokeWidth={4.5} strokeLinecap="round" />
+    <Path d="M60 42c-10 0-18 8-18 18v22" stroke="url(#vFp)" strokeWidth={4.5} strokeLinecap="round" />
+    <Path d="M60 52c-4.5 0-8 3.5-8 8v26" stroke="url(#vFp)" strokeWidth={4.5} strokeLinecap="round" />
+    <Path d="M78 46c3 4 4.5 8.5 4.5 13.5V88" stroke="url(#vFp)" strokeWidth={4.5} strokeLinecap="round" />
+    <Path d="M88 40c4.5 6 7 13 7 20.5V90" stroke="url(#vFp)" strokeWidth={4.5} strokeLinecap="round" opacity={0.55} />
+    <Path d="M68 60v28" stroke="url(#vFp)" strokeWidth={4.5} strokeLinecap="round" opacity={0.55} />
+  </Svg>
+);
