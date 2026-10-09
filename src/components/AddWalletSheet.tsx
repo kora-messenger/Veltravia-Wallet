@@ -17,6 +17,7 @@ import {
   Modal,
   Pressable,
   Image,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
@@ -35,6 +36,7 @@ export default function AddWalletSheet({
 }) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const { height: screenH } = useWindowDimensions();
   const dark = theme.mode === 'dark';
   const sheet = dark ? theme.surface : '#FFFFFF';
   const closeBg = dark ? 'rgba(255,255,255,0.10)' : 'rgba(60,64,90,0.08)';
@@ -45,7 +47,11 @@ export default function AddWalletSheet({
       <View style={styles.flex}>
         <Pressable style={styles.backdrop} onPress={onClose} />
 
-        <View style={[styles.sheet, { backgroundColor: sheet, paddingBottom: insets.bottom + 20 }]}>
+        <View style={[
+            styles.sheet,
+            // Never taller than half the screen (matches the reference 50/50 split)
+            { backgroundColor: sheet, paddingBottom: insets.bottom + 12, maxHeight: screenH * 0.5 },
+          ]}>
           {/* Title row: centered title, close on the right */}
           <View style={styles.titleRow}>
             <Text style={[styles.title, { color: theme.ink }]}>Add wallet</Text>
@@ -102,7 +108,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 24,
-    paddingTop: 20,
+    paddingTop: 12,
   },
 
   titleRow: {
@@ -124,16 +130,16 @@ const styles = StyleSheet.create({
 
   art: {
     alignSelf: 'center',
-    width: 210,
-    height: 210,
-    marginTop: 10,
-    marginBottom: 14,
+    width: 170,
+    height: 170,
+    marginTop: 4,
+    marginBottom: 16,
   },
 
   option: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 11,
     gap: 16,
   },
   optionIcon: {
