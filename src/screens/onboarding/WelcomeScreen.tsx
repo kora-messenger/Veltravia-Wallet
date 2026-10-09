@@ -20,11 +20,20 @@ import {
   NativeScrollEvent,
   Image,
   StatusBar,
+  Linking,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 
 const { width: SCREEN_W } = Dimensions.get('window');
+
+// Legal pages (placeholder host until the real domain is live; change here only).
+const LEGAL = {
+  terms: 'https://veltravia.app/terms',
+  privacy: 'https://veltravia.app/privacy',
+};
+const openLegal = (url: string) => Linking.openURL(url).catch(() => {});
 
 interface Slide {
   image: number; // require() asset id (light theme)
@@ -150,23 +159,41 @@ export default function WelcomeScreen({
       </View>
 
       <View style={styles.ctaWrap}>
+        {/* Create a wallet: full-pill, brand purple-to-blue gradient */}
         <Pressable
-          style={({ pressed }) => [
-            styles.primaryBtn,
-            { backgroundColor: theme.brand, opacity: pressed ? 0.85 : 1 },
-          ]}
           onPress={onCreate}
+          style={({ pressed }) => [styles.primaryBtn, { opacity: pressed ? 0.85 : 1 }]}
         >
-          <Text style={styles.primaryBtnText}>Create a new wallet</Text>
+          <LinearGradient
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            colors={theme.brandGradient as unknown as [string, string]}
+            style={styles.primaryGradient}
+          >
+            <Text style={styles.primaryBtnText}>Create a wallet</Text>
+          </LinearGradient>
         </Pressable>
+
+        {/* I already have a wallet: plain text, no border or fill */}
         <Pressable
-          style={({ pressed }) => [styles.secondaryBtn, { borderColor: theme.border, opacity: pressed ? 0.6 : 1 }]}
           onPress={onImport}
+          style={({ pressed }) => [styles.secondaryBtn, { opacity: pressed ? 0.5 : 1 }]}
         >
-          <Text style={[styles.secondaryBtnText, { color: theme.ink }]}>
-            I already have a wallet
-          </Text>
+          <Text style={[styles.secondaryBtnText, { color: theme.ink }]}>I already have a wallet</Text>
         </Pressable>
+
+        {/* Legal line */}
+        <Text style={[styles.legal, { color: theme.inkMuted }]}>
+          By using this app, you accept our{' '}
+          <Text style={[styles.legalLink, { color: theme.ink }]} onPress={() => openLegal(LEGAL.terms)}>
+            Terms of Service
+          </Text>{' '}
+          and{' '}
+          <Text style={[styles.legalLink, { color: theme.ink }]} onPress={() => openLegal(LEGAL.privacy)}>
+            Privacy Policy
+          </Text>
+          .
+        </Text>
       </View>
     </SafeAreaView>
   );
@@ -193,18 +220,11 @@ const styles = StyleSheet.create({
   },
   dot: { height: 8, borderRadius: 999 },
   ctaWrap: { paddingHorizontal: 24, paddingBottom: 16 },
-  primaryBtn: {
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
+  primaryBtn: { height: 56, borderRadius: 28, overflow: 'hidden', marginBottom: 4 },
+  primaryGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   primaryBtnText: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
-  secondaryBtn: {
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingVertical: 15,
-    alignItems: 'center',
-  },
+  secondaryBtn: { height: 56, alignItems: 'center', justifyContent: 'center' },
   secondaryBtnText: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
+  legal: { fontSize: 12, lineHeight: 18, textAlign: 'center', fontFamily: 'Inter-500', paddingHorizontal: 8, marginTop: 8 },
+  legalLink: { fontFamily: 'Inter-700', fontWeight: '700' },
 });
