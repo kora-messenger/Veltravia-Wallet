@@ -186,9 +186,9 @@ const styles = StyleSheet.create({
   body: { alignItems: 'center', paddingHorizontal: SP.xxl, paddingTop: SP.lg, paddingBottom: SP.xl },
 
   // Trust empty state (measured on a 461px capture): illustration top at
-  // y=194 (59dp below header), 68dp tall, 41dp gap to the headline (24 Bold),
+  // y=194 (59dp below header), 68dp tall, 33dp gap to the headline (art box includes ~8dp of glow) (24 Bold),
   // 8dp+leading to the description (16 Medium grey).
-  art: { width: 65, height: 68, marginTop: 59, marginBottom: 41 },
+  art: { width: 65, height: 68, marginTop: 59, marginBottom: 33 },
   headline: T.title2,
   sub: { ...T.subtitle, marginTop: 8, textAlign: 'center' },
 
