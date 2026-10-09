@@ -240,11 +240,12 @@ const styles = StyleSheet.create({
   headline: { ...T.title2, textAlign: 'center' },
   sub: { ...T.subtitle, marginTop: 8, textAlign: 'center' },
 
-  // Error state (Trust, measured at 461px capture): art 70x75dp starting
-  // 122dp from the top, headline wraps to two lines (24 Bold, centred),
+  // Error state (Trust, measured at 461px capture): art block (top margin +
+  // art + gap) held at 149dp so the headline stays at Trust's offset; the
+  // Veltravia satellite is a detailed picture so it gets a 112x100dp box, headline wraps to two lines (24 Bold, centred),
   // description 16 Medium, Reload = same 288x59 grey pill, 12dp caption below.
   errorBody: { alignItems: 'center', paddingHorizontal: SP.xxl, paddingTop: SP.sm },
-  errorArt: { width: 75, height: 75, marginTop: 38, marginBottom: 36 },
+  errorArt: { width: 112, height: 100, marginTop: 25, marginBottom: 24 },
   reloadBtn: {
     width: 288,
     height: 59,
