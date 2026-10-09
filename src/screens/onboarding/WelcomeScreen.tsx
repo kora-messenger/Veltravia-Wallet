@@ -79,6 +79,7 @@ export default function WelcomeScreen({
   onImport: () => void;
 }) {
   const { theme, isDark } = useTheme();
+  const dark = theme.mode === 'dark';
   const listRef = useRef<FlatList<Slide>>(null);
   const [page, setPage] = useState(0);
   const pageRef = useRef(0); // latest page for the auto-advance timer
@@ -177,7 +178,10 @@ export default function WelcomeScreen({
         {/* I already have a wallet: plain text, no border or fill */}
         <Pressable
           onPress={onImport}
-          style={({ pressed }) => [styles.secondaryBtn, { opacity: pressed ? 0.5 : 1 }]}
+          style={({ pressed }) => [
+            styles.secondaryBtn,
+            { backgroundColor: dark ? 'rgba(108,99,255,0.24)' : 'rgba(108,99,255,0.12)', opacity: pressed ? 0.7 : 1 },
+          ]}
         >
           <Text style={[styles.secondaryBtnText, { color: theme.ink }]}>I already have a wallet</Text>
         </Pressable>
@@ -185,11 +189,11 @@ export default function WelcomeScreen({
         {/* Legal line */}
         <Text style={[styles.legal, { color: theme.inkMuted }]}>
           By using this app, you accept our{' '}
-          <Text style={[styles.legalLink, { color: theme.ink }]} onPress={() => openLegal(LEGAL.terms)}>
+          <Text style={[styles.legalLink, { color: dark ? '#8F89FF' : theme.brand }]} onPress={() => openLegal(LEGAL.terms)}>
             Terms of Service
           </Text>{' '}
           and{' '}
-          <Text style={[styles.legalLink, { color: theme.ink }]} onPress={() => openLegal(LEGAL.privacy)}>
+          <Text style={[styles.legalLink, { color: dark ? '#8F89FF' : theme.brand }]} onPress={() => openLegal(LEGAL.privacy)}>
             Privacy Policy
           </Text>
           .
@@ -220,11 +224,11 @@ const styles = StyleSheet.create({
   },
   dot: { height: 8, borderRadius: 999 },
   ctaWrap: { paddingHorizontal: 24, paddingBottom: 16 },
-  primaryBtn: { height: 56, borderRadius: 28, overflow: 'hidden', marginBottom: 4 },
+  primaryBtn: { height: 58, borderRadius: 29, overflow: 'hidden', marginBottom: 16 },
   primaryGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   primaryBtnText: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
-  secondaryBtn: { height: 56, alignItems: 'center', justifyContent: 'center' },
+  secondaryBtn: { height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center' },
   secondaryBtnText: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
-  legal: { fontSize: 12, lineHeight: 18, textAlign: 'center', fontFamily: 'Inter-500', paddingHorizontal: 8, marginTop: 8 },
+  legal: { fontSize: 12, lineHeight: 18, textAlign: 'center', fontFamily: 'Inter-500', paddingHorizontal: 8, marginTop: 16 },
   legalLink: { fontFamily: 'Inter-700', fontWeight: '700' },
 });
