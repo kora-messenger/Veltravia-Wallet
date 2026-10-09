@@ -36,6 +36,7 @@ interface Slide {
 const SLIDES: Slide[] = [
   {
     image: require('../../assets/onboarding/slide1.png'),
+    imageDark: require('../../assets/onboarding/slide1_dark.png'),
     title: 'Your keys, your crypto',
     body: 'Veltravia is self-custody. Only you hold the keys — nobody else can touch your wallet.',
   },
