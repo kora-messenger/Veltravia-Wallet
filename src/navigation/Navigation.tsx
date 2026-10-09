@@ -23,6 +23,8 @@ import WalletsScreen from '../screens/wallet/WalletsScreen';
 import NameWalletScreen from '../screens/wallet/NameWalletScreen';
 import ImportWalletScreen from '../screens/wallet/ImportWalletScreen';
 import ManageAccountScreen from '../screens/wallet/ManageAccountScreen';
+import PasscodeScreen from '../screens/onboarding/PasscodeScreen';
+import { setPasscode } from '../core/storage/passcode';
 
 const navigationRef = React.createRef<NavigationContainerRef<RootStackParamList>>();
 
@@ -36,7 +38,8 @@ const WelcomeScreen = require('../screens/onboarding/WelcomeScreen').default;
 const ActivityScreen = require('../screens/ActivityScreen').default;
 
 export type RootStackParamList = {
-  Onboarding: undefined;
+  Onboarding: { finish?: 'create' | 'import' } | undefined;
+  Passcode: { flow: 'create' | 'import' };
   MainTabs: undefined;
   Wallets: undefined;
   NameWallet: { origin?: 'created' | 'imported' } | undefined;
@@ -78,11 +81,39 @@ export default function Navigation() {
     <NavigationContainer ref={navigationRef}>
             <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Onboarding">
-          {() => (
+          {({ route }) => (
             <WelcomeScreen
-              // Phase 2 replaces these with the real seed/PIN and import flows.
-              onCreate={() => navigationRef.current?.navigate('MainTabs')}
-              onImport={() => navigationRef.current?.navigate('MainTabs')}
+              key={route.params?.finish ?? 'idle'}
+              // Tap -> 2s spinner -> full-screen passcode (create, then confirm).
+              onCreate={() => navigationRef.current?.navigate('Passcode', { flow: 'create' })}
+              onImport={() => navigationRef.current?.navigate('Passcode', { flow: 'import' })}
+              // Back from the passcode: buttons spin 2s again, then the account is created.
+              autoLoadFor={route.params?.finish ?? null}
+              onAutoLoadDone={(which: 'create' | 'import') =>
+                which === 'create'
+                  ? navigationRef.current?.reset({ index: 0, routes: [{ name: 'MainTabs' }] })
+                  : navigationRef.current?.reset({
+                      index: 1,
+                      routes: [{ name: 'MainTabs' }, { name: 'ImportWallet' }],
+                    })
+              }
+            />
+          )}
+        </Stack.Screen>
+        <Stack.Screen name="Passcode" options={{ animation: 'fade_from_bottom', gestureEnabled: false }}>
+          {({ route }) => (
+            <PasscodeScreen
+              onBack={() => navigationRef.current?.goBack()}
+              onDone={async (code) => {
+                try {
+                  // yield one frame so the blue boxes paint before hashing
+                  await new Promise<void>((r) => requestAnimationFrame(() => r()));
+                  await setPasscode(code);
+                } catch {
+                  // Keychain unavailable (e.g. emulator without lock screen): continue; app still opens.
+                }
+                navigationRef.current?.navigate('Onboarding', { finish: route.params.flow });
+              }}
             />
           )}
         </Stack.Screen>

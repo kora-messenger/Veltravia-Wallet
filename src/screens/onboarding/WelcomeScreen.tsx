@@ -21,6 +21,7 @@ import {
   Image,
   StatusBar,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -72,7 +73,16 @@ const SLIDES: Slide[] = [
 export default function WelcomeScreen({
   onCreate,
   onImport,
+  autoLoadFor,
+  onAutoLoadDone,
 }: {
+  /**
+   * When set, the screen mounts already "loading" for 2s on the matching
+   * button, then calls onAutoLoadDone. Used on the return from the
+   * passcode screen: the buttons spin again, then the account is created.
+   */
+  autoLoadFor?: 'create' | 'import' | null;
+  onAutoLoadDone?: (which: 'create' | 'import') => void;
   /** Phase 2: routes to the seed-reveal + PIN flow. */
   onCreate: () => void;
   /** Phase 2: routes to the recovery-phrase import flow. */
@@ -80,6 +90,29 @@ export default function WelcomeScreen({
 }) {
   const { theme, isDark } = useTheme();
   const dark = theme.mode === 'dark';
+  const [loading, setLoading] = useState<'create' | 'import' | null>(autoLoadFor ?? null);
+  const LOAD_MS = 2000;
+
+  // Return from passcode: keep spinning for 2s, then finish account creation.
+  useEffect(() => {
+    if (!autoLoadFor) return;
+    const t = setTimeout(() => onAutoLoadDone?.(autoLoadFor), LOAD_MS);
+    return () => clearTimeout(t);
+  }, [autoLoadFor]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Tap: both buttons lock + spin for 2s, then the passcode screen opens.
+  const start = useCallback(
+    (which: 'create' | 'import') => {
+      if (loading) return;
+      setLoading(which);
+      setTimeout(() => {
+        (which === 'create' ? onCreate : onImport)();
+        // release after the next screen has covered us
+        setTimeout(() => setLoading(null), 400);
+      }, LOAD_MS);
+    },
+    [loading, onCreate, onImport],
+  );
   const listRef = useRef<FlatList<Slide>>(null);
   const [page, setPage] = useState(0);
   const pageRef = useRef(0); // latest page for the auto-advance timer
@@ -162,7 +195,8 @@ export default function WelcomeScreen({
       <View style={styles.ctaWrap}>
         {/* Create a wallet: full-pill, brand purple-to-blue gradient */}
         <Pressable
-          onPress={onCreate}
+          onPress={() => start('create')}
+          disabled={!!loading}
           style={({ pressed }) => [styles.primaryBtn, { opacity: pressed ? 0.85 : 1 }]}
         >
           <LinearGradient
@@ -171,19 +205,28 @@ export default function WelcomeScreen({
             colors={theme.brandGradient as unknown as [string, string]}
             style={styles.primaryGradient}
           >
-            <Text style={styles.primaryBtnText}>Create a wallet</Text>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.primaryBtnText}>Create a wallet</Text>
+            )}
           </LinearGradient>
         </Pressable>
 
         {/* I already have a wallet: plain text, no border or fill */}
         <Pressable
-          onPress={onImport}
+          onPress={() => start('import')}
+          disabled={!!loading}
           style={({ pressed }) => [
             styles.secondaryBtn,
             { backgroundColor: dark ? 'rgba(108,99,255,0.24)' : 'rgba(108,99,255,0.12)', opacity: pressed ? 0.7 : 1 },
           ]}
         >
-          <Text style={[styles.secondaryBtnText, { color: theme.ink }]}>I already have a wallet</Text>
+          {loading ? (
+            <ActivityIndicator color={theme.ink} />
+          ) : (
+            <Text style={[styles.secondaryBtnText, { color: theme.ink }]}>I already have a wallet</Text>
+          )}
         </Pressable>
 
         {/* Legal line */}

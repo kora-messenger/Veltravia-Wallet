@@ -449,3 +449,20 @@ export const GlobeIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: Icon
     <Path d="M12 3c2.5 2.6 3.8 5.7 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.7-3.8-9s1.3-6.4 3.8-9z" {...stroke(color, strokeWidth)} />
   </Svg>
 );
+
+/* ---------------- Passcode keypad ---------------- */
+export const FingerprintIcon = ({ size = 24, color = '#000', strokeWidth = 1.6 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M12 4a7 7 0 0 0-7 7v2" {...stroke(color, strokeWidth)} />
+    <Path d="M12 4a7 7 0 0 1 7 7v3.5" {...stroke(color, strokeWidth)} />
+    <Path d="M8.5 20c.8-1.6 1.2-3.4 1.2-5.2V11a2.3 2.3 0 0 1 4.6 0v3.8c0 1.4.3 2.7.9 3.9" {...stroke(color, strokeWidth)} />
+    <Path d="M5 16.5c-.2 1-.6 2-1.1 2.9M19 17.5c.2.6.4 1.1.7 1.6M12 11v4.2c0 1.8-.4 3.6-1.2 5.1" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+export const BackspaceIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M9 5h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6-7 6-7z" {...stroke(color, strokeWidth)} />
+    <Path d="M12.5 9.5l5 5m0-5l-5 5" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
