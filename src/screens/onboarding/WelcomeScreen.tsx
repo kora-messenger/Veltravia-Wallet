@@ -53,6 +53,7 @@ const SLIDES: Slide[] = [
   },
   {
     image: require('../../assets/onboarding/slide4.png'),
+    imageDark: require('../../assets/onboarding/slide4_dark.png'),
     title: 'Veltravia AI',
     body: 'An AI assistant for your wallet — ask about tokens, transactions and security.',
   },
