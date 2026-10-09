@@ -135,7 +135,11 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
             />
           }
         >
-          <Image source={require('../assets/no-activity-ufo.png')} style={styles.art} resizeMode="contain" />
+          <Image
+            source={dark ? require('../assets/no-activity-robot-dark.png') : require('../assets/no-activity-robot.png')}
+            style={styles.art}
+            resizeMode="contain"
+          />
           <Text style={[styles.headline, { color: theme.ink }]}>No activity yet</Text>
           <Text style={[styles.sub, { color: theme.inkMuted }]}>Your transactions will appear here</Text>
 
@@ -185,10 +189,11 @@ const styles = StyleSheet.create({
 
   body: { alignItems: 'center', paddingHorizontal: SP.xxl, paddingTop: SP.lg, paddingBottom: SP.xl },
 
-  // Trust empty state (measured on a 461px capture): illustration top at
-  // y=194 (59dp below header), 68dp tall, 33dp gap to the headline (art box includes ~8dp of glow) (24 Bold),
-  // 8dp+leading to the description (16 Medium grey).
-  art: { width: 65, height: 68, marginTop: 59, marginBottom: 33 },
+  // Empty state: Trust's headline sits 160dp below the header, so the
+  // illustration block (top margin + height + gap) is held at 160dp. The
+  // Veltravia AI robot is a denser character than Trust's UFO, so it gets a
+  // 128dp box (face + hands stay legible) with the margins reduced to match.
+  art: { width: 128, height: 128, marginTop: 12, marginBottom: 20 },
   headline: T.title2,
   sub: { ...T.subtitle, marginTop: 8, textAlign: 'center' },
 
