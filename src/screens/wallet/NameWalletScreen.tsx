@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600', letterSpacing: -0.2 },
+  title: { flex: 1, textAlign: 'center', fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600', letterSpacing: -0.2 },
 
   body: { paddingHorizontal: 20, paddingBottom: 24 },
 
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
     marginTop: 18,
     marginBottom: 22,
   },
-  input: { flex: 1, fontSize: 16, fontWeight: '600', paddingVertical: 0 },
+  input: { flex: 1, fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600', paddingVertical: 0 },
   clear: {
     width: 24,
     height: 24,
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 10,
   },
-  counter: { fontSize: 12, fontWeight: '600' },
+  counter: { fontSize: 12, fontFamily: 'Inter-600', fontWeight: '600' },
 
   grid: {
     flexDirection: 'row',
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  continueText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  continueText: { color: '#fff', fontSize: 16, fontFamily: 'Inter-700', fontWeight: '700' },
 
   loading: {
     ...StyleSheet.absoluteFill,
@@ -311,5 +311,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  loadingText: { fontSize: 15, fontWeight: '600' },
+  loadingText: { fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600' },
 });

@@ -1,10 +1,14 @@
 /**
  * Veltravia Wallet — Activity (opened from the Home bell).
  *
- * Mirrors the Trust reference: back + centered title + filter circle;
- * empty state with illustration, "No activity yet" and a hint; a
- * "Show older activity" pill that, once tapped, loads and disappears;
- * pull-to-refresh that drops a white spinner circle above the content.
+ * Sizes follow Trust Wallet's real design system, extracted from the
+ * decompiled Trust APK bundle (see src/theme/typography.ts):
+ *   - header circles 36dp, header icons 24dp, nav title 16 SemiBold
+ *   - illustration 160dp, marginBottom 24 (spacing lg)
+ *   - headline "No activity yet" = Title2: 24 Bold / lh34
+ *   - description = Subtitle: 16 Medium / lh22, secondary grey
+ *   - "Show older activity" = tertiary text button: 16 SemiBold grey,
+ *     56dp full-width row, no background (Trust light-mode style)
  * v1 has no on-chain history yet (Wallet Core phase), so the list stays
  * empty after a refresh.
  */
@@ -25,6 +29,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
 import { BackIcon, FilterLinesIcon } from '../components/icons';
+import { FONT, T, SP, TOUCH } from '../theme/typography';
 
 export default function ActivityScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
@@ -37,8 +42,7 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
   const pillOpacity = useRef(new Animated.Value(1)).current;
 
   const chipBg = dark ? 'rgba(255,255,255,0.12)' : 'rgba(60,64,90,0.08)';
-  const pillBg = dark ? 'rgba(255,255,255,0.10)' : '#EDEDF0';
-  const pageBg = dark ? theme.background : '#FDFDFE';
+  const pageBg = dark ? theme.background : '#FFFFFF';
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -61,24 +65,24 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
     <View style={[styles.root, { backgroundColor: pageBg }]}>
       <StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />
 
-      {/* ---------- Header ---------- */}
-      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+      {/* ---------- Header (Trust: 36dp circles, 24dp icons, 16 SemiBold title) ---------- */}
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable
-          hitSlop={10}
+          hitSlop={12}
           onPress={() => navigation.goBack()}
           style={[styles.circle, { backgroundColor: chipBg }]}
         >
-          <BackIcon size={24} color={theme.ink} />
+          <BackIcon size={TOUCH.headerIcon} color={theme.ink} />
         </Pressable>
-        <View style={[styles.titleWrap, { top: insets.top + 10 }]} pointerEvents="none">
+        <View style={[styles.titleWrap, { top: insets.top + 8 }]} pointerEvents="none">
           <Text style={[styles.title, { color: theme.ink }]}>Activity</Text>
         </View>
         <Pressable
-          hitSlop={10}
+          hitSlop={12}
           onPress={() => {}}
           style={[styles.circle, { backgroundColor: chipBg }]}
         >
-          <FilterLinesIcon size={22} color={theme.ink} />
+          <FilterLinesIcon size={TOUCH.headerIcon} color={theme.ink} />
         </Pressable>
       </View>
 
@@ -92,7 +96,7 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
             tintColor={theme.ink}
             colors={[theme.brandGradient[0]]}
             progressBackgroundColor={dark ? theme.surface : '#FFFFFF'}
-            progressViewOffset={insets.top + 70}
+            progressViewOffset={insets.top + 56}
           />
         }
       >
@@ -104,12 +108,12 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
           <Animated.View style={{ opacity: pillOpacity, alignSelf: 'stretch' }}>
             <Pressable
               onPress={onShowOlder}
-              style={({ pressed }) => [styles.pill, { backgroundColor: pillBg, opacity: pressed ? 0.8 : 1 }]}
+              style={({ pressed }) => [styles.olderBtn, { opacity: pressed ? 0.6 : 1 }]}
             >
               {loadingOlder ? (
-                <ActivityIndicator color={theme.ink} />
+                <ActivityIndicator color={theme.inkMuted} />
               ) : (
-                <Text style={[styles.pillText, { color: theme.ink }]}>Show older activity</Text>
+                <Text style={[styles.olderText, { color: theme.inkMuted }]}>Show older activity</Text>
               )}
             </Pressable>
           </Animated.View>
@@ -125,24 +129,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: SP.md,
+    paddingBottom: SP.xs,
   },
-  circle: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
-  titleWrap: { position: 'absolute', left: 0, right: 0, height: 52, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 18, fontWeight: '600', letterSpacing: -0.2 },
-
-  body: { alignItems: 'center', paddingHorizontal: 28, paddingTop: 36, paddingBottom: 40 },
-  art: { width: 136, height: 136 },
-  headline: { fontSize: 29, fontWeight: '800', letterSpacing: -0.6, marginTop: 22 },
-  sub: { fontSize: 17, marginTop: 14, textAlign: 'center' },
-  pill: {
-    height: 72,
-    borderRadius: 36,
+  circle: {
+    width: TOUCH.headerCircle,
+    height: TOUCH.headerCircle,
+    borderRadius: TOUCH.headerCircle / 2,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 34,
-    marginHorizontal: 22,
   },
-  pillText: { fontSize: 18, fontWeight: '600' },
+  titleWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: TOUCH.headerCircle,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: T.heading,
+
+  body: { alignItems: 'center', paddingHorizontal: SP.xxl, paddingTop: SP.xl, paddingBottom: SP.xl },
+  art: { width: 160, height: 160, marginBottom: SP.lg },
+  headline: T.title2,
+  sub: { ...T.subtitle, marginTop: SP.xs, textAlign: 'center' },
+
+  // Trust tertiary button: 56dp full-width row, text only, no fill.
+  olderBtn: {
+    height: TOUCH.buttonLarge,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: SP.lg,
+  },
+  olderText: T.buttonLarge,
 });

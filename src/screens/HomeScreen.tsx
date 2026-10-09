@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     paddingRight: 18,
     borderRadius: 23,
   },
-  brand: { fontSize: 17, fontWeight: '700', letterSpacing: -0.2 },
+  brand: { fontSize: 16, fontFamily: 'Inter-700', fontWeight: '700', letterSpacing: -0.2 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   scanBtn: {
     width: 46,
@@ -296,14 +296,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   backupTextWrap: { flex: 1, gap: 2 },
-  backupTitle: { fontSize: 14, fontWeight: '700' },
-  backupSub: { fontSize: 12, lineHeight: 16 },
+  backupTitle: { fontSize: 14, fontFamily: 'Inter-700', fontWeight: '700' },
+  backupSub: { fontFamily: 'Inter-400', fontSize: 12, lineHeight: 16 },
   backupBtn: {
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 9,
   },
-  backupBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  backupBtnText: { color: '#fff', fontSize: 13, fontFamily: 'Inter-700', fontWeight: '700' },
 
   card: {
     alignSelf: 'center',
@@ -316,15 +316,15 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   cardLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  cardLabel: { color: 'rgba(255,255,255,0.9)', fontSize: 13, fontWeight: '500' },
+  cardLabel: { color: 'rgba(255,255,255,0.9)', fontSize: 13, fontFamily: 'Inter-500', fontWeight: '500' },
   cardValue: {
     color: '#fff',
     fontSize: 34,
-    fontWeight: '800',
+    fontFamily: 'Inter-700', fontWeight: '800',
     letterSpacing: -0.8,
     marginTop: 4,
   },
-  cardSub: { color: 'rgba(255,255,255,0.88)', fontSize: 13, marginTop: 4, fontWeight: '500' },
+  cardSub: { color: 'rgba(255,255,255,0.88)', fontSize: 13, marginTop: 4, fontFamily: 'Inter-500', fontWeight: '500' },
   sparkWrap: { position: 'absolute', right: 14, bottom: 14 },
 
   actions: {
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 8,
   },
-  actionLabel: { fontSize: 12, fontWeight: '600' },
+  actionLabel: { fontSize: 12, fontFamily: 'Inter-600', fontWeight: '600' },
 
   assetsHeader: {
     flexDirection: 'row',
@@ -350,9 +350,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 10,
   },
-  sectionTitle: { fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
+  sectionTitle: { fontSize: 16, fontFamily: 'Inter-700', fontWeight: '700', letterSpacing: -0.3 },
   seeAllRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  seeAll: { fontSize: 13, fontWeight: '500' },
+  seeAll: { fontSize: 13, fontFamily: 'Inter-500', fontWeight: '500' },
 
   assetRow: {
     flexDirection: 'row',
@@ -362,10 +362,10 @@ const styles = StyleSheet.create({
   },
   coinFallback: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#888' },
   assetMain: { flex: 1 },
-  assetName: { fontSize: 16, fontWeight: '700' },
-  assetSym: { fontSize: 13, marginTop: 2 },
+  assetName: { fontSize: 16, fontFamily: 'Inter-700', fontWeight: '700' },
+  assetSym: { fontFamily: 'Inter-400', fontSize: 13, marginTop: 2 },
   assetRight: { alignItems: 'flex-end' },
-  assetFiat: { fontSize: 16, fontWeight: '700' },
+  assetFiat: { fontSize: 16, fontFamily: 'Inter-700', fontWeight: '700' },
   changeRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 3 },
-  changeText: { fontSize: 13, fontWeight: '600' },
+  changeText: { fontSize: 13, fontFamily: 'Inter-600', fontWeight: '600' },
 });

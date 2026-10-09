@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 16, paddingBottom: 12, minHeight: 64 },
   backBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   titleWrap: { position: 'absolute', left: 0, right: 0, height: 48, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 17, fontWeight: '600', letterSpacing: -0.2 },
+  title: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600', letterSpacing: -0.2 },
 
   body: { paddingBottom: 24 },
 
@@ -398,8 +398,8 @@ const styles = StyleSheet.create({
     marginBottom: 22,
     paddingHorizontal: 18,
   },
-  counter: { fontSize: 13, fontWeight: '500', width: 28 },
-  input: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '600', letterSpacing: -0.2, paddingVertical: 0 },
+  counter: { fontSize: 12, fontFamily: 'Inter-500', fontWeight: '500', width: 28 },
+  input: { flex: 1, textAlign: 'center', fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600', letterSpacing: -0.2, paddingVertical: 0 },
   clear: {
     width: 26,
     height: 26,
@@ -422,10 +422,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   rowText: { flex: 1, gap: 3 },
-  rowTitle: { fontSize: 15, fontWeight: '600', letterSpacing: -0.1 },
-  rowSub: { fontSize: 13 },
+  rowTitle: { fontSize: 14, fontFamily: 'Inter-600', fontWeight: '600', letterSpacing: -0.1 },
+  rowSub: { fontFamily: 'Inter-400', fontSize: 12 },
   pill: { height: 40, paddingHorizontal: 18, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  pillText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
+  pillText: { color: '#FFFFFF', fontSize: 14, fontFamily: 'Inter-600', fontWeight: '600' },
 
   warning: {
     flexDirection: 'row',
@@ -436,9 +436,9 @@ const styles = StyleSheet.create({
     marginTop: 18,
     padding: 18,
   },
-  warningText: { flex: 1, fontSize: 13, fontWeight: '400', lineHeight: 19 },
+  warningText: { flex: 1, fontSize: 12, fontFamily: 'Inter-400', fontWeight: '400', lineHeight: 17 },
 
   footer: { paddingHorizontal: 20, paddingTop: 10 },
   remove: { height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center' },
-  removeText: { color: '#D32F2F', fontSize: 15, fontWeight: '600' },
+  removeText: { color: '#D32F2F', fontSize: 14, fontFamily: 'Inter-600', fontWeight: '600' },
 });

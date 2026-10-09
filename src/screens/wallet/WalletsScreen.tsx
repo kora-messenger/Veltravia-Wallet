@@ -173,13 +173,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
+  title: { fontSize: 16, fontFamily: 'Inter-700', fontWeight: '700', letterSpacing: -0.3 },
   headerRight: { flexDirection: 'row', gap: 12, marginLeft: 'auto' },
 
   list: { paddingTop: 6, paddingBottom: 24 },
   section: {
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: 16,
+    fontFamily: 'Inter-700', fontWeight: '700',
     letterSpacing: -0.2,
     paddingHorizontal: 20,
     paddingTop: 10,
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   radioDot: { width: 14, height: 14, borderRadius: 7 },
-  rowName: { flex: 1, fontSize: 17, fontWeight: '700', letterSpacing: -0.2 },
+  rowName: { flex: 1, fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600', letterSpacing: -0.2 },
   moreBtn: {
     width: 54,
     height: 54,
@@ -234,5 +234,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addLabel: { fontSize: 17, fontWeight: '700', letterSpacing: -0.2 },
+  addLabel: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600', letterSpacing: -0.2 },
 });
