@@ -433,3 +433,19 @@ export const COIN_ICONS: Record<string, React.ComponentType<{ size?: number }>> 
   POL: CoinPolygon,
   SOL: CoinSolana,
 };
+
+/* ---------------- activity filters sheet ---------------- */
+export const SearchIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Circle cx="11" cy="11" r="7" {...stroke(color, strokeWidth)} />
+    <Path d="M16.5 16.5L21 21" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+export const GlobeIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Circle cx="12" cy="12" r="9" {...stroke(color, strokeWidth)} />
+    <Path d="M3 12h18" {...stroke(color, strokeWidth)} />
+    <Path d="M12 3c2.5 2.6 3.8 5.7 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.7-3.8-9s1.3-6.4 3.8-9z" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
