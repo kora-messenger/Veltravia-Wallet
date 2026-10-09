@@ -22,7 +22,7 @@
  * empty after a refresh.
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -33,7 +33,9 @@ import {
   Animated,
   StatusBar,
   RefreshControl,
+  Easing,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
 import { BackIcon, FilterLinesIcon } from '../components/icons';
@@ -56,6 +58,12 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
 
   // Load failure (Trust shows "Something went wrong" + Reload + the error text).
   const [loadError, setLoadError] = useState<string | null>(null);
+  // True while a Reload/pull retry runs from the error screen: the error
+  // screen stays put and a brand-gradient bar sweeps along the top instead of
+  // swapping to the skeleton (Trust keeps the failure view and loads over it).
+  const [retrying, setRetrying] = useState(false);
+  const barX = useRef(new Animated.Value(0)).current;
+  const [barW, setBarW] = useState(0);
 
   const [filters, setFilters] = useState<ActivityFilters>(DEFAULT_ACTIVITY_FILTERS);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -63,6 +71,16 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
   const chipBg = dark ? 'rgba(255,255,255,0.12)' : 'rgba(60,64,90,0.08)';
   const pageBg = dark ? theme.background : '#FFFFFF';
   const tertiary = theme.surfaceAlt;
+
+  useEffect(() => {
+    if (!retrying || barW === 0) return;
+    barX.setValue(0);
+    const loop = Animated.loop(
+      Animated.timing(barX, { toValue: 1, duration: 1100, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [retrying, barW, barX]);
 
   const hidePill = useCallback(() => {
     Animated.timing(pillOpacity, { toValue: 0, duration: 220, useNativeDriver: true }).start();
@@ -103,8 +121,23 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
     return () => clearTimeout(t);
   }, [isLoading, loadError, hidePill]);
 
-  // Pull-to-refresh re-checks connectivity the same way, so going offline
-  // and refreshing shows the error state.
+  // Retry from the error screen (Reload button or drag down). The failure view
+  // stays on screen with a gradient bar loading along the top; if the phone is
+  // still offline the attempt times out and the text reads "Request timed out".
+  const retry = useCallback(async () => {
+    if (retrying) return;
+    setRetrying(true);
+    const [state] = await Promise.all([
+      NetInfo.fetch(),
+      new Promise<void>(r => setTimeout(r, 1800)), // a visible attempt, not an instant flash
+    ]);
+    const online =
+      state.isConnected === true && state.isInternetReachable !== false;
+    setLoadError(online ? null : 'Request timed out');
+    setRetrying(false);
+  }, [retrying]);
+
+  // Pull-to-refresh on the list: if the phone has gone offline, show the error.
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     const state = await NetInfo.fetch();
@@ -146,12 +179,45 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
         </Pressable>
       </View>
 
+      {/* Gradient loading bar, drawn directly under the header while retrying */}
+      {retrying && (
+        <View style={[styles.barTrack, { top: insets.top + 8 + TOUCH.headerCircle + SP.xs }]} onLayout={e => setBarW(e.nativeEvent.layout.width)}>
+          <Animated.View
+            style={{
+              width: barW * 0.4,
+              height: 3,
+              transform: [{ translateX: barX.interpolate({ inputRange: [0, 1], outputRange: [-barW * 0.4, barW] }) }],
+            }}
+          >
+            <LinearGradient
+              colors={[...theme.brandGradient]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{ flex: 1, borderRadius: 2 }}
+            />
+          </Animated.View>
+        </View>
+      )}
+
       {showSkeleton ? (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: SP.xl }}>
           <ActivitySkeleton />
         </ScrollView>
       ) : loadError ? (
-        <View style={styles.errorBody}>
+        <ScrollView
+          contentContainerStyle={styles.errorBody}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={retrying}
+              onRefresh={retry}
+              tintColor={theme.ink}
+              colors={[theme.brandGradient[0]]}
+              progressBackgroundColor={dark ? theme.surface : '#FFFFFF'}
+              progressViewOffset={insets.top + 56}
+            />
+          }
+        >
           <Image
             source={dark ? require('../assets/activity-error-dark.png') : require('../assets/activity-error.png')}
             style={styles.errorArt}
@@ -160,13 +226,14 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
           <Text style={[styles.headline, { color: theme.ink }]}>Something went wrong</Text>
           <Text style={[styles.sub, { color: theme.inkMuted }]}>We couldn't load your activity</Text>
           <Pressable
-            onPress={loadActivity}
-            style={({ pressed }) => [styles.reloadBtn, { backgroundColor: tertiary, opacity: pressed ? 0.7 : 1 }]}
+            onPress={retry}
+            disabled={retrying}
+            style={({ pressed }) => [styles.reloadBtn, { backgroundColor: tertiary, opacity: pressed || retrying ? 0.7 : 1 }]}
           >
             <Text style={[T.buttonLarge, { color: theme.ink }]}>Reload</Text>
           </Pressable>
           <Text style={[T.caption1, styles.errorText, { color: theme.inkMuted }]}>{loadError}</Text>
-        </View>
+        </ScrollView>
       ) : (
         <ScrollView
           contentContainerStyle={styles.body}
@@ -248,6 +315,7 @@ const styles = StyleSheet.create({
   // art + gap) held at 149dp so the headline stays at Trust's offset; the
   // Veltravia satellite is a detailed picture so it gets a 112x100dp box, headline wraps to two lines (24 Bold, centred),
   // description 16 Medium, Reload = same 288x59 grey pill, 12dp caption below.
+  barTrack: { position: 'absolute', left: 0, right: 0, height: 3, overflow: 'hidden', zIndex: 5 },
   errorBody: { alignItems: 'center', paddingHorizontal: SP.xxl, paddingTop: SP.sm },
   errorArt: { width: 112, height: 100, marginTop: 25, marginBottom: 24 },
   reloadBtn: {
