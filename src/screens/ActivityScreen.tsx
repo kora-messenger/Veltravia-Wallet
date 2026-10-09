@@ -39,7 +39,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { BackIcon, FilterLinesIcon } from '../components/icons';
 import { T, SP, RADIUS, TOUCH } from '../theme/typography';
 import { ActivitySkeleton } from '../components/Skeleton';
-import { APP_CONFIG } from '../config/env';
+import NetInfo from '@react-native-community/netinfo';
 import FilterSheet, { ActivityFilters, DEFAULT_ACTIVITY_FILTERS } from '../components/FilterSheet';
 
 export default function ActivityScreen({ navigation }: { navigation: any }) {
@@ -68,25 +68,23 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
     Animated.timing(pillOpacity, { toValue: 0, duration: 220, useNativeDriver: true }).start();
   }, [pillOpacity]);
 
-  // Reachability probe. v1 has no history endpoint yet, so the "load" is a
-  // short request to the backend host: if the phone is offline or the backend
-  // is down, fetch throws and we show Trust's error state. Same call will be
-  // replaced by api.transactions() once Wallet Core provides the address.
+  // Load: only a real offline phone shows the error state. While the phone
+  // has a connection the screen settles to the (empty) list — even if the
+  // backend itself is unreachable — matching Trust, which surfaces
+  // "Something went wrong" only for genuine connectivity loss. Once v1 gets
+  // a live history endpoint this stays the gate; a request failure would
+  // then surface as a list-level banner, not this screen.
   const loadActivity = useCallback(async () => {
     setLoadError(null);
     setIsLoading(true);
-    const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 8000);
-    try {
-      await fetch(APP_CONFIG.API_BASE_URL, { method: 'HEAD', signal: ctrl.signal });
-      await new Promise<void>(r => setTimeout(r, 900)); // let the skeleton register
-      setIsLoading(false);
-    } catch (e: any) {
-      setLoadError(e?.name === 'AbortError' ? 'Request timed out' : 'Network Error');
-      setIsLoading(false);
-    } finally {
-      clearTimeout(timeout);
+    const state = await NetInfo.fetch();
+    const online =
+      state.isConnected === true && state.isInternetReachable !== false;
+    await new Promise<void>(r => setTimeout(r, 900)); // let the skeleton register
+    if (!online) {
+      setLoadError('Network Error');
     }
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -105,9 +103,15 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
     return () => clearTimeout(t);
   }, [isLoading, loadError, hidePill]);
 
-  const onRefresh = useCallback(() => {
+  // Pull-to-refresh re-checks connectivity the same way, so going offline
+  // and refreshing shows the error state.
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1400);
+    const state = await NetInfo.fetch();
+    const online =
+      state.isConnected === true && state.isInternetReachable !== false;
+    setRefreshing(false);
+    setLoadError(online ? null : 'Network Error');
   }, []);
 
   // Trust's formula: canLoadOlder = hasNextPage && !isFetchingNextPage && !isRefetching
