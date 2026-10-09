@@ -94,7 +94,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
   }, [value, anim]);
   const knobLeft = anim.interpolate({ inputRange: [0, 1], outputRange: [2, 20] });
   const trackOn = theme.brand;
-  const trackOff = theme.mode === 'dark' ? '#232D44' : '#D9DAE3';
+  const trackOff = theme.mode === 'dark' ? '#1C1E4A' : '#E9E7FF';
   return (
     <Pressable hitSlop={8} onPress={() => onChange(!value)} accessibilityRole="switch">
       <Animated.View style={[tgStyles.track, { backgroundColor: value ? trackOn : trackOff }]}>
@@ -173,7 +173,7 @@ export default function FilterSheet({
   }, [draft, onApply, onClose]);
 
   const sheetBg = dark ? theme.surface : '#FFFFFF';
-  const tertiary = dark ? 'rgba(140,146,170,0.16)' : '#EEEDF0';
+  const tertiary = theme.surfaceAlt;
   const hairline = theme.border;
 
   return (

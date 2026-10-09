@@ -41,8 +41,8 @@ export function SkeletonBlock({ style }: { style?: any }) {
   useEffect(() => {
     startPulse();
   }, []);
-  // Trust light-mode tertiary: #EEEDF0 on the white page.
-  const fill = theme.mode === 'dark' ? 'rgba(140,146,170,0.22)' : '#EEEDF0';
+  // Veltravia tertiary: the themed surfaceAlt token (lavender / navy).
+  const fill = theme.surfaceAlt;
   return (
     <Animated.View
       style={[{ backgroundColor: fill, opacity: sharedPulse }, style]}

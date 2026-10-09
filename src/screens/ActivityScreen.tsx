@@ -55,7 +55,7 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
 
   const chipBg = dark ? 'rgba(255,255,255,0.12)' : 'rgba(60,64,90,0.08)';
   const pageBg = dark ? theme.background : '#FFFFFF';
-  const tertiary = dark ? 'rgba(140,146,170,0.16)' : '#EEEDF0';
+  const tertiary = theme.surfaceAlt;
 
   const hidePill = useCallback(() => {
     Animated.timing(pillOpacity, { toValue: 0, duration: 220, useNativeDriver: true }).start();
