@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 44,
   },
-  title: { fontSize: 17, fontWeight: '700', letterSpacing: -0.2 },
+  title: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600', letterSpacing: -0.2 },
   closeBtn: {
     position: 'absolute',
     right: -4,
@@ -144,6 +144,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   optionText: { flex: 1, gap: 3 },
-  optionTitle: { fontSize: 17, fontWeight: '600', letterSpacing: -0.2 },
-  optionSub: { fontSize: 14 },
+  optionTitle: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600', letterSpacing: -0.2 },
+  optionSub: { fontSize: 13, fontFamily: 'Inter-400' },
 });

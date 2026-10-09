@@ -172,8 +172,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   art: { width: SCREEN_W * 0.62, height: SCREEN_W * 0.62, marginBottom: 24 },
-  title: { fontSize: 24, fontWeight: '800', textAlign: 'center', marginBottom: 12 },
-  body: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  title: { fontSize: 28, fontFamily: 'Inter-700', fontWeight: '800', textAlign: 'center', marginBottom: 12, lineHeight: 39 },
+  body: { fontSize: 14, textAlign: 'center', lineHeight: 20, fontFamily: 'Inter-400' },
   dotsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -189,12 +189,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  primaryBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  primaryBtnText: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
   secondaryBtn: {
     borderRadius: 16,
     borderWidth: 1,
     paddingVertical: 15,
     alignItems: 'center',
   },
-  secondaryBtnText: { fontSize: 16, fontWeight: '600' },
+  secondaryBtnText: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
 });

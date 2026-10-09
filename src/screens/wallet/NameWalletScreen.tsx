@@ -223,8 +223,8 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   backBtn: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
   },
 
   continueBtn: {
-    height: 54,
+    height: 56,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',

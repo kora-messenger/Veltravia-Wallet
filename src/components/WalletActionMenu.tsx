@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 13,
   },
-  label: { fontSize: 15, fontWeight: '600', letterSpacing: -0.1 },
+  label: { fontSize: 14, fontFamily: 'Inter-600', fontWeight: '600', letterSpacing: -0.1 },
   badge: {
     position: 'absolute',
     top: -4,

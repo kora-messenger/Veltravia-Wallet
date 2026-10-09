@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
 
   header: { paddingHorizontal: 16, paddingBottom: 12, minHeight: 64 },
-  backBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   titleWrap: { position: 'absolute', left: 0, right: 0, height: 48, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600', letterSpacing: -0.2 },
 
@@ -439,6 +439,6 @@ const styles = StyleSheet.create({
   warningText: { flex: 1, fontSize: 12, fontFamily: 'Inter-400', fontWeight: '400', lineHeight: 17 },
 
   footer: { paddingHorizontal: 20, paddingTop: 10 },
-  remove: { height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center' },
+  remove: { height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
   removeText: { color: '#D32F2F', fontSize: 14, fontFamily: 'Inter-600', fontWeight: '600' },
 });

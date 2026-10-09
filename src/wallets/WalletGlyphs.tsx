@@ -53,7 +53,7 @@ export const LogoColorGlyph = (p: GlyphProps) => (
 
 export const TextGlyph = (p: GlyphProps) =>
   wrap(
-    <SvgText fill={p.color} fontSize="12" fontWeight="700" x="12" y="16.5" textAnchor="middle" fontFamily="System">
+    <SvgText fill={p.color} fontSize="12" fontWeight="700" x="12" y="16.5" textAnchor="middle" fontFamily="Inter-700">
       Aa
     </SvgText>,
     p,
@@ -88,10 +88,10 @@ export const RocketGlyph = (p: GlyphProps) =>
   );
 
 export const BtcGlyph = (p: GlyphProps) =>
-  wrap(<SvgText fill={p.color} fontSize="16" fontWeight="800" x="12" y="17.5" textAnchor="middle" fontFamily="System">₿</SvgText>, p);
+  wrap(<SvgText fill={p.color} fontSize="16" fontWeight="800" x="12" y="17.5" textAnchor="middle" fontFamily="Inter-700">₿</SvgText>, p);
 
 export const BnbGlyph = (p: GlyphProps) =>
-  wrap(<SvgText fill={p.color} fontSize="14" fontWeight="800" x="12" y="17" textAnchor="middle" fontFamily="System">BNB</SvgText>, p);
+  wrap(<SvgText fill={p.color} fontSize="14" fontWeight="800" x="12" y="17" textAnchor="middle" fontFamily="Inter-700">BNB</SvgText>, p);
 
 export const EthGlyph = (p: GlyphProps) =>
   wrap(

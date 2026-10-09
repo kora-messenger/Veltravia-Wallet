@@ -55,8 +55,8 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   content: { padding: 20, paddingBottom: 120 },
-  title: { fontSize: 24, fontWeight: '800', marginBottom: 20 },
+  title: { fontSize: 28, fontFamily: 'Inter-700', fontWeight: '800', marginBottom: 20, lineHeight: 39 },
   row: { borderRadius: 16, padding: 16, marginBottom: 10 },
-  rowLabel: { fontSize: 15, fontWeight: '600' },
-  rowDetail: { fontSize: 12, marginTop: 2 },
+  rowLabel: { fontSize: 16, fontFamily: 'Inter-500', fontWeight: '500' },
+  rowDetail: { fontSize: 12, marginTop: 2, fontFamily: 'Inter-400' },
 });

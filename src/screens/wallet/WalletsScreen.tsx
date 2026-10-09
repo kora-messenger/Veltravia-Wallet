@@ -48,17 +48,17 @@ export default function WalletsScreen({ navigation }: { navigation: any }) {
       {/* ---------- Header ---------- */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable hitSlop={10} onPress={() => navigation.goBack()} style={[styles.headerBtn, { backgroundColor: chipBg }]}>
-          <CloseIcon size={22} color={theme.ink} />
+          <CloseIcon size={24} color={theme.ink} />
         </Pressable>
         <View style={[styles.titleWrap, { top: insets.top + 8 }]} pointerEvents="none">
           <Text style={[styles.title, { color: theme.ink }]}>Wallets</Text>
         </View>
         <View style={styles.headerRight}>
           <Pressable hitSlop={10} style={[styles.headerBtn, { backgroundColor: chipBg }]}>
-            <SupportIcon size={22} color={theme.ink} />
+            <SupportIcon size={24} color={theme.ink} />
           </Pressable>
           <Pressable hitSlop={10} style={[styles.headerBtn, { backgroundColor: chipBg }]}>
-            <GearIcon size={22} color={theme.ink} />
+            <GearIcon size={24} color={theme.ink} />
           </Pressable>
         </View>
       </View>
@@ -159,9 +159,9 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   headerBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    height: 48,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -205,9 +205,9 @@ const styles = StyleSheet.create({
   radioDot: { width: 14, height: 14, borderRadius: 7 },
   rowName: { flex: 1, fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600', letterSpacing: -0.2 },
   moreBtn: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -229,8 +229,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   addPill: {
-    height: 58,
-    borderRadius: 29,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },

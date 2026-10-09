@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(2,6,16,0.45)' },
   sheet: { borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingHorizontal: 20, paddingTop: 22 },
   titleRow: { height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 18 },
-  title: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
+  title: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600', letterSpacing: -0.3 },
   closeBtn: {
     position: 'absolute',
     right: 0,

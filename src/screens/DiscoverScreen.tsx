@@ -23,6 +23,6 @@ export default function DiscoverScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  title: { fontSize: 24, fontWeight: '800', marginBottom: 8 },
-  sub: { fontSize: 14, textAlign: 'center' },
+  title: { fontSize: 28, fontFamily: 'Inter-700', fontWeight: '800', marginBottom: 8, lineHeight: 39 },
+  sub: { fontSize: 14, fontFamily: 'Inter-500', fontWeight: '500', textAlign: 'center' },
 });

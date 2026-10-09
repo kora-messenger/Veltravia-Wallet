@@ -24,6 +24,6 @@ export default function MarketsScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   content: { padding: 20, paddingBottom: 120 },
-  title: { fontSize: 24, fontWeight: '800', marginBottom: 8 },
-  sub: { fontSize: 14 },
+  title: { fontSize: 28, fontFamily: 'Inter-700', fontWeight: '800', marginBottom: 8, lineHeight: 39 },
+  sub: { fontSize: 14, fontFamily: 'Inter-500', fontWeight: '500' },
 });

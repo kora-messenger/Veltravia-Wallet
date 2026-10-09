@@ -95,7 +95,7 @@ export default function ImportWalletScreen({ navigation }: { navigation: any }) 
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 10 },
-  backBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   title: { flex: 1, textAlign: 'center', fontSize: 16, fontFamily: 'Inter-700', fontWeight: '800', letterSpacing: -0.3 },
 
   body: { paddingHorizontal: 20, paddingTop: 12 },
@@ -109,6 +109,6 @@ const styles = StyleSheet.create({
   input: { fontFamily: 'Inter-400', fontSize: 15, lineHeight: 22, textAlignVertical: 'top' },
   count: { fontSize: 13, fontFamily: 'Inter-600', fontWeight: '600', marginTop: 10 },
 
-  btn: { height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  btn: { height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
   btnText: { color: '#fff', fontSize: 16, fontFamily: 'Inter-700', fontWeight: '700' },
 });
