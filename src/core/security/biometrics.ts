@@ -51,3 +51,29 @@ export async function promptBiometrics(
     return false;
   }
 }
+
+/* ---- Biometric unlock preference (persisted from onboarding) ---- */
+
+const KEY_BIO_UNLOCK = 'veltravia.bio.unlock';
+
+/** Remember whether the user wants biometric unlock (from onboarding's Biometric Login popup). */
+export async function setBiometricUnlockEnabled(enabled: boolean): Promise<void> {
+  try {
+    await Keychain.setGenericPassword('veltravia', enabled ? '1' : '0', {
+      service: `${SERVICE}.${KEY_BIO_UNLOCK}`,
+      accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    });
+  } catch {
+    /* preference is best-effort */
+  }
+}
+
+/** True when the user enabled biometric unlock during onboarding. */
+export async function isBiometricUnlockEnabled(): Promise<boolean> {
+  try {
+    const res = await Keychain.getGenericPassword({ service: `${SERVICE}.${KEY_BIO_UNLOCK}` });
+    return res !== false && (res as { password: string }).password === '1';
+  } catch {
+    return false;
+  }
+}

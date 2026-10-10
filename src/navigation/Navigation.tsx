@@ -11,7 +11,7 @@
  */
 
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -26,7 +26,11 @@ import ManageAccountScreen from '../screens/wallet/ManageAccountScreen';
 import PasscodeScreen from '../screens/onboarding/PasscodeScreen';
 import SelectRecoveryMethodScreen from '../screens/SelectRecoveryMethodScreen';
 import NotificationSheet from '../components/NotificationSheet';
-import { setPasscode } from '../core/storage/passcode';
+import LockScreen from '../screens/LockScreen';
+import { setPasscode, hasPasscode } from '../core/storage/passcode';
+import { hasWallet } from '../core/storage/secureStorage';
+import { setBiometricUnlockEnabled } from '../core/security/biometrics';
+import { AppState } from 'react-native';
 
 const navigationRef = React.createRef<NavigationContainerRef<RootStackParamList>>();
 
@@ -83,6 +87,49 @@ export default function Navigation() {
   // Shown once over the home screen right after the create-path account
   // is created (biometric allowed or denied — both paths land on it).
   const [notifPrompt, setNotifPrompt] = React.useState(false);
+  // Locked whenever a passcode exists: cold start + every return from
+  // background, like Trust. Unlock reveals the app (MainTabs for an
+  // existing wallet); the welcome screen never shows again.
+  const [locked, setLocked] = React.useState(true);
+  const [booted, setBooted] = React.useState(false);
+
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      const has = await hasPasscode();
+      if (alive) {
+        setLocked(has);
+        setBooted(true);
+      }
+    })().catch(() => {
+      if (alive) {
+        setLocked(false);
+        setBooted(true);
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'background') {
+        hasPasscode().then(setLocked).catch(() => {});
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
+  const unlock = React.useCallback(() => {
+    setLocked(false);
+    hasWallet().then((exists) => {
+      if (exists) {
+        navigationRef.current?.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+      }
+    }).catch(() => {});
+  }, []);
+
   return (
     <NavigationContainer ref={navigationRef}>
       <React.Fragment>
@@ -112,6 +159,7 @@ export default function Navigation() {
             <PasscodeScreen
               onBack={() => navigationRef.current?.goBack()}
               onDone={async (code, biometric) => {
+                setBiometricUnlockEnabled(biometric === 'allowed');
                 try {
                   // yield one frame so the blue boxes paint before hashing
                   await new Promise<void>((r) => requestAnimationFrame(() => r()));
@@ -143,6 +191,8 @@ export default function Navigation() {
         <Stack.Screen name="Activity" component={ActivityScreen} options={{ animation: 'slide_from_right' }} />
       </Stack.Navigator>
       <NotificationSheet visible={notifPrompt} onClose={() => setNotifPrompt(false)} />
+      {!booted && <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.background }]} />}
+      {booted && locked && <LockScreen onUnlock={unlock} />}
       </React.Fragment>
     </NavigationContainer>
   );
