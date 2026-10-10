@@ -16,12 +16,10 @@
  * swap `placeholder` for Ijezie's light/dark PNGs when they land.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Animated, Easing, ActivityIndicator, PermissionsAndroid, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Animated, Easing, PermissionsAndroid, Platform } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { CloseIcon, BellArt } from './icons';
-import LinearGradient from 'react-native-linear-gradient';
-
-const BLUE = '#4A90D9';
+import PrimaryButton from './PrimaryButton';
 
 export default function NotificationSheet({
   visible,
@@ -97,24 +95,7 @@ export default function NotificationSheet({
           Enable notifications to monitor price changes and stay updated on your transactions.
         </Text>
 
-        <Pressable
-          onPress={enable}
-          disabled={loading}
-          style={({ pressed }) => [styles.primary, { opacity: pressed ? 0.85 : 1 }]}
-        >
-          <LinearGradient
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            colors={['#6C63FF', BLUE]}
-            style={styles.primaryGradient}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.primaryText}>Enable Notifications</Text>
-            )}
-          </LinearGradient>
-        </Pressable>
+        <PrimaryButton label="Enable Notifications" onPress={enable} loading={loading} />
 
         <Pressable onPress={onClose} style={({ pressed }) => [styles.skip, { opacity: pressed ? 0.6 : 1 }]}>
           <Text style={[styles.skipText, { color: dark ? '#8F89FF' : theme.brand }]}>
@@ -140,9 +121,6 @@ const styles = StyleSheet.create({
   art: { alignItems: 'center', marginBottom: 10 },
   title: { fontSize: 19, fontFamily: 'Inter-700', textAlign: 'center', marginBottom: 8 },
   desc: { fontSize: 14, lineHeight: 20, textAlign: 'center', fontFamily: 'Inter-400', marginBottom: 24 },
-  primary: { height: 54, borderRadius: 27, overflow: 'hidden' },
-  primaryGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  primaryText: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter-600' },
-  skip: { height: 52, alignItems: 'center', justifyContent: 'center' },
+  skip: { height: 48, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
   skipText: { fontSize: 15, fontFamily: 'Inter-600' },
 });

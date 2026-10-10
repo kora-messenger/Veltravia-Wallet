@@ -135,7 +135,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <CloseIcon size={16} color={theme.inkMuted} />
             </Pressable>
             <Pressable
-              style={[styles.backupBtn, { backgroundColor: theme.brandGradient[0] }]}
+              style={[styles.backupBtn, { backgroundColor: theme.buttonGradient[0] }]}
               onPress={() =>
                 Alert.alert(
                   'Back up your wallet',

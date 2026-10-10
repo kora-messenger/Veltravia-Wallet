@@ -14,7 +14,6 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useTheme } from '../theme/ThemeProvider';
 import { FingerprintArt } from './icons';
 
-const BLUE = '#4A90D9';
 
 export default function BiometricLoginSheet({
   visible,
@@ -60,7 +59,7 @@ export default function BiometricLoginSheet({
               <LinearGradient
                 start={{ x: 0, y: 0.5 }}
                 end={{ x: 1, y: 0.5 }}
-                colors={['#6C63FF', BLUE]}
+                colors={theme.buttonGradient as unknown as [string, string]}
                 style={styles.confirmGradient}
               >
                 <Text style={styles.confirmText}>Confirm</Text>

@@ -40,6 +40,10 @@ export const palette = {
     border: '#121C2E',
   },
 
+  // Primary CTA buttons: saturated + short-range so the fill reads SHARP like
+  // Trust's flat #382FFA (measured), while staying violet -> blue.
+  button: ['#5B3DF5', '#2F6BF0'],
+
   // Balance card gradient (measured): left→right
   card: {
     light: ['#6A4BFC', '#1FA0FD'],
@@ -67,6 +71,7 @@ export type Theme = {
   mode: 'light' | 'dark';
   brand: string;
   brandGradient: readonly [string, string];
+  buttonGradient: readonly [string, string];
   background: string;
   surface: string;
   surfaceAlt: string;
@@ -85,6 +90,7 @@ export const themes: Record<'light' | 'dark', Theme> = {
     mode: 'light',
     brand: palette.violet,
     brandGradient: [palette.violet, palette.blue],
+    buttonGradient: palette.button as unknown as readonly [string, string],
     background: palette.light.background,
     surface: palette.light.surface,
     surfaceAlt: palette.light.surfaceAlt,
@@ -101,6 +107,7 @@ export const themes: Record<'light' | 'dark', Theme> = {
     mode: 'dark',
     brand: palette.violet,
     brandGradient: [palette.violet, palette.blue],
+    buttonGradient: palette.button as unknown as readonly [string, string],
     background: palette.dark.background,
     surface: palette.dark.surface,
     surfaceAlt: palette.dark.surfaceAlt,

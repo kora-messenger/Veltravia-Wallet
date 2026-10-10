@@ -80,7 +80,7 @@ export default function ImportWalletScreen({ navigation }: { navigation: any }) 
         <Pressable
           style={({ pressed }) => [
             styles.btn,
-            { backgroundColor: theme.brandGradient[0], opacity: pressed ? 0.85 : 1 },
+            { backgroundColor: theme.buttonGradient[0], opacity: pressed ? 0.85 : 1 },
           ]}
           onPress={handleContinue}
           disabled={!valid || checking}

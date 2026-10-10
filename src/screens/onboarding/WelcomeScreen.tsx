@@ -202,7 +202,7 @@ export default function WelcomeScreen({
           <LinearGradient
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
-            colors={theme.brandGradient as unknown as [string, string]}
+            colors={theme.buttonGradient as unknown as [string, string]}
             style={styles.primaryGradient}
           >
             {loading ? (
