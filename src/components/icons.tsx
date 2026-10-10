@@ -507,31 +507,6 @@ export const ChevronDownIcon = ({ size = 16, color = '#000', strokeWidth = 2 }: 
   </Svg>
 );
 
-/** Bell illustration art for the notification sheet (placeholder art slot,
- *  Veltravia gradient, easily replaced by Ijezie's light/dark PNGs). */
-export const BellArt = ({ size = 132 }: { size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 120 120" fill="none">
-    <Defs>
-      <SvgGradient id="vBell" x1="0" y1="0" x2="1" y2="1">
-        <Stop offset="0" stopColor="#6C63FF" />
-        <Stop offset="1" stopColor="#4A90D9" />
-      </SvgGradient>
-    </Defs>
-    <Circle cx={60} cy={60} r={52} fill="url(#vBell)" opacity={0.12} />
-    <Circle cx={60} cy={60} r={40} fill="url(#vBell)" opacity={0.14} />
-    <Path
-      d="M60 34a20 20 0 0 1 20 20v12l4 8H36l4-8V54a20 20 0 0 1 20-20z"
-      stroke="url(#vBell)"
-      strokeWidth={4}
-      strokeLinejoin="round"
-      fill="rgba(108,99,255,0.10)"
-    />
-    <Path d="M52 78a8 8 0 0 0 16 0" stroke="url(#vBell)" strokeWidth={4} strokeLinecap="round" fill="none" />
-    <Path d="M60 26v6" stroke="url(#vBell)" strokeWidth={4} strokeLinecap="round" />
-    <Circle cx={84} cy={36} r={5} fill="url(#vBell)" />
-  </Svg>
-);
-
 /** Fingerprint illustration art for the Biometric Login popup. */
 export const FingerprintArt = ({ size = 108 }: { size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 120 120" fill="none">

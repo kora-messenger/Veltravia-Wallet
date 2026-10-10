@@ -12,13 +12,13 @@
  *   X top-right behaves like Skip. The sheet closes itself after the
  *   permission prompt is answered either way.
  *
- * The illustration slot currently renders the BellArt SVG placeholder;
- * swap `placeholder` for Ijezie's light/dark PNGs when they land.
+ * Illustration: Ijezie's gold herald trumpet with red banner
+ * (assets/notification-trumpet.png, transparent PNG, same in light/dark).
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Animated, Easing, PermissionsAndroid, Platform } from 'react-native';
+import { View, Text, Image, StyleSheet, Pressable, Animated, Easing, PermissionsAndroid, Platform } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
-import { CloseIcon, BellArt } from './icons';
+import { CloseIcon } from './icons';
 import PrimaryButton from './PrimaryButton';
 
 export default function NotificationSheet({
@@ -86,8 +86,7 @@ export default function NotificationSheet({
         </View>
 
         <View style={styles.art}>
-          <BellArt size={128} />
-          {/* Ijezie's light/dark illustration goes in this slot. */}
+          <Image source={require('../assets/notification-trumpet.png')} style={styles.artImg} resizeMode="contain" />
         </View>
 
         <Text style={[styles.title, { color: theme.ink }]}>Keep up with the market!</Text>
@@ -119,6 +118,7 @@ const styles = StyleSheet.create({
   topRow: { height: 52, justifyContent: 'center', alignItems: 'flex-end', marginTop: 8 },
   closeBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   art: { alignItems: 'center', marginBottom: 10 },
+  artImg: { width: 168, height: 128 },
   title: { fontSize: 19, fontFamily: 'Inter-700', textAlign: 'center', marginBottom: 8 },
   desc: { fontSize: 14, lineHeight: 20, textAlign: 'center', fontFamily: 'Inter-400', marginBottom: 24 },
   skip: { height: 48, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
