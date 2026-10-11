@@ -12,10 +12,10 @@
  *   - 5 wrong attempts: 30s lockout, like Trust's fail counter
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Animated, Easing, StatusBar, Vibration } from 'react-native';
+import { View, Text, Image, Pressable, StyleSheet, Animated, Easing, StatusBar, Vibration } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
-import { FingerprintIcon, BackspaceIcon, VeltraviaMark } from '../components/icons';
+import { FingerprintIcon, BackspaceIcon } from '../components/icons';
 import { verifyPasscode } from '../core/storage/passcode';
 import { isBiometricsSupported, isBiometricUnlockEnabled, promptBiometrics } from '../core/security/biometrics';
 
@@ -160,7 +160,8 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
 
       <View style={styles.mark}>
-        <VeltraviaMark size={40} />
+        {/* The actual app icon (same asset as the launcher), rounded like the home screen. */}
+        <Image source={require('../assets/app-icon.png')} style={styles.markImg} />
       </View>
 
       <View style={styles.top}>
@@ -208,6 +209,7 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   mark: { alignItems: 'center', paddingTop: 48 },
+  markImg: { width: 88, height: 88, borderRadius: 20 },
   top: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
   title: { fontFamily: 'Inter-600', fontSize: 18, lineHeight: 24, marginBottom: 28 },
   boxes: { flexDirection: 'row', gap: 10, marginBottom: 28 },
