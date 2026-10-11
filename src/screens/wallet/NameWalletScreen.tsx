@@ -6,6 +6,7 @@
  * created and switched to).
  */
 
+import PrimaryButton from '../../components/PrimaryButton';
 import React, { useMemo, useState } from 'react';
 import {
   View,
@@ -184,20 +185,7 @@ export default function NameWalletScreen({
 
         {/* ---------- Continue (rises above the keyboard) ---------- */}
         <View style={{ paddingBottom: insets.bottom + 12, paddingHorizontal: 20 }}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.continueBtn,
-              { backgroundColor: theme.buttonGradient[0], opacity: pressed ? 0.85 : 1 },
-            ]}
-            onPress={handleContinue}
-            disabled={creating}
-          >
-            {creating ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.continueText}>Continue</Text>
-            )}
-          </Pressable>
+          <PrimaryButton label="Continue" onPress={handleContinue} loading={creating} />
         </View>
       </KeyboardAvoidingView>
 

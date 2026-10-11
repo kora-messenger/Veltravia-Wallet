@@ -6,6 +6,7 @@
  * "Name your wallet" screen with origin 'imported'.
  */
 
+import PrimaryButton from '../../components/PrimaryButton';
 import React, { useState } from 'react';
 import {
   View,
@@ -15,7 +16,6 @@ import {
   TextInput,
   ScrollView,
   StatusBar,
-  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -77,16 +77,7 @@ export default function ImportWalletScreen({ navigation }: { navigation: any }) 
       </ScrollView>
 
       <View style={{ paddingBottom: insets.bottom + 12, paddingHorizontal: 20 }}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.btn,
-            { backgroundColor: theme.buttonGradient[0], opacity: pressed ? 0.85 : 1 },
-          ]}
-          onPress={handleContinue}
-          disabled={!valid || checking}
-        >
-          {checking ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Continue</Text>}
-        </Pressable>
+        <PrimaryButton label="Continue" onPress={handleContinue} loading={checking} disabled={!valid} />
       </View>
     </View>
   );

@@ -13,6 +13,7 @@
  * The balance-hide toggle is real and already works.
  */
 
+import PrimaryButton from '../components/PrimaryButton';
 import React, { useState } from 'react';
 import {
   View,
@@ -134,18 +135,21 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             <Pressable hitSlop={10} onPress={() => setBannerDismissed(true)}>
               <CloseIcon size={16} color={theme.inkMuted} />
             </Pressable>
-            <Pressable
-              style={[styles.backupBtn, { backgroundColor: theme.buttonGradient[0] }]}
-              onPress={() =>
-                Alert.alert(
-                  'Back up your wallet',
-                  'The secure backup flow (seed phrase reveal and verification) arrives with the Wallet Core integration. Until then, keep your device safe.',
-                  [{ text: 'Got it' }],
-                )
-              }
-            >
-              <Text style={styles.backupBtnText}>Back up</Text>
-            </Pressable>
+            <View style={styles.backupBtnWrap}>
+              <PrimaryButton
+                label="Back up"
+                height={30}
+                fontSize={13}
+                arrow={false}
+                onPress={() =>
+                  Alert.alert(
+                    'Back up your wallet',
+                    'The secure backup flow (seed phrase reveal and verification) arrives with the Wallet Core integration. Until then, keep your device safe.',
+                    [{ text: 'Got it' }],
+                  )
+                }
+              />
+            </View>
           </View>
         )}
 
@@ -303,6 +307,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 9,
   },
+  backupBtnWrap: { width: 84, marginLeft: 4 },
   backupBtnText: { color: '#fff', fontSize: 13, fontFamily: 'Inter-700', fontWeight: '700' },
 
   card: {

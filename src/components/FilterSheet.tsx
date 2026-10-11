@@ -31,6 +31,7 @@
  * toggles/checks; primary pills use the brand gradient.
  */
 
+import PrimaryButton from './PrimaryButton';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Modal,
@@ -46,7 +47,6 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
 import { useTheme } from '../theme/ThemeProvider';
 import { FONT, T, SP, RADIUS, TOUCH } from '../theme/typography';
 import {
@@ -234,16 +234,7 @@ export default function FilterSheet({
               {/* ---------- Show results: 58dp pill, 16dp margins, 32dp from the bottom ---------- */}
               <View style={[fs.fFooter, { paddingBottom: Math.max(insets.bottom, 32) }]}>
                 {dirty ? (
-                  <Pressable onPress={showResults} style={({ pressed }) => [fs.fBtn, { opacity: pressed ? 0.85 : 1 }]}>
-                    <LinearGradient
-                      start={{ x: 0, y: 0.5 }}
-                      end={{ x: 1, y: 0.5 }}
-                      colors={theme.buttonGradient as unknown as [string, string]}
-                      style={fs.gradient}
-                    >
-                      <Text style={fs.primaryText}>Show results</Text>
-                    </LinearGradient>
-                  </Pressable>
+                  <PrimaryButton label="Show results" onPress={showResults} height={52} />
                 ) : (
                   <View style={[fs.fBtn, { backgroundColor: tertiary }]}>
                     <Text style={[T.buttonLarge, { color: theme.inkMuted, opacity: 0.6 }]}>Show results</Text>
@@ -307,16 +298,7 @@ export default function FilterSheet({
 
               {/* ---------- Apply ---------- */}
               <View style={{ paddingTop: SP.sm, marginHorizontal: 4, paddingBottom: Math.max(insets.bottom, 32) }}>
-                <Pressable onPress={applyNetworks} style={({ pressed }) => [fs.fBtn, { opacity: pressed ? 0.85 : 1 }]}>
-                  <LinearGradient
-                    start={{ x: 0, y: 0.5 }}
-                    end={{ x: 1, y: 0.5 }}
-                    colors={theme.buttonGradient as unknown as [string, string]}
-                    style={fs.gradient}
-                  >
-                    <Text style={fs.primaryText}>Apply</Text>
-                  </LinearGradient>
-                </Pressable>
+                <PrimaryButton label="Apply" onPress={applyNetworks} height={52} />
               </View>
             </>
           )}

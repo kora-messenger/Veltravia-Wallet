@@ -13,7 +13,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Pressable,
   FlatList,
   Dimensions,
   NativeSyntheticEvent,
@@ -21,11 +20,11 @@ import {
   Image,
   StatusBar,
   Linking,
-  ActivityIndicator,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
+import PrimaryButton from '../../components/PrimaryButton';
+import SecondaryButton from '../../components/SecondaryButton';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -193,41 +192,17 @@ export default function WelcomeScreen({
       </View>
 
       <View style={styles.ctaWrap}>
-        {/* Create a wallet: full-pill, brand purple-to-blue gradient */}
-        <Pressable
+        {/* Create a wallet: animated 3D slab button (client-approved effect) */}
+        <PrimaryButton
+          label="Create a wallet"
           onPress={() => start('create')}
-          disabled={!!loading}
-          style={({ pressed }) => [styles.primaryBtn, { opacity: pressed ? 0.85 : 1 }]}
-        >
-          <LinearGradient
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            colors={theme.buttonGradient as unknown as [string, string]}
-            style={styles.primaryGradient}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.primaryBtnText}>Create a wallet</Text>
-            )}
-          </LinearGradient>
-        </Pressable>
+          loading={!!loading}
+          height={52}
+          style={{ marginBottom: 12 }}
+        />
 
         {/* I already have a wallet: plain text, no border or fill */}
-        <Pressable
-          onPress={() => start('import')}
-          disabled={!!loading}
-          style={({ pressed }) => [
-            styles.secondaryBtn,
-            { backgroundColor: dark ? 'rgba(108,99,255,0.24)' : 'rgba(108,99,255,0.12)', opacity: pressed ? 0.7 : 1 },
-          ]}
-        >
-          {loading ? (
-            <ActivityIndicator color={theme.ink} />
-          ) : (
-            <Text style={[styles.secondaryBtnText, { color: theme.ink }]}>I already have a wallet</Text>
-          )}
-        </Pressable>
+        <SecondaryButton label="I already have a wallet" onPress={() => start('import')} loading={!!loading} height={52} />
 
         {/* Legal line */}
         <Text style={[styles.legal, { color: theme.inkMuted }]}>

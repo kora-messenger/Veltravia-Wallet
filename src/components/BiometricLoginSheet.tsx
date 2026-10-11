@@ -9,8 +9,9 @@
  * secure account access."
  */
 import React from 'react';
-import { Modal, View, Text, StyleSheet, Pressable } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import { Modal, View, Text, StyleSheet } from 'react-native';
+import PrimaryButton from './PrimaryButton';
+import SecondaryButton from './SecondaryButton';
 import { useTheme } from '../theme/ThemeProvider';
 import { FingerprintArt } from './icons';
 
@@ -25,7 +26,6 @@ export default function BiometricLoginSheet({
   onConfirm: () => void;
 }) {
   const { theme } = useTheme();
-  const dark = theme.mode === 'dark';
   if (!visible) return null;
 
   return (
@@ -42,29 +42,13 @@ export default function BiometricLoginSheet({
           </Text>
 
           <View style={styles.row}>
-            <Pressable
-              onPress={onDeny}
-              style={({ pressed }) => [
-                styles.deny,
-                {
-                  backgroundColor: dark ? 'rgba(108,99,255,0.22)' : 'rgba(108,99,255,0.12)',
-                  opacity: pressed ? 0.75 : 1,
-                },
-              ]}
-            >
-              <Text style={[styles.denyText, { color: theme.ink }]}>Deny</Text>
-            </Pressable>
+            <View style={styles.deny}>
+              <SecondaryButton label="Deny" onPress={onDeny} height={44} />
+            </View>
 
-            <Pressable onPress={onConfirm} disabled={false} style={styles.confirm}>
-              <LinearGradient
-                start={{ x: 0, y: 0.5 }}
-                end={{ x: 1, y: 0.5 }}
-                colors={theme.buttonGradient as unknown as [string, string]}
-                style={styles.confirmGradient}
-              >
-                <Text style={styles.confirmText}>Confirm</Text>
-              </LinearGradient>
-            </Pressable>
+            <View style={styles.confirm}>
+              <PrimaryButton label="Confirm" onPress={onConfirm} height={44} arrow={false} />
+            </View>
           </View>
         </View>
       </View>
@@ -86,9 +70,9 @@ const styles = StyleSheet.create({
   title: { fontSize: 17, fontFamily: 'Inter-700', marginBottom: 8 },
   desc: { fontSize: 13.5, lineHeight: 19, textAlign: 'center', fontFamily: 'Inter-400', marginBottom: 22 },
   row: { flexDirection: 'row', gap: 10, alignSelf: 'stretch' },
-  deny: { flex: 1, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  deny: { flex: 1 },
   denyText: { fontSize: 15, fontFamily: 'Inter-600' },
-  confirm: { flex: 1, height: 48, borderRadius: 14, overflow: 'hidden' },
+  confirm: { flex: 1 },
   confirmGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   confirmText: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter-600' },
 });
