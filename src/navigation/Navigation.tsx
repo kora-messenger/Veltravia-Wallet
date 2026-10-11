@@ -11,7 +11,7 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -28,7 +28,6 @@ import SelectRecoveryMethodScreen from '../screens/SelectRecoveryMethodScreen';
 import NotificationSheet from '../components/NotificationSheet';
 import LockScreen from '../screens/LockScreen';
 import { setPasscode, hasPasscode } from '../core/storage/passcode';
-import { hasWallet } from '../core/storage/secureStorage';
 import { setBiometricUnlockEnabled } from '../core/security/biometrics';
 import { AppState } from 'react-native';
 
@@ -92,12 +91,17 @@ export default function Navigation() {
   // existing wallet); the welcome screen never shows again.
   const [locked, setLocked] = React.useState(true);
   const [booted, setBooted] = React.useState(false);
+  const [walletExists, setWalletExists] = React.useState(false);
 
   React.useEffect(() => {
     let alive = true;
     (async () => {
+      // A passcode is only ever set at the end of onboarding, so it is the
+      // reliable "this device has a wallet" signal. (hasWallet() reads a
+      // biometric-protected item and would pop a prompt just to check.)
       const has = await hasPasscode();
       if (alive) {
+        setWalletExists(has);
         setLocked(has);
         setBooted(true);
       }
@@ -115,7 +119,14 @@ export default function Navigation() {
   React.useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'background') {
-        hasPasscode().then(setLocked).catch(() => {});
+        // Passcode exists => wallet exists. Re-read so the stack restarts
+        // on MainTabs after the unlock, even for a wallet made this session.
+        hasPasscode()
+          .then((has) => {
+            setWalletExists(has);
+            setLocked(has);
+          })
+          .catch(() => {});
       }
     });
     return () => sub.remove();
@@ -123,17 +134,25 @@ export default function Navigation() {
 
   const unlock = React.useCallback(() => {
     setLocked(false);
-    hasWallet().then((exists) => {
-      if (exists) {
-        navigationRef.current?.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
-      }
-    }).catch(() => {});
   }, []);
+
+  // Until we know the state, show a solid screen; while locked, show ONLY
+  // the lock screen. The welcome/app stack is not mounted underneath, so
+  // nothing can bleed through (that was the overlap bug).
+  if (!booted) {
+    return <View style={{ flex: 1, backgroundColor: theme.background }} />;
+  }
+  if (locked) {
+    return <LockScreen onUnlock={unlock} />;
+  }
 
   return (
     <NavigationContainer ref={navigationRef}>
       <React.Fragment>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator
+        initialRouteName={walletExists ? 'MainTabs' : 'Onboarding'}
+        screenOptions={{ headerShown: false }}
+      >
         <Stack.Screen name="Onboarding">
           {({ route }) => (
             <WelcomeScreen
@@ -191,8 +210,6 @@ export default function Navigation() {
         <Stack.Screen name="Activity" component={ActivityScreen} options={{ animation: 'slide_from_right' }} />
       </Stack.Navigator>
       <NotificationSheet visible={notifPrompt} onClose={() => setNotifPrompt(false)} />
-      {!booted && <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.background }]} />}
-      {booted && locked && <LockScreen onUnlock={unlock} />}
       </React.Fragment>
     </NavigationContainer>
   );
