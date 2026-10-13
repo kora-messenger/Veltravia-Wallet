@@ -210,7 +210,7 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
 
       <View style={styles.mark}>
         {/* The actual app icon (same asset as the launcher), rounded like the home screen. */}
-        <Image source={require('../assets/app-icon.png')} style={styles.markImg} />
+        <Image source={require('../assets/veltravia-shield.png')} style={styles.markImg} resizeMode="contain" />
       </View>
 
       <View style={styles.top}>
@@ -263,7 +263,7 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   mark: { alignItems: 'center', paddingTop: 48 },
-  markImg: { width: 88, height: 88, borderRadius: 20 },
+  markImg: { width: 88, height: 88 },
   top: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
   title: { fontFamily: 'Inter-600', fontSize: 18, lineHeight: 24, marginBottom: 28 },
   boxes: { flexDirection: 'row', gap: 10, marginBottom: 28 },
