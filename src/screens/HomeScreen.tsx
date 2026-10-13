@@ -35,10 +35,10 @@ import { useTheme } from '../theme/ThemeProvider';
 import { useWallets } from '../wallets/WalletsProvider';
 import { WalletAvatar } from '../wallets/WalletAvatar';
 import AnimatedBellIcon from '../components/AnimatedBellIcon';
+import AnimatedScanIcon from '../components/AnimatedScanIcon';
 import Sparkline from '../components/Sparkline';
 import DonutChart from '../components/DonutChart';
 import {
-  ScanIcon,
   EyeIcon,
   ChevronRight,
   SendIcon,
@@ -447,7 +447,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               onPress={() => {}}
               style={[styles.scanBtn, { backgroundColor: chipBg }]}
             >
-              <ScanIcon size={22} color={theme.ink} strokeWidth={2.2} />
+              <AnimatedScanIcon size={22} color={theme.ink} strokeWidth={2.2} />
             </Pressable>
           </View>
         </View>
