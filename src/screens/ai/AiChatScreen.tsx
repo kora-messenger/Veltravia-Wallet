@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
   scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' },
   menu: { width: '80%', height: '100%', paddingHorizontal: 20, borderTopRightRadius: 28 },
   menuHead: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 26 },
-  menuBot: { width: 64, height: 64 },
+  menuBot: { width: 48, height: 48 },
   menuTitle: { fontSize: 16, fontFamily: 'Inter-700', fontWeight: '700' },
   menuLabel: { fontSize: 13, fontFamily: 'Inter-600', fontWeight: '600', marginBottom: 10 },
   menuEmpty: { fontSize: 12, marginTop: 4, fontFamily: 'Inter-500', fontWeight: '500' },
