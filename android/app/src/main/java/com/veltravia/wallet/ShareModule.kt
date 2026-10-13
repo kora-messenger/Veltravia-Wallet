@@ -23,8 +23,8 @@ import java.io.File
  *  - PLAIN SQUARE modules with a 4-module quiet zone: this image will be
  *    re-encoded/rescaled by chat apps on its way to the recipient, so we use
  *    the most scan-robust form possible (same reasoning as QRCode.tsx).
- *  - A 4-module Veltravia tile is drawn in the centre, with a 1-module WHITE
- *    ring cleared around it first. The ring matters: without it the tile
+ *  - A 4-module coin-coloured disc (the chain's brand colour, like Trust's
+ *    BNB tile) is drawn in the centre, with a 1-module WHITE ring cleared first. The ring matters: without it the tile
  *    fuses with neighbouring dark modules into a bigger blob and decodes drop
  *    to 98% in the OpenCV test; with the ring it is 60/60. Do not remove it.
  */
@@ -34,7 +34,7 @@ class ShareModule(private val reactContext: ReactApplicationContext) :
   override fun getName() = "VeltraviaShare"
 
   @ReactMethod
-    fun shareQrImage(matrix: Array<BooleanArray>, text: String, withLogo: Boolean) {
+    fun shareQrImage(matrix: Array<BooleanArray>, text: String, logoColor: String) {
     val n = matrix.size
     if (n == 0) return
     val quiet = 4
@@ -45,7 +45,9 @@ class ShareModule(private val reactContext: ReactApplicationContext) :
     val canvas = Canvas(bmp)
     canvas.drawColor(android.graphics.Color.WHITE)
     val dark = Paint().apply { color = android.graphics.Color.rgb(0x14, 0x15, 0x2B) }
-    val tile = Paint().apply { color = android.graphics.Color.rgb(0x14, 0x15, 0x2B) }
+    val tile = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+      color = try { android.graphics.Color.parseColor(logoColor) } catch (e: Exception) { android.graphics.Color.rgb(0x6C, 0x63, 0xFF) }
+    }
 
     for (r in 0 until n) {
       for (c in 0 until n) {
@@ -61,7 +63,7 @@ class ShareModule(private val reactContext: ReactApplicationContext) :
       }
     }
 
-    if (withLogo) {
+    run {
       // 4-module rounded tile in the centre, isolated by a white ring (see header note).
       val tileModules = 4
       val clearStart = ((n - tileModules) / 2 - 1 + quiet) * modulePx
@@ -75,9 +77,8 @@ class ShareModule(private val reactContext: ReactApplicationContext) :
       )
       val start = ((n - tileModules) / 2 + quiet) * modulePx
       val len = tileModules * modulePx
-      val corner = len * 0.28f
-      val rTile = android.graphics.RectF(start.toFloat(), start.toFloat(), (start + len).toFloat(), (start + len).toFloat())
-      canvas.drawRoundRect(rTile, corner, corner, tile)
+      // Coin-coloured disc (same as the on-screen QR centre logo).
+      canvas.drawCircle(start + len / 2f, start + len / 2f, len / 2f, tile)
     }
 
     val file = File(reactContext.cacheDir, "share/veltravia_receive_qr.png")

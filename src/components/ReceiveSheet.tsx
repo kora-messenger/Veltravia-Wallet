@@ -35,7 +35,7 @@ import {
   FlatList,
   useWindowDimensions,
 } from 'react-native';
-import Svg, { Rect as SvgRect, Path as SvgPath } from 'react-native-svg';
+import Svg, { Rect as SvgRect, Path as SvgPath, Circle as SvgCircle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
 import { SkeletonBlock } from './Skeleton';
@@ -47,8 +47,9 @@ import { encodeQr } from '../core/qr';
 import { shareQrImage } from '../core/shareQr';
 import { showToast } from './Toast';
 import { RECEIVE_NETWORKS, ReceiveNetwork, getReceiveAddress } from '../core/receive';
+import { coinColor } from '../core/coinColors';
 
-type View_ = 'receive' | 'network' | 'binance';
+type View_ = 'receive' | 'network' | 'binance' | 'share';
 
 const TOP_GAP = 24; // dp from screen top to sheet top (Trust: ~6%)
 const DISMISS_DISTANCE = 120;
@@ -141,13 +142,15 @@ export default function ReceiveSheet({
     showToast(ok ? 'Address copied' : "Couldn't copy the address", { kind: ok ? 'success' : 'error' });
   };
 
-  const onShare = async () => {
+  const shareText = address ? `My ${network.name} address to receive ${network.symbol}:\n${address}` : '';
+
+  const openChooser = async () => {
     if (!address) return;
-    const text = `My ${network.name} address to receive ${network.symbol}:\n${address}`;
+    const text = shareText;
     // Android: the share sheet gets the QR as a PNG plus the address text.
     // iOS / module missing: falls back to plain text (image share needs the
     // native module; add it in the iOS phase).
-    const shared = shareQrImage(encodeQr(address), text);
+    const shared = shareQrImage(encodeQr(address), text, network.symbol);
     if (!shared) {
       try {
         await Share.share({ message: text });
@@ -162,7 +165,8 @@ export default function ReceiveSheet({
     setView('receive');
   };
 
-  const headerTitle = view === 'receive' ? 'Receive' : view === 'network' ? 'Select network' : 'Deposit from Binance';
+  const headerTitle =
+    view === 'receive' ? 'Receive' : view === 'network' ? 'Select network' : view === 'share' ? 'Share Via' : 'Deposit from Binance';
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={dismiss} statusBarTranslucent>
@@ -180,17 +184,24 @@ export default function ReceiveSheet({
         >
           {/* ---------- Header: X / back + centred title ---------- */}
           <View style={styles.header}>
-            <Pressable
-              hitSlop={10}
-              onPress={view === 'receive' ? dismiss : goBack}
-              style={[styles.circle, { backgroundColor: circleBg }]}
-            >
-              {view === 'receive' ? (
-                <CloseIcon size={18} color={theme.ink} />
-              ) : (
-                <BackIcon size={20} color={theme.ink} />
-              )}
-            </Pressable>
+            {view === 'share' ? null : (
+              <Pressable
+                hitSlop={10}
+                onPress={view === 'receive' ? dismiss : goBack}
+                style={[styles.circle, { backgroundColor: circleBg }]}
+              >
+                {view === 'receive' ? (
+                  <CloseIcon size={18} color={theme.ink} />
+                ) : (
+                  <BackIcon size={20} color={theme.ink} />
+                )}
+              </Pressable>
+            )}
+            {view === 'share' ? (
+              <Pressable hitSlop={12} onPress={goBack} style={styles.shareClose}>
+                <CloseIcon size={22} color={theme.inkMuted} />
+              </Pressable>
+            ) : null}
             <View style={styles.titleWrap} pointerEvents="none">
               <Text style={[styles.title, { color: theme.ink }]}>{headerTitle}</Text>
             </View>
@@ -205,7 +216,7 @@ export default function ReceiveSheet({
               tile={tile}
               onPickNetwork={() => setView('network')}
               onCopy={onCopy}
-              onShare={onShare}
+              onShare={() => setView('share')}
               onBinance={() => setView('binance')}
             />
           )}
@@ -224,6 +235,18 @@ export default function ReceiveSheet({
               }}
             />
           )}
+
+          {view === 'share' && address ? (
+            <ShareVia
+              address={address}
+              network={network}
+              winW={winW}
+              bottomInset={insets.bottom}
+              tile={tile}
+              onCopy={onCopy}
+              onShareImage={openChooser}
+            />
+          ) : null}
 
           {view === 'binance' && <BinanceDeposit query={query} setQuery={setQuery} tile={tile} />}
         </Animated.View>
@@ -365,6 +388,75 @@ function ReceiveBody({
 }
 
 /* ------------------------------------------------------------------ */
+/* Share Via: Trust's in-app share sheet. Measured from their screenshot: */
+/* QR 201dp centred on plain white (no card), divider, address row with    */
+/* copy icon, divider, then the share targets.                             */
+/* ------------------------------------------------------------------ */
+
+function ShareVia({
+  address,
+  network,
+  winW,
+  bottomInset,
+  tile,
+  onCopy,
+  onShareImage,
+}: {
+  address: string;
+  network: ReceiveNetwork;
+  winW: number;
+  bottomInset: number;
+  tile: string;
+  onCopy: () => void;
+  onShareImage: () => void;
+}) {
+  const { theme } = useTheme();
+  const divider = theme.mode === 'dark' ? 'rgba(255,255,255,0.10)' : '#E8E8EC';
+  const qrSize = Math.min(202, winW - 64);
+  const short = address.length > 24 ? `${address.slice(0, 22)}...` : address;
+
+  return (
+    <View style={styles.flex}>
+      <View style={[styles.shareQrWrap, { borderBottomColor: divider }]}>
+        <QrCode
+          value={address}
+          size={qrSize}
+          logo={
+            <>
+              <SvgRect x="-6" y="-6" width="112" height="112" rx="26" fill="#FFFFFF" />
+              <SvgCircle cx="50" cy="50" r="50" fill={coinColor(network.symbol)} />
+            </>
+          }
+        />
+      </View>
+
+      <Pressable onPress={onCopy} style={[styles.shareAddrRow, { borderBottomColor: divider }]}>
+        <View style={styles.flex}>
+          <Text style={[styles.shareAddrTitle, { color: theme.ink }]}>
+            My {network.name} address to receive:
+          </Text>
+          <Text style={[styles.shareAddrValue, { color: theme.ink }]} numberOfLines={1}>
+            {short}
+          </Text>
+        </View>
+        <CopyIcon size={22} color={theme.inkMuted} />
+      </Pressable>
+
+      <View style={[styles.shareActions, { paddingBottom: Math.max(bottomInset, 12) + 8 }]}>
+        <Pressable onPress={onShareImage} style={[styles.shareTarget, { backgroundColor: tile }]}>
+          <ShareIcon size={22} color={theme.ink} />
+          <Text style={[styles.shareTargetText, { color: theme.ink }]}>Share QR code and address</Text>
+        </Pressable>
+        <Pressable onPress={onCopy} style={[styles.shareTarget, { backgroundColor: tile }]}>
+          <CopyIcon size={22} color={theme.ink} />
+          <Text style={[styles.shareTargetText, { color: theme.ink }]}>Copy address</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Select network                                                      */
 /* ------------------------------------------------------------------ */
 
@@ -480,6 +572,14 @@ const styles = StyleSheet.create({
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(2,6,16,0.5)' },
   sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, borderTopLeftRadius: 40, borderTopRightRadius: 40, overflow: 'hidden' },
 
+  shareClose: { position: 'absolute', right: 16, top: 0, bottom: 0, justifyContent: 'center', zIndex: 2 },
+  shareQrWrap: { alignItems: 'center', paddingTop: 12, paddingBottom: 26, borderBottomWidth: StyleSheet.hairlineWidth },
+  shareAddrRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 24, borderBottomWidth: StyleSheet.hairlineWidth, gap: 12 },
+  shareAddrTitle: { fontSize: 15, lineHeight: 21, fontFamily: 'Inter-700', fontWeight: '700' },
+  shareAddrValue: { fontSize: 15, lineHeight: 21, fontFamily: 'Inter-700', fontWeight: '700', marginTop: 1 },
+  shareActions: { paddingHorizontal: 16, paddingTop: 20, gap: 12 },
+  shareTarget: { height: 56, borderRadius: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  shareTargetText: { fontSize: 15, fontFamily: 'Inter-700', fontWeight: '700' },
   header: { height: 64, justifyContent: 'center', paddingHorizontal: 16, marginTop: 8 },
   circle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
   titleWrap: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
