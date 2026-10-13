@@ -50,17 +50,27 @@ export async function promptBiometrics(
   title: string,
   subtitle?: string,
 ): Promise<boolean> {
+  // Full Trust-style prompt branding: title/subtitle we control, and a
+  // "Use passcode" negative button so the OS sheet never falls back to
+  // the vendor default ("Authentication required" / "PIN" on One UI).
+  const prompt = {
+    title,
+    subtitle,
+    description: subtitle,
+    cancel: 'Use passcode',
+  };
   try {
     await Keychain.setGenericPassword('veltravia', 'bio-marker', {
       service: `${SERVICE}.${KEY_BIOMarker}`,
       accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_CURRENT_SET,
       accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-    });
+      authenticationPrompt: prompt,
+    } as any);
     const res = await Keychain.getGenericPassword({
       service: `${SERVICE}.${KEY_BIOMarker}`,
       accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_CURRENT_SET,
       accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-      authenticationPrompt: { title, subtitle, description: subtitle },
+      authenticationPrompt: prompt,
     } as any);
     return res !== false;
   } catch {
