@@ -8,16 +8,16 @@
  */
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import Sparkline from '../components/Sparkline';
 import CoinLogo from '../components/CoinLogo';
-import { SearchIcon } from '../components/icons';
+import { CloseIcon, SearchIcon } from '../components/icons';
 import { useTheme } from '../theme/ThemeProvider';
-import { GLOBAL_STATS, MARKET_COINS, MarketCoin } from '../services/marketData';
+import { MARKET_COINS } from '../services/marketData';
 
-const MOVER_W = 188;
+const MOVER_W = 132;
 
 const fmtUsd = (v: number) =>
   '$' + (v >= 1
@@ -34,8 +34,12 @@ type Chip = 'all' | 'gainers' | 'losers' | 'favorites';
 
 export default function MarketsScreen() {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const dark = theme.mode === 'dark';
+  const circleBg = dark ? 'rgba(255,255,255,0.10)' : 'rgba(60,64,90,0.08)';
   const [chip, setChip] = useState<Chip>('all');
   const [query, setQuery] = useState('');
+  const [searching, setSearching] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set(['bitcoin', 'ethereum']));
 
   const movers = useMemo(
@@ -81,35 +85,83 @@ export default function MarketsScreen() {
   };
 
   return (
-    <SafeAreaView edges={['left', 'right']} style={[styles.root, { backgroundColor: theme.background }]}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.title, { color: theme.ink }]}>Markets</Text>
-
-        {/* inline search */}
-        <View style={[styles.search, { backgroundColor: theme.surfaceAlt }]}>
-          <SearchIcon size={18} color={theme.inkMuted} />
-          <TextInput
-            style={[styles.searchInput, { color: theme.ink }]}
-            placeholder="Search coin or symbol"
-            placeholderTextColor={theme.inkMuted}
-            value={query}
-            onChangeText={setQuery}
-          />
-        </View>
-
-        {/* global stats strip */}
-        <View style={styles.statsRow}>
-          {[
-            { label: 'Market Cap', value: fmtCompact(GLOBAL_STATS.totalMarketCap) },
-            { label: '24h Volume', value: fmtCompact(GLOBAL_STATS.volume24h) },
-            { label: 'BTC Dominance', value: GLOBAL_STATS.btcDominance.toFixed(1) + '%' },
-          ].map((s) => (
-            <View key={s.label} style={[styles.statCard, { backgroundColor: theme.surfaceAlt }]}>
-              <Text style={[styles.statLabel, { color: theme.inkMuted }]}>{s.label}</Text>
-              <Text style={[styles.statValue, { color: theme.ink }]}>{s.value}</Text>
+    <View style={[styles.root, { backgroundColor: theme.background }]}>
+      {/* pinned header: centered title, search circle on the right */}
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        {searching ? (
+          <View style={[styles.searchBar, { backgroundColor: circleBg }]}>
+            <SearchIcon size={18} color={theme.inkMuted} />
+            <TextInput
+              autoFocus
+              style={[styles.searchInput, { color: theme.ink }]}
+              placeholder="Search coin or symbol"
+              placeholderTextColor={theme.inkMuted}
+              value={query}
+              onChangeText={setQuery}
+              returnKeyType="search"
+            />
+            <Pressable
+              hitSlop={10}
+              onPress={() => { setQuery(''); setSearching(false); }}
+              accessibilityLabel="Close search"
+            >
+              <CloseIcon size={20} color={theme.inkMuted} />
+            </Pressable>
+          </View>
+        ) : (
+          <>
+            <View style={[styles.titleWrap, { top: insets.top + 8 }]} pointerEvents="none">
+              <Text style={[styles.title, { color: theme.ink }]}>Markets</Text>
             </View>
-          ))}
-        </View>
+            <Pressable
+              hitSlop={10}
+              onPress={() => setSearching(true)}
+              accessibilityLabel="Search coins"
+              style={[styles.headerBtn, { backgroundColor: circleBg }]}
+            >
+              <SearchIcon size={22} color={theme.ink} />
+            </Pressable>
+          </>
+        )}
+      </View>
+
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        {/* top movers carousel */}
+        <Text style={[styles.section, { color: theme.ink }]}>Top Movers</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.moversRow}>
+          {movers.map((c) => {
+            const up = c.change24h >= 0;
+            const tone = up ? theme.positive : theme.negative;
+            return (
+              <View key={c.id} style={[styles.moverCard, { backgroundColor: theme.surfaceAlt }]}>
+                <View style={styles.moverHead}>
+                  <Text numberOfLines={1} style={[styles.moverName, { color: theme.inkMuted }]}>
+                    {c.name}
+                  </Text>
+                  <CoinLogo symbol={c.symbol} color={c.color} size={24} />
+                </View>
+                <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.moverPrice, { color: theme.ink }]}>
+                  {fmtUsd(c.priceUsd)}
+                </Text>
+                <Text style={[styles.moverChange, { color: tone }]}>
+                  {up ? '+' : ''}{c.change24h.toFixed(2)}%
+                </Text>
+                <View style={styles.moverChart}>
+                  <Sparkline
+                    data={c.history}
+                    width={MOVER_W - 24}
+                    height={40}
+                    color={tone}
+                    strokeWidth={2}
+                    fill="flat"
+                    sharp
+                    id={'mv-' + c.id}
+                  />
+                </View>
+              </View>
+            );
+          })}
+        </ScrollView>
 
         {/* category chips */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
@@ -129,43 +181,6 @@ export default function MarketsScreen() {
               >
                 <Text style={[styles.chipLabel, { color: active ? '#FFFFFF' : theme.inkMuted }]}>{c.label}</Text>
               </Pressable>
-            );
-          })}
-        </ScrollView>
-
-        {/* top movers carousel */}
-        <Text style={[styles.section, { color: theme.ink }]}>Top Movers</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.moversRow}>
-          {movers.map((c) => {
-            const up = c.change24h >= 0;
-            const tone = up ? theme.positive : theme.negative;
-            return (
-              <View key={c.id} style={[styles.moverCard, { backgroundColor: theme.surfaceAlt }]}>
-                <View style={styles.moverHead}>
-                  <Text numberOfLines={1} style={[styles.moverName, { color: theme.inkMuted }]}>
-                    {c.name}
-                  </Text>
-                  <CoinLogo symbol={c.symbol} color={c.color} size={32} />
-                </View>
-                <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.moverPrice, { color: theme.ink }]}>
-                  {fmtUsd(c.priceUsd)}
-                </Text>
-                <Text style={[styles.moverChange, { color: tone }]}>
-                  {up ? '+' : ''}{c.change24h.toFixed(2)}%
-                </Text>
-                <View style={styles.moverChart}>
-                  <Sparkline
-                    data={c.history}
-                    width={MOVER_W - 36}
-                    height={72}
-                    color={tone}
-                    strokeWidth={2}
-                    fill="flat"
-                    sharp
-                    id={'mv-' + c.id}
-                  />
-                </View>
-              </View>
             );
           })}
         </ScrollView>
@@ -211,34 +226,30 @@ export default function MarketsScreen() {
           </Text>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  content: { padding: 20, paddingBottom: 130 },
-  title: { fontSize: 28, fontFamily: 'Inter-700', fontWeight: '800', marginBottom: 14, lineHeight: 39 },
-  search: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    borderRadius: 14, paddingHorizontal: 14, height: 44, marginBottom: 14,
-  },
+  content: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 130 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 16, paddingBottom: 10, minHeight: 36 },
+  headerBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  titleWrap: { position: 'absolute', left: 0, right: 0, height: 36, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 16, fontFamily: 'Inter-700', fontWeight: '700', letterSpacing: -0.3 },
+  searchBar: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 18, paddingHorizontal: 12, height: 36 },
   searchInput: { flex: 1, fontSize: 15, fontFamily: 'Inter-500', fontWeight: '500', padding: 0 },
-  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  statCard: { flex: 1, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12, alignItems: 'center' },
-  statLabel: { fontSize: 11, fontFamily: 'Inter-600', fontWeight: '600' },
-  statValue: { fontSize: 14, fontFamily: 'Inter-700', fontWeight: '700', marginTop: 3 },
   chipsRow: { flexDirection: 'row', gap: 8, paddingBottom: 16 },
   chipBtn: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 8 },
   chipLabel: { fontSize: 13, fontFamily: 'Inter-600', fontWeight: '600' },
   section: { fontSize: 18, fontFamily: 'Inter-700', fontWeight: '700', marginBottom: 12 },
-  moversRow: { flexDirection: 'row', gap: 12, paddingBottom: 20 },
-  moverCard: { borderRadius: 24, paddingTop: 18, paddingHorizontal: 18, paddingBottom: 0, width: MOVER_W, overflow: 'hidden' },
+  moversRow: { flexDirection: 'row', gap: 10, paddingBottom: 18 },
+  moverCard: { borderRadius: 16, paddingTop: 12, paddingHorizontal: 12, paddingBottom: 0, width: MOVER_W, overflow: 'hidden' },
   moverHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  moverName: { fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600', flex: 1, marginRight: 8 },
-  moverPrice: { fontSize: 24, fontFamily: 'Inter-700', fontWeight: '700', marginTop: 14 },
-  moverChange: { fontSize: 16, fontFamily: 'Inter-500', fontWeight: '500', marginTop: 6 },
-  moverChart: { marginTop: 14 },
+  moverName: { fontSize: 12, fontFamily: 'Inter-600', fontWeight: '600', flex: 1, marginRight: 8 },
+  moverPrice: { fontSize: 17, fontFamily: 'Inter-700', fontWeight: '700', marginTop: 8 },
+  moverChange: { fontSize: 12, fontFamily: 'Inter-600', fontWeight: '600', marginTop: 2 },
+  moverChart: { marginTop: 6 },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth,
