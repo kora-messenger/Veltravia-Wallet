@@ -13,8 +13,8 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, ScrollView, StyleSheet, KeyboardAvoidingView,
-  Platform, StatusBar, Animated, Easing, Modal, Image,
+  View, Text, TextInput, Pressable, ScrollView, StyleSheet,
+  Platform, StatusBar, Animated, Easing, Modal, Image, Keyboard,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -132,6 +132,16 @@ export default function AiChatScreen() {
   const scrollRef = useRef<{ scrollToEnd: (o?: { animated?: boolean }) => void } | null>(null);
   const [draft, setDraft] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  // Edge-to-edge Android ignores adjustResize, so follow the keyboard ourselves.
+  const [kbHeight, setKbHeight] = useState(0);
+  useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const a = Keyboard.addListener(showEvt, (e) => setKbHeight(e.endCoordinates?.height ?? 0));
+    const b = Keyboard.addListener(hideEvt, () => setKbHeight(0));
+    return () => { a.remove(); b.remove(); };
+  }, []);
+  const kbOpen = kbHeight > 0;
   const [recents, setRecents] = useState<SavedChat[]>(RECENTS);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pendingApproval, setPendingApproval] = useState<{ messageId: string; proposalId: string } | null>(null);
@@ -179,7 +189,7 @@ export default function AiChatScreen() {
   useEffect(() => {
     const t = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 60);
     return () => clearTimeout(t);
-  }, [messages, thinking]);
+  }, [messages, thinking, kbHeight]);
 
   const submit = useCallback(() => {
     if (busy) return;
@@ -333,7 +343,7 @@ export default function AiChatScreen() {
   );
 
   return (
-    <KeyboardAvoidingView style={[styles.root, { backgroundColor: pageBg }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <View style={[styles.root, { backgroundColor: pageBg, paddingBottom: kbHeight > 0 ? kbHeight + insets.bottom : 0 }]}>
       <StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />
 
       {/* header */}
@@ -376,7 +386,7 @@ export default function AiChatScreen() {
         )}
       </ScrollView>
 
-      {!started && mode === 'fresh' && (
+      {!started && !kbOpen && mode === 'fresh' && (
         <View style={styles.topics}>
           {FRESH_SUGGESTIONS.map((t) => (
             <Pressable
@@ -394,7 +404,7 @@ export default function AiChatScreen() {
         </View>
       )}
 
-      {!started && mode === 'support' && (
+      {!started && !kbOpen && mode === 'support' && (
         <View style={styles.topics}>
           {TOPICS.map((t) => (
             <Pressable
@@ -410,7 +420,7 @@ export default function AiChatScreen() {
       )}
 
       {/* input */}
-      <View style={[styles.inputWrap, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+      <View style={[styles.inputWrap, { paddingBottom: kbOpen ? 10 : Math.max(insets.bottom, 12) }]}>
         <View style={[styles.input, { borderColor: dark ? 'rgba(255,255,255,0.14)' : '#E3E3E8', backgroundColor: dark ? 'rgba(255,255,255,0.04)' : '#FFFFFF' }]}>
           <TextInput
             value={draft}
@@ -494,7 +504,7 @@ export default function AiChatScreen() {
           if (act && act.kind === 'transfer_approval') await runApproval(pf.messageId, act);
         }}
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
