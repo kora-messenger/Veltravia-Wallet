@@ -1,7 +1,7 @@
 /**
  * Veltravia Wallet — animated QR scan icon.
  *
- * The scan line sweeps down and up inside the corner frame, pauses,
+ * The scan line sweeps down and up INSIDE the corner frame, pauses,
  * then sweeps again — the motion of a live QR scanner.
  * Corners are the standard ScanIcon outline; only the line moves.
  */
@@ -44,12 +44,17 @@ export default function AnimatedScanIcon({
     return () => loop.stop();
   }, [sweep]);
 
-  // line travels between viewBox y=7.5 and y=16.5 (inside the corner marks)
-  const minY = 7.5 * scale - strokeWidth / 2;
-  const maxY = 16.5 * scale - strokeWidth / 2;
+  // The bar is anchored with `top` at the START of its travel and only
+  // translated by the distance travelled. (Before, the wrapper centred it AND
+  // an absolute y was added on top, so it overshot out of the box.)
+  // The line is a stroke centred on its y, so it travels viewBox y 8 -> 16,
+  // strictly between the top and bottom corner marks (4..8 and 16..20).
+  const half = strokeWidth / 2;
+  const startTop = 8 * scale - half;
+  const travel = 8 * scale;
 
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{ width: size, height: size }}>
       <Svg width={size} height={size} viewBox="0 0 24 24">
         <Path d="M4 8V6a2 2 0 012-2h2" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" fill="none" />
         <Path d="M16 4h2a2 2 0 012 2v2" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" fill="none" />
@@ -59,16 +64,17 @@ export default function AnimatedScanIcon({
       <Animated.View
         style={{
           position: 'absolute',
-          left: 4 * scale,
-          right: 4 * scale,
+          top: startTop,
+          left: 6 * scale,
+          right: 6 * scale,
           height: strokeWidth,
-          borderRadius: strokeWidth / 2,
+          borderRadius: half,
           backgroundColor: color,
           transform: [
             {
               translateY: sweep.interpolate({
                 inputRange: [0, 1],
-                outputRange: [minY, maxY],
+                outputRange: [0, travel],
               }),
             },
           ],
