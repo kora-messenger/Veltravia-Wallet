@@ -1,10 +1,10 @@
 /**
  * Veltravia Wallet — animated wrapper for bottom bar icons.
  *
- * Any tab icon wrapped here pulses on tap (immediate pop + settle) and
- * keeps a slow idle pulse, matching the Home/bell/scan animation rhythm.
+ * Icons sit completely still until tapped; the tapped icon pops and
+ * settles. No idle animation on any tab.
  */
-import React, { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import { Animated, Easing, ViewStyle } from 'react-native';
 
 export type TabIconHandle = { pulse: () => void };
@@ -14,45 +14,28 @@ const AnimatedTabIcon = forwardRef<TabIconHandle, {
   style?: ViewStyle;
 }>(({ children, style }, ref) => {
   const scaleV = useRef(new Animated.Value(0)).current;
-  const loopRef = useRef<Animated.CompositeAnimation | null>(null);
-
-  const steps = (downMs: number, upMs: number) => [
-    Animated.timing(scaleV, {
-      toValue: 1,
-      duration: downMs,
-      easing: Easing.out(Easing.quad),
-      useNativeDriver: true,
-    }),
-    Animated.timing(scaleV, {
-      toValue: 0,
-      duration: upMs,
-      easing: Easing.out(Easing.quad),
-      useNativeDriver: true,
-    }),
-  ];
-
-  const startLoop = () => {
-    loopRef.current?.stop();
-    loopRef.current = Animated.loop(
-      Animated.sequence([Animated.delay(2600), ...(steps as any)])
-    );
-    loopRef.current.start();
-  };
 
   useImperativeHandle(ref, () => ({
     pulse: () => {
-      loopRef.current?.stop();
-      Animated.sequence(steps(130, 400)).start(({ finished }) => {
-        if (finished) startLoop();
+      // interrupt an in-flight pulse so rapid taps always restart cleanly
+      scaleV.stopAnimation(() => {
+        Animated.sequence([
+          Animated.timing(scaleV, {
+            toValue: 1,
+            duration: 130,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleV, {
+            toValue: 0,
+            duration: 400,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }),
+        ]).start();
       });
     },
   }));
-
-  useEffect(() => {
-    startLoop();
-    return () => loopRef.current?.stop();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const scale = scaleV.interpolate({
     inputRange: [0, 1],
