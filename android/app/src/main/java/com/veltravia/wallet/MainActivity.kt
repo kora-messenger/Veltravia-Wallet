@@ -2,6 +2,7 @@ package com.veltravia.wallet
 
 import android.content.res.Configuration
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.ViewCompat
@@ -14,10 +15,28 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate
 
 class MainActivity : ReactActivity() {
 
+  companion object {
+    private const val SPLASH_MIN_MS = 2000L
+    private const val SPLASH_FADE_MS = 400L
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     // Must run before super.onCreate: swaps Theme.App.Starting for AppTheme
-    // once the first frame is drawn, leaving a clean white handoff.
-    installSplashScreen()
+    // once the first frame is drawn. Trust-parity: hold the launch splash a
+    // moment so the handoff is calm, then fade it out (the app's own
+    // biometric splash behind it shows the same icon in the same place, so
+    // the crossfade looks like one continuous splash).
+    val splash = installSplashScreen()
+    val splashStart = SystemClock.uptimeMillis()
+    splash.setOnExitAnimationListener { provider ->
+      // Fires when the app's first frame is ready; hold the remaining time
+      // of the 2s, then fade out over 400ms.
+      val remain = (SPLASH_MIN_MS - (SystemClock.uptimeMillis() - splashStart)).coerceAtLeast(0L)
+      val v = provider.view
+      v.postDelayed({
+        v.animate().alpha(0f).setDuration(SPLASH_FADE_MS).withEndAction { provider.remove() }.start()
+      }, remain)
+    }
     // null (not savedInstanceState): react-native-screens can't restore fragments.
     super.onCreate(null)
 

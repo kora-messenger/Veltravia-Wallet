@@ -24,6 +24,8 @@ import { verifyPasscode } from '../core/storage/passcode';
 import { isBiometricsSupported, isBiometricUnlockEnabled, promptBiometrics, getBiometryType, type BiometryType } from '../core/security/biometrics';
 
 const LEN = 6;
+const jsStartedAt = Date.now(); // set at module load (~process start): cold-start detect
+
 const KEYS: (string | 'finger' | 'del')[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'finger', '0', 'del'];
 const BLUE = '#4A90D9';
 const RED = '#E5484D';
@@ -152,10 +154,13 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
   }, [bioOk, lockLeft, unlock]);
 
 
-  // Auto-present once per mount when biometric unlock is on.
+  // Auto-present once per mount when biometric unlock is on. On a cold
+  // start the native launch splash is still held/fading behind us, so wait
+  // for it to be gone; on later mounts (background returns) it's fast.
   useEffect(() => {
     if (!bioOk) return;
-    const t = setTimeout(() => presentBio(), 400);
+    const coldStart = Date.now() - jsStartedAt < 2500;
+    const t = setTimeout(() => presentBio(), coldStart ? 2600 : 400);
     return () => clearTimeout(t);
   }, [bioOk]);
 
@@ -198,7 +203,8 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
     : 'Enter your passcode to unlock Veltravia.';
 
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: theme.background }]}>
+    <View style={[styles.root, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={{ flex: 1 }}>
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
 
       <View style={styles.top}>
@@ -243,8 +249,9 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
           </Pressable>
         ))}
       </View>
-      {splash && <BiometricSplash />}
     </SafeAreaView>
+    {splash && <BiometricSplash />}
+    </View>
   );
 }
 
