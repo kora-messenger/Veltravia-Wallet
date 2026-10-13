@@ -31,7 +31,9 @@ import { useBuyQuote } from './useBuyQuote';
 import { PROVIDERS, Provider } from './providers';
 import { PER_USD } from './useRates';
 
-/** Trust's ceiling: 360,000 USD (shown as "Max amount is 360,000 USD"). */
+/** Trust's buy ceiling: 360,000 USD (verified from their app + recording). The APK does NOT
+ * hardcode per-country limits — it shows "Max amount is {amount} {currency}" using the amount
+ * the provider quote returns. We mirror that: the USD cap converted per fiat via PER_USD. */
 const MAX_USD = 360000;
 import { ProviderMark } from './ProviderMark';
 import PayWithSheet from './PayWithSheet';
@@ -158,7 +160,7 @@ export default function BuyScreen({ navigation, route }: { navigation: any; rout
 
   const errorText = useMemo(() => {
     if (mode !== 'buy') return null;
-    if (overMax) return `Max amount is ${maxFiat.toLocaleString('en-US')} ${fiat}`;
+    if (overMax) return `Max amount is ${groupDigits(String(maxFiat))} ${fiat}`;
     if (status === 'below_min' && quote?.minFiat) return `Min amount is ${quote.minFiat.toLocaleString('en-US')} ${fiat}`;
     if (status === 'no_provider') return 'No available provider';
     return null;
