@@ -14,7 +14,7 @@
  *   Deposit      : "Deposit from Binance" (back arrow), search + skeleton list.
  *   Tap QR       : copies the address automatically and shows the top
  *                  "Address copied" toast (plus a light haptic).
- *   Share        : the Android share sheet with the address + QR payload.
+ *   Share        : the Android share sheet with the QR IMAGE + address text
  *
  * The sheet is tall (top ~6% down, 40dp corners), animates up, and can be
  * dragged down to dismiss.
@@ -43,6 +43,8 @@ import QrCode from './QrCode';
 import CoinLogo from './CoinLogo';
 import { CloseIcon, BackIcon, ChevronDownIcon, CopyIcon, ShareIcon, AlertCircleIcon, SearchIcon } from './icons';
 import { copyToClipboard } from '../core/clipboard';
+import { encodeQr } from '../core/qr';
+import { shareQrImage } from '../core/shareQr';
 import { showToast } from './Toast';
 import { RECEIVE_NETWORKS, ReceiveNetwork, getReceiveAddress } from '../core/receive';
 
@@ -141,10 +143,17 @@ export default function ReceiveSheet({
 
   const onShare = async () => {
     if (!address) return;
-    try {
-      await Share.share({ message: `My ${network.name} address to receive:\n${address}` });
-    } catch {
-      /* dismissed */
+    const text = `My ${network.name} address to receive ${network.symbol}:\n${address}`;
+    // Android: the share sheet gets the QR as a PNG plus the address text.
+    // iOS / module missing: falls back to plain text (image share needs the
+    // native module; add it in the iOS phase).
+    const shared = shareQrImage(encodeQr(address), text);
+    if (!shared) {
+      try {
+        await Share.share({ message: text });
+      } catch {
+        /* dismissed */
+      }
     }
   };
 
