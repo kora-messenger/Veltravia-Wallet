@@ -184,8 +184,7 @@ export default function PasscodeScreen({
       : 'Re-enter your passcode. Be sure to remember it so you can unlock your wallet.';
 
   return (
-    <View style={[styles.root, { backgroundColor: theme.background }]}>
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={[styles.root, { backgroundColor: theme.background }]}>
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
 
       {!flash && (
@@ -239,9 +238,8 @@ export default function PasscodeScreen({
       <BiometricLoginSheet visible={bioSheet} onDeny={() => finishFromBiometric('denied')} onConfirm={onBioConfirm} />
 
       {/* Same biometric splash as the lock screen: gradient + V, back arrow */}
+      {flash && <BiometricSplash />}
     </SafeAreaView>
-    {flash && <BiometricSplash />}
-    </View>
   );
 }
 
