@@ -28,13 +28,7 @@ import { showToast } from '../../components/Toast';
 import { CURRENCIES } from './currencies';
 import { Flag } from './Flag';
 import { useBuyQuote } from './useBuyQuote';
-import { PROVIDERS, Provider } from './providers';
-import { PER_USD } from './useRates';
-
-/** Trust's buy ceiling: 360,000 USD (verified from their app + recording). The APK does NOT
- * hardcode per-country limits — it shows "Max amount is {amount} {currency}" using the amount
- * the provider quote returns. We mirror that: the USD cap converted per fiat via PER_USD. */
-const MAX_USD = 360000;
+import { PROVIDERS, Provider, QuoteStatus } from './providers';
 import { ProviderMark } from './ProviderMark';
 import PayWithSheet from './PayWithSheet';
 
@@ -144,13 +138,12 @@ export default function BuyScreen({ navigation, route }: { navigation: any; rout
   }, []);
 
   const cur = CURRENCIES.find((c) => c.code === fiat);
-  const amountNum = parseFloat(amount) || 0;
-  const maxFiat = Math.round(MAX_USD * (PER_USD[fiat] ?? 1));
-  // Over the max is instant (client-side): digits + message go red the moment it is crossed,
-  // before any quote is requested.
-  const overMax = mode === 'buy' && amountNum > maxFiat;
   const hasAmount = !!amount && parseFloat(amount) > 0;
-  const status = overMax ? 'over_max' : !hasAmount || quoting ? 'idle' : quote?.status ?? 'idle';
+  // The limit comes from the QUOTE, exactly like Trust: the APK carries no per-country
+  // constants — typing past the ceiling re-quotes and the answer turns the digits red.
+  const status: 'idle' | QuoteStatus = !hasAmount || quoting ? 'idle' : quote?.status ?? 'idle';
+  const overMax = status === 'over_max';
+  const maxFiat = quote?.maxFiat ?? 0;
   const cardLoading = bootLoading || (hasAmount && quoting);
   const provider: Provider = chosen ?? quote?.best ?? PROVIDERS[PROVIDERS.length - 1];
 
@@ -160,8 +153,8 @@ export default function BuyScreen({ navigation, route }: { navigation: any; rout
 
   const errorText = useMemo(() => {
     if (mode !== 'buy') return null;
-    if (overMax) return `Max amount is ${groupDigits(String(maxFiat))} ${fiat}`;
-    if (status === 'below_min' && quote?.minFiat) return `Min amount is ${quote.minFiat.toLocaleString('en-US')} ${fiat}`;
+    if (overMax && maxFiat) return `Max amount is ${groupDigits(String(maxFiat))} ${fiat}`;
+    if (status === 'below_min' && quote?.minFiat) return `Min amount is ${groupDigits(String(quote.minFiat))} ${fiat}`;
     if (status === 'no_provider') return 'No available provider';
     return null;
   }, [mode, status, quote, fiat]);
