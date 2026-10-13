@@ -4,14 +4,17 @@
  * Top → bottom:
  *   header   : V mark + "Veltravia Wallet" · bell · avatar
  *   card     : purple→blue gradient, "Total Balance" + eye toggle,
- *              big USD value, ≈ NGN, white sparkline bottom-right
+ *              big USD value, ≈ NGN, 24h change chip, and a sparkline of the
+ *              TOTAL portfolio value over the last 7 days (all holdings,
+ *              not one coin's price — services/portfolio). Tap → Balance Details.
  *   actions  : Send · Receive · Swap · Buy (individually tinted tiles)
  *   market   : Market Overview, BTC/ETH/BNB/SOL cards with sparklines
  *   portfolio: donut breakdown with the total in the middle + legend
  *   activity : Recent Transactions (received / sent / swapped)
  *   footer   : Wallet Security + Portfolio Insights cards
  *
- * Data is typed mock data until Phase 2 (api.prices() + balances()).
+ * Balance data flows from services/portfolio (holdings × prices, with
+ * transaction deltas). Mock feeds until Phase 2; the combiner is final.
  * The balance-hide toggle is real and already works.
  */
 
@@ -43,6 +46,7 @@ import {
   SwapIcon,
   BuyIcon,
   ArrowUpSmall,
+  ArrowDownSmall,
   ShieldCheckIcon,
   CloseIcon,
   COIN_ICONS,
@@ -55,8 +59,9 @@ import {
   TrendIcon,
 } from '../components/icons';
 
-// -- Typed mock data (replaced by api.prices() + api.balances() in Phase 2)
-const PORTFOLIO_SERIES = [4, 5, 4.6, 6, 5.4, 7, 6.2, 8, 7.4, 9.2, 8.6, 10.8, 10, 12.5];
+// Portfolio value over time comes from the portfolio engine
+// (services/portfolio) — total of ALL holdings, not one coin's price.
+import { portfolioSeries, totalValue, change24h as change24hAll, type PortfolioPoint } from '../services/portfolio';
 
 interface Market {
   symbol: string;
@@ -94,8 +99,6 @@ const MOCK_TXS: Tx[] = [
   { kind: 'swapped', title: 'Swapped BNB → ETH', sub: 'Via PancakeSwap  ·  Yesterday, 12:15', amount: '+0.08 ETH', fiat: '$275.36' },
 ];
 
-const TOTAL_USD = 1248.42;
-const CHANGE_24H = 2.4;
 const NGN_RATE = 1559; // placeholder; Phase 2 reads this from the price API
 
 const fmt = (n: number) =>
@@ -114,7 +117,14 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const { width } = useWindowDimensions();
   const [hidden, setHidden] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
-  const { activeWallet, wallets } = useWallets();
+  const { activeWallet } = useWallets();
+
+  // Total portfolio + live 7D history. Phase 2 replaces the mock inside
+  // the service; these lines do not change.
+  const total = totalValue();
+  const c24 = change24hAll();
+  const series7d = React.useMemo(() => portfolioSeries('7D'), []);
+  const sparkData = series7d.points.map((p: PortfolioPoint) => p.value);
 
   const topInset = 0; // status bar offset is applied natively in MainActivity
   const chipBg = theme.mode === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(60,64,90,0.10)';
@@ -130,7 +140,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         contentContainerStyle={[styles.content, { paddingHorizontal: H_PAD, paddingTop: topInset + 68 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ---------- Balance card ---------- */}
+        {/* ---------- Balance card (opens Balance Details) ---------- */}
+        <Pressable onPress={() => navigation.navigate('BalanceDetails')} style={{ marginBottom: 20 }}>
         <LinearGradient
           colors={[theme.cardGradient[0], theme.cardGradient[1]]}
           start={{ x: 0, y: 0.15 }}
@@ -143,19 +154,26 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <EyeIcon size={16} color="rgba(255,255,255,0.85)" />
             </Pressable>
           </View>
-          <Text style={styles.cardValue}>{hidden ? '$••••••' : `$${fmt(TOTAL_USD)}`}</Text>
+          <Text style={styles.cardValue}>{hidden ? '$••••••' : `$${fmt(total)}`}</Text>
           <Text style={styles.cardSub}>
-            ≈ ₦{hidden ? mask : fmt(TOTAL_USD * NGN_RATE)}
+            ≈ ₦{hidden ? mask : fmt(total * NGN_RATE)}
           </Text>
           <View style={styles.changeChip}>
-            <ArrowUpSmall size={13} color="#7CFFB8" />
-            <Text style={styles.changeChipText}>+{CHANGE_24H}%</Text>
+            {c24 >= 0 ? (
+              <ArrowUpSmall size={13} color="#7CFFB8" />
+            ) : (
+              <ArrowDownSmall size={13} color="#FF9BB3" />
+            )}
+            <Text style={[styles.changeChipText, { color: c24 >= 0 ? '#7CFFB8' : '#FF9BB3' }]}>
+              {c24 >= 0 ? '+' : ''}{c24.toFixed(1)}%
+            </Text>
             <Text style={styles.changeChipSub}>(24h)</Text>
           </View>
           <View style={styles.sparkWrap} pointerEvents="none">
-            <Sparkline data={PORTFOLIO_SERIES} width={cardW * 0.5} height={78} strokeWidth={2.2} id="hero" />
+            <Sparkline data={sparkData} width={cardW * 0.5} height={78} strokeWidth={2.2} id="hero" />
           </View>
         </LinearGradient>
+        </Pressable>
 
         {/* ---------- Backup nudge (Trust-style) ---------- */}
         {!activeWallet.backedUp && !bannerDismissed && (
@@ -285,7 +303,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             trackColor={theme.border}
           >
             <Text style={[styles.donutValue, { color: theme.ink }]}>
-              {hidden ? '$••••' : `$${fmt(TOTAL_USD)}`}
+              {hidden ? '$••••' : `$${fmt(total)}`}
             </Text>
           </DonutChart>
 
@@ -564,7 +582,7 @@ const styles = StyleSheet.create({
     gap: 4,
     marginTop: 8,
   },
-  changeChipText: { color: '#7CFFB8', fontSize: 13, fontFamily: 'Inter-700', fontWeight: '700' },
+  changeChipText: { fontSize: 13, fontFamily: 'Inter-700', fontWeight: '700' },
   changeChipSub: { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontFamily: 'Inter-500', fontWeight: '500' },
 
   marketRow: { gap: 10, paddingRight: 2 },

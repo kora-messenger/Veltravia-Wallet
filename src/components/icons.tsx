@@ -119,6 +119,11 @@ export const ArrowUpSmall = ({ size = 12, color = '#000' }: IconProps) => (
     <Path d="M3 7.5l3-3 3 3" {...stroke(color, 1.8)} />
   </Svg>
 );
+export const ArrowDownSmall = ({ size = 12, color = '#000' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 12 12">
+    <Path d="M3 4.5l3 3 3-3" {...stroke(color, 1.8)} />
+  </Svg>
+);
 export const DashSmall = ({ size = 12, color = '#000' }: IconProps) => (
   <Svg width={size} height={size} viewBox="0 0 12 12">
     <Circle cx="6" cy="6" r="2.4" {...stroke(color, 1.5)} />

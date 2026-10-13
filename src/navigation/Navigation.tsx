@@ -23,6 +23,7 @@ import WalletsScreen from '../screens/wallet/WalletsScreen';
 import NameWalletScreen from '../screens/wallet/NameWalletScreen';
 import ImportWalletScreen from '../screens/wallet/ImportWalletScreen';
 import ManageAccountScreen from '../screens/wallet/ManageAccountScreen';
+import BalanceDetailsScreen from '../screens/wallet/BalanceDetailsScreen';
 import PasscodeScreen from '../screens/onboarding/PasscodeScreen';
 import SelectRecoveryMethodScreen from '../screens/SelectRecoveryMethodScreen';
 import NotificationSheet from '../components/NotificationSheet';
@@ -52,6 +53,7 @@ export type RootStackParamList = {
   SelectRecoveryMethod: undefined;
   ManageAccount: { walletId: string };
   Activity: undefined;
+  BalanceDetails: undefined;
 };
 
 export type MainTabParamList = {
@@ -208,6 +210,7 @@ export default function Navigation() {
         <Stack.Screen name="ImportWallet" component={ImportWalletScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="ManageAccount" component={ManageAccountScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="Activity" component={ActivityScreen} options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="BalanceDetails" component={BalanceDetailsScreen} options={{ animation: 'slide_from_right' }} />
       </Stack.Navigator>
       <NotificationSheet visible={notifPrompt} onClose={() => setNotifPrompt(false)} />
       </React.Fragment>
