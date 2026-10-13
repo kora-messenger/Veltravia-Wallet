@@ -33,6 +33,7 @@ import {
   Share,
   TextInput,
   FlatList,
+  Image,
   useWindowDimensions,
 } from 'react-native';
 import Svg, { Rect as SvgRect, Path as SvgPath, Circle as SvgCircle } from 'react-native-svg';
@@ -44,7 +45,7 @@ import CoinLogo from './CoinLogo';
 import { CloseIcon, BackIcon, ChevronDownIcon, CopyIcon, ShareIcon, AlertCircleIcon, SearchIcon } from './icons';
 import { copyToClipboard } from '../core/clipboard';
 import { encodeQr } from '../core/qr';
-import { shareQrImage } from '../core/shareQr';
+import { getShareTargets, shareQrTo, shareQrImage, ShareTarget } from '../core/shareQr';
 import { showToast } from './Toast';
 import { RECEIVE_NETWORKS, ReceiveNetwork, getReceiveAddress } from '../core/receive';
 import { coinColor } from '../core/coinColors';
@@ -411,6 +412,15 @@ function ShareVia({
   onShareImage: () => void;
 }) {
   const { theme } = useTheme();
+  const [targets, setTargets] = useState<ShareTarget[]>([]);
+  const rowsRef = useRef<FlatList<ShareTarget> | null>(null);
+  useEffect(() => {
+    let alive = true;
+    getShareTargets().then((t) => alive && setTargets(t));
+    return () => {
+      alive = false;
+    };
+  }, []);
   const divider = theme.mode === 'dark' ? 'rgba(255,255,255,0.10)' : '#E8E8EC';
   const qrSize = Math.min(202, winW - 64);
   const short = address.length > 24 ? `${address.slice(0, 22)}...` : address;
@@ -442,16 +452,47 @@ function ShareVia({
         <CopyIcon size={22} color={theme.inkMuted} />
       </Pressable>
 
-      <View style={[styles.shareActions, { paddingBottom: Math.max(bottomInset, 12) + 8 }]}>
-        <Pressable onPress={onShareImage} style={[styles.shareTarget, { backgroundColor: tile }]}>
-          <ShareIcon size={22} color={theme.ink} />
-          <Text style={[styles.shareTargetText, { color: theme.ink }]}>Share QR code and address</Text>
-        </Pressable>
-        <Pressable onPress={onCopy} style={[styles.shareTarget, { backgroundColor: tile }]}>
-          <CopyIcon size={22} color={theme.ink} />
-          <Text style={[styles.shareTargetText, { color: theme.ink }]}>Copy address</Text>
-        </Pressable>
-      </View>
+      {/* Share targets: Trust lists the apps inside the sheet (4 columns,
+          48dp icons, labels beneath, tapping shares DIRECTLY to that app).
+          The system chooser stays available as "More". */}
+      <FlatList
+        ref={rowsRef}
+        style={styles.flex}
+        data={targets}
+        keyExtractor={(t) => t.packageName + t.className}
+        numColumns={4}
+        contentContainerStyle={[styles.shareGrid, { paddingBottom: Math.max(bottomInset, 12) + 8 }]}
+        renderItem={({ item }) => (
+          <Pressable
+            style={styles.shareApp}
+            onPress={() => {
+              const text = `My ${network.name} address to receive ${network.symbol}:\n${address}`;
+              if (!shareQrTo(item, encodeQr(address), text, network.symbol)) {
+                onShareImage();
+              }
+            }}
+          >
+            <Image
+              source={{ uri: `data:image/png;base64,${item.icon}` }}
+              style={styles.shareAppIcon}
+            />
+            <Text style={[styles.shareAppLabel, { color: theme.ink }]} numberOfLines={1}>
+              {item.label}
+            </Text>
+          </Pressable>
+        )}
+        ListFooterComponent={
+          <Pressable style={styles.shareApp} onPress={onShareImage}>
+            <View style={[styles.shareMoreIcon, { backgroundColor: tile }]}>
+              <ShareIcon size={22} color={theme.ink} />
+            </View>
+            <Text style={[styles.shareAppLabel, { color: theme.ink }]} numberOfLines={1}>
+              More
+            </Text>
+          </Pressable>
+        }
+      />
+
     </View>
   );
 }
@@ -577,9 +618,12 @@ const styles = StyleSheet.create({
   shareAddrRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 24, borderBottomWidth: StyleSheet.hairlineWidth, gap: 12 },
   shareAddrTitle: { fontSize: 15, lineHeight: 21, fontFamily: 'Inter-700', fontWeight: '700' },
   shareAddrValue: { fontSize: 15, lineHeight: 21, fontFamily: 'Inter-700', fontWeight: '700', marginTop: 1 },
-  shareActions: { paddingHorizontal: 16, paddingTop: 20, gap: 12 },
-  shareTarget: { height: 56, borderRadius: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  shareTargetText: { fontSize: 15, fontFamily: 'Inter-700', fontWeight: '700' },
+  shareGrid: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 12 },
+  shareApp: { width: '25%', alignItems: 'center', marginBottom: 20 },
+  shareAppIcon: { width: 48, height: 48, borderRadius: 14 },
+  shareMoreIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  shareAppLabel: { fontSize: 11.5, lineHeight: 14, marginTop: 8, fontFamily: 'Inter-600', fontWeight: '600' },
+  headerTitleCentered: { textAlign: 'center', flex: 1 },
   header: { height: 64, justifyContent: 'center', paddingHorizontal: 16, marginTop: 8 },
   circle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
   titleWrap: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },

@@ -19,3 +19,33 @@ export function shareQrImage(matrix: boolean[][], text: string, symbol: string):
     return false;
   }
 }
+
+export interface ShareTarget {
+  packageName: string;
+  className: string;
+  label: string;
+  icon: string; // base64 PNG
+}
+
+/** Installed apps that can receive the QR image. Empty when unsupported. */
+export function getShareTargets(): Promise<ShareTarget[]> {
+  if (!Native?.getShareTargets) return Promise.resolve([]);
+  return new Promise((resolve) => {
+    try {
+      Native.getShareTargets((targets: ShareTarget[]) => resolve(targets ?? []), () => resolve([]));
+    } catch {
+      resolve([]);
+    }
+  });
+}
+
+/** Share the QR image + text directly to one target. False when unsupported. */
+export function shareQrTo(t: ShareTarget, matrix: boolean[][], text: string, symbol: string): boolean {
+  try {
+    if (!Native?.shareQrTo) return false;
+    Native.shareQrTo(t.packageName, t.className, matrix, text, coinColor(symbol));
+    return true;
+  } catch {
+    return false;
+  }
+}
