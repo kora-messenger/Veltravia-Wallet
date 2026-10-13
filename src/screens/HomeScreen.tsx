@@ -218,6 +218,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 style={({ pressed }) => [styles.actionItem, { opacity: pressed ? 0.7 : 1 }]}
                 onPress={() => {
                   if (key === 'receive') setReceiveOpen(true);
+                  if (key === 'buy') navigation.navigate('Buy');
                 }}
               >
                 <View style={[styles.actionTile, { backgroundColor: bg }]}>

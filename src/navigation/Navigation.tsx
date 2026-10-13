@@ -27,6 +27,8 @@ import BalanceDetailsScreen from '../screens/wallet/BalanceDetailsScreen';
 import AiChatScreen from '../screens/ai/AiChatScreen';
 import PasscodeScreen from '../screens/onboarding/PasscodeScreen';
 import SelectRecoveryMethodScreen from '../screens/SelectRecoveryMethodScreen';
+import BuyScreen from '../features/buy/BuyScreen';
+import SelectCurrencyScreen from '../features/buy/SelectCurrencyScreen';
 import NotificationSheet from '../components/NotificationSheet';
 import LockScreen from '../screens/LockScreen';
 import { setPasscode, hasPasscode } from '../core/storage/passcode';
@@ -56,6 +58,8 @@ export type RootStackParamList = {
   Activity: undefined;
   BalanceDetails: undefined;
   AiChat: { mode?: 'support' | 'fresh' } | undefined;
+  Buy: { pickedCurrency?: string } | undefined;
+  SelectCurrency: { selected?: string } | undefined;
 };
 
 export type MainTabParamList = {
@@ -212,6 +216,8 @@ export default function Navigation() {
         <Stack.Screen name="ManageAccount" component={ManageAccountScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="Activity" component={ActivityScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="BalanceDetails" component={BalanceDetailsScreen} options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="Buy" component={BuyScreen} options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="SelectCurrency" component={SelectCurrencyScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="AiChat" component={AiChatScreen} options={{ animation: 'slide_from_bottom' }} />
       </Stack.Navigator>
       <NotificationSheet visible={notifPrompt} onClose={() => setNotifPrompt(false)} />
