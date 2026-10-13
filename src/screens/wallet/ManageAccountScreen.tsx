@@ -33,12 +33,12 @@ import {
 } from '../../components/icons';
 
 const NAME_LIMIT = 24;
-const BIG = 76;   // avatar inside the fixed ring
-const SMALL = 64; // scrolling circles
-const GAP = 20;
-const ITEM = SMALL + GAP; // snap interval
-const RING = BIG + 14;
-const STRIP_H = 104;
+const BIG = 64;   // avatar inside the fixed ring
+const SMALL = 48; // scrolling circles (Trust-sized, ~46dp on the reference device)
+const GAP = 28;
+const ITEM = SMALL + GAP; // snap interval (76dp pitch, matches Trust's ~204px/2.64)
+const RING = BIG + 12;
+const STRIP_H = 92;
 
 export default function ManageAccountScreen({
   navigation,
