@@ -9,10 +9,13 @@
  *   - match: box + dot turn brand blue, then the app unlocks
  *   - wrong: full box incl. dot turns red, shakes + vibrates, clears
  *   - biometric key unlocks with the OS prompt when enabled
+ *   - the OS biometric prompt AUTO-presents when this screen appears and
+ *     again on every return from the background (Trust parity); after a
+ *     cancel it stays down until the fingerprint key re-triggers it
  *   - 5 wrong attempts: 30s lockout, like Trust's fail counter
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, Image, Pressable, StyleSheet, Animated, Easing, StatusBar, Vibration } from 'react-native';
+import { View, Text, Image, Pressable, StyleSheet, Animated, Easing, StatusBar, Vibration, AppState } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
 import { FingerprintIcon, BackspaceIcon } from '../components/icons';
@@ -111,6 +114,48 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
     [attempts, doShake, unlock],
   );
 
+  /* ---- Trust-parity biometric presentation ----
+   * Trust presents the system prompt automatically when the lock screen
+   * shows (cold start / background return) and re-presents on every return
+   * to the foreground. A canceled prompt stays down until the user taps
+   * the fingerprint key again. Never fires while app is backgrounded
+   * (Android refuses prompts from the background) or during a lockout.
+   */
+  const presentBio = useCallback(() => {
+    if (!bioOk || busyRef.current || unlockedRef.current) return;
+    if (lockLeft > 0) return;
+    if (AppState.currentState !== 'active') return;
+    busyRef.current = true;
+    setBusy(true);
+    promptBiometrics('Veltravia Wallet', 'Unlock your wallet')
+      .then((ok) => {
+        if (ok) unlock();
+        else {
+          busyRef.current = false;
+          setBusy(false);
+        }
+      })
+      .catch(() => {
+        busyRef.current = false;
+        setBusy(false);
+      });
+  }, [bioOk, lockLeft, unlock]);
+
+  // Auto-present once per mount when biometric unlock is on.
+  useEffect(() => {
+    if (!bioOk) return;
+    const t = setTimeout(() => presentBio(), 400);
+    return () => clearTimeout(t);
+  }, [bioOk]);
+
+  // Re-present when the app returns to the foreground while still locked.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active') setTimeout(() => presentBio(), 150);
+    });
+    return () => sub.remove();
+  }, [presentBio]);
+
   const press = useCallback(
     (k: string) => {
       if (busyRef.current || lockLeft > 0) return;
@@ -120,21 +165,7 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
         return;
       }
       if (k === 'finger') {
-        if (!bioOk || busyRef.current) return;
-        busyRef.current = true;
-        setBusy(true);
-        promptBiometrics('Veltravia Wallet', 'Unlock your wallet')
-          .then((ok) => {
-            if (ok) unlock();
-            else {
-              busyRef.current = false;
-              setBusy(false);
-            }
-          })
-          .catch(() => {
-            busyRef.current = false;
-            setBusy(false);
-          });
+        presentBio();
         return;
       }
       if (valueRef.current.length >= LEN) return;
@@ -148,7 +179,7 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
         setTimeout(() => complete(next), 120);
       }
     },
-    [bioOk, complete, lockLeft, unlock],
+    [complete, lockLeft, presentBio],
   );
 
   const helper = lockLeft > 0
