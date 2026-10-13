@@ -31,7 +31,7 @@ import NotificationSheet from '../components/NotificationSheet';
 import LockScreen from '../screens/LockScreen';
 import { setPasscode, hasPasscode } from '../core/storage/passcode';
 import { setBiometricUnlockEnabled } from '../core/security/biometrics';
-import { AppState } from 'react-native';
+import { AppState, StyleSheet } from 'react-native';
 
 const navigationRef = React.createRef<NavigationContainerRef<RootStackParamList>>();
 
@@ -146,11 +146,10 @@ export default function Navigation() {
   if (!booted) {
     return <View style={{ flex: 1, backgroundColor: theme.background }} />;
   }
-  if (locked) {
-    return <LockScreen onUnlock={unlock} />;
-  }
-
   return (
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
+    {/* The navigator stays mounted while locked so the screen the user was on
+        (e.g. Wallets) survives unlock; the opaque lock overlay covers it. */}
     <NavigationContainer ref={navigationRef}>
       <React.Fragment>
       <Stack.Navigator
@@ -218,5 +217,11 @@ export default function Navigation() {
       <NotificationSheet visible={notifPrompt} onClose={() => setNotifPrompt(false)} />
       </React.Fragment>
     </NavigationContainer>
+    {locked && (
+      <View style={StyleSheet.absoluteFill}>
+        <LockScreen onUnlock={unlock} />
+      </View>
+    )}
+    </View>
   );
 }
