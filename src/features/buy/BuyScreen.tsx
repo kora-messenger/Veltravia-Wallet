@@ -1,35 +1,41 @@
 /**
- * Buy / Sell (Home > Buy). Layout measured from Trust's recording (411dp):
+ * Buy / Sell (Home > Buy). Layout + states measured from Trust's recordings.
  *
- *   header      back circle 46dp + Buy|Sell pill (x86-325, h~46) at y37
- *   BUY         amount (Title 56 Bold, left) + fiat chip (NGN >) on one row
- *               at y208-283, crypto row (value / grey skeleton bar + ETH >)
- *               under it at y300-347
- *   pay card    y469-537, 68dp, "Pay with / Bank Transfer >"
- *   numpad      4 rows, 68dp pitch, 22dp bold glyphs, backspace bottom-right
- *   Continue    y820-880, 60dp, disabled until a quote exists
- *   SELL        red "You don't have crypto to sell" (y109), BTC + USD chips,
- *               5-stop percentage slider (y478-495), "Buy crypto first"
- *
- * Skeletons (as in the recording): the crypto amount is a grey bar and the
- * Pay-with card is a grey avatar + two bars until each resolves.
+ * Loading (as in the 2nd recording):
+ *  - EVERY keystroke re-quotes. The crypto amount becomes a grey skeleton bar
+ *    AND the Pay-with card becomes a skeleton (avatar + two bars) together,
+ *    the Continue button stays disabled. Both resolve at the same time.
+ *  - Empty amount: quote shows "-" and the card shows the default provider.
+ *  - Outcomes after loading:
+ *      ok          crypto amount (muted) + provider card + blue Continue
+ *      below_min   red digits, red "Min amount is 1,416 NGN" under the
+ *                  header, quote "-", disabled "Correct amount"
+ *      no_provider red "No available provider", quote "-", provider card
+ *                  faded to 40%, disabled "Continue"
+ *  - The amount is RIGHT-aligned against the currency chip and grows left.
+ *  - Tapping the card opens the "Pay with" sheet (providers that qualify).
+ *  - Continue hands off to the provider's checkout in the browser.
  */
-import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, Vibration } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Linking, Pressable, StyleSheet, Text, Vibration, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import { SkeletonBlock } from '../../components/Skeleton';
 import PrimaryButton from '../../components/PrimaryButton';
 import { BackIcon, BackspaceIcon, ChevronRight } from '../../components/icons';
 import CoinLogo from '../../components/CoinLogo';
+import { showToast } from '../../components/Toast';
 import { CURRENCIES } from './currencies';
 import { Flag } from './Flag';
-import { useBuyQuote, usePaymentMethod } from './useRates';
-import { showToast } from '../../components/Toast';
-import Svg, { Path } from 'react-native-svg';
+import { useBuyQuote } from './useBuyQuote';
+import { PROVIDERS, Provider } from './providers';
+import { ProviderMark } from './ProviderMark';
+import PayWithSheet from './PayWithSheet';
 
 type Mode = 'buy' | 'sell';
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'del'];
+const ERROR_RED = '#B23536';
+const DIGIT_RED = '#CF2828';
 
 function groupDigits(raw: string): string {
   if (!raw) return '0';
@@ -55,13 +61,21 @@ export default function BuyScreen({ navigation, route }: { navigation: any; rout
   const [mode, setMode] = useState<Mode>('buy');
   const [amount, setAmount] = useState('');
   const [fiat, setFiat] = useState('USD');
-  const [crypto] = useState('ETH');
+  const crypto = 'ETH';
   const [flagReady, setFlagReady] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
+  const [chosen, setChosen] = useState<Provider | null>(null);
+  // First open: the card loads once before any amount exists.
+  const [bootLoading, setBootLoading] = useState(true);
 
-  const { loading: quoteLoading, cryptoAmount } = useBuyQuote(amount, fiat, crypto);
-  const pay = usePaymentMethod();
+  const { loading: quoting, quote } = useBuyQuote(amount, fiat, crypto);
 
-  // The chip flag loads in after the screen mounts (grey disc -> flag).
+  useEffect(() => {
+    const t = setTimeout(() => setBootLoading(false), 900);
+    return () => clearTimeout(t);
+  }, []);
+
+  // flag on the chip loads after mount / on currency change
   useEffect(() => {
     setFlagReady(false);
     const t = setTimeout(() => setFlagReady(true), 450);
@@ -73,9 +87,15 @@ export default function BuyScreen({ navigation, route }: { navigation: any; rout
     const picked = route?.params?.pickedCurrency as string | undefined;
     if (picked) {
       setFiat(picked);
+      setChosen(null);
       navigation.setParams({ pickedCurrency: undefined });
     }
   }, [route?.params?.pickedCurrency, navigation]);
+
+  // A new quote resets a manual provider choice that no longer qualifies.
+  useEffect(() => {
+    if (chosen && quote && !quote.providers.find((p) => p.id === chosen.id)) setChosen(null);
+  }, [quote, chosen]);
 
   const press = useCallback((k: string) => {
     Vibration.vibrate(6);
@@ -90,12 +110,28 @@ export default function BuyScreen({ navigation, route }: { navigation: any; rout
   }, []);
 
   const cur = CURRENCIES.find((c) => c.code === fiat);
-  const canContinue = mode === 'buy' && !!amount && parseFloat(amount) > 0 && !quoteLoading;
+  const hasAmount = !!amount && parseFloat(amount) > 0;
+  const status = !hasAmount || quoting ? 'idle' : quote?.status ?? 'idle';
+  const cardLoading = bootLoading || (hasAmount && quoting);
+  const provider: Provider = chosen ?? quote?.best ?? PROVIDERS[PROVIDERS.length - 1];
+
   const toggleBg = theme.mode === 'dark' ? 'rgba(255,255,255,0.10)' : '#EFEFF3';
   const activePill = theme.mode === 'dark' ? 'rgba(255,255,255,0.16)' : '#FFFFFF';
   const muted = theme.inkMuted;
 
-  const openCurrency = () => navigation.navigate('SelectCurrency', { selected: fiat });
+  const errorText = useMemo(() => {
+    if (mode !== 'buy') return null;
+    if (status === 'below_min' && quote?.minFiat) return `Min amount is ${quote.minFiat.toLocaleString('en-US')} ${fiat}`;
+    if (status === 'no_provider') return 'No available provider';
+    return null;
+  }, [mode, status, quote, fiat]);
+
+  const canContinue = mode === 'buy' && status === 'ok' && !cardLoading;
+  const ctaLabel = status === 'below_min' ? 'Correct amount' : 'Continue';
+
+  const onContinue = () => {
+    Linking.openURL(provider.url).catch(() => showToast("Couldn't open the checkout. Try again later.", { kind: 'error' }));
+  };
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
@@ -113,24 +149,33 @@ export default function BuyScreen({ navigation, route }: { navigation: any; rout
                 onPress={() => setMode(m)}
                 style={[styles.toggleSeg, on && { backgroundColor: activePill }, on && styles.toggleOn]}
               >
-                <Text style={[styles.toggleText, { color: on ? theme.ink : muted }]}>
-                  {m === 'buy' ? 'Buy' : 'Sell'}
-                </Text>
+                <Text style={[styles.toggleText, { color: on ? theme.ink : muted }]}>{m === 'buy' ? 'Buy' : 'Sell'}</Text>
               </Pressable>
             );
           })}
         </View>
       </View>
 
-      {mode === 'sell' ? <Text style={styles.sellError}>You don't have crypto to sell</Text> : null}
+      {mode === 'sell' ? (
+        <Text style={styles.errorLine}>You don't have crypto to sell</Text>
+      ) : errorText ? (
+        <Text style={styles.errorLine}>{errorText}</Text>
+      ) : (
+        <View style={styles.errorSpacer} />
+      )}
 
       {/* amount area */}
-      <View style={styles.amountArea}>
+      <View style={[styles.amountArea, errorText || mode === 'sell' ? styles.amountAreaErr : null]}>
         <View style={styles.amountRow}>
           <Text
-            style={[styles.amount, { color: theme.ink }, mode === 'buy' && !amount && { color: muted }]}
+            style={[
+              styles.amount,
+              { color: status === 'below_min' ? DIGIT_RED : theme.ink },
+              mode === 'buy' && !amount && { color: muted },
+            ]}
             numberOfLines={1}
             adjustsFontSizeToFit
+            minimumFontScale={0.5}
           >
             {groupDigits(amount)}
           </Text>
@@ -138,7 +183,7 @@ export default function BuyScreen({ navigation, route }: { navigation: any; rout
             <Chip
               left={<Flag code={cur?.flag ?? null} size={20} ready={flagReady} />}
               label={fiat}
-              onPress={openCurrency}
+              onPress={() => navigation.navigate('SelectCurrency', { selected: fiat })}
             />
           ) : (
             <Chip left={<CoinLogo symbol="BTC" size={22} />} label="BTC" />
@@ -148,10 +193,12 @@ export default function BuyScreen({ navigation, route }: { navigation: any; rout
         <View style={styles.subRow}>
           {mode === 'buy' ? (
             <>
-              {quoteLoading ? (
+              {hasAmount && quoting ? (
                 <SkeletonBlock style={styles.quoteSk} />
+              ) : status === 'ok' ? (
+                <Text style={[styles.quote, { color: muted }]}>{quote?.cryptoAmount}</Text>
               ) : (
-                <Text style={[styles.quote, { color: muted }]}>{cryptoAmount}</Text>
+                <View style={[styles.dash, { backgroundColor: '#83869C' }]} />
               )}
               <Chip left={<CoinLogo symbol={crypto} size={22} />} label={crypto} />
             </>
@@ -166,8 +213,12 @@ export default function BuyScreen({ navigation, route }: { navigation: any; rout
 
       {/* pay-with card (buy) / percentage slider (sell) */}
       {mode === 'buy' ? (
-        <View style={[styles.payCard, { backgroundColor: toggleBg }]}>
-          {pay.loading ? (
+        <Pressable
+          disabled={cardLoading || status !== 'ok'}
+          onPress={() => setPayOpen(true)}
+          style={[styles.payCard, { backgroundColor: toggleBg }, status === 'no_provider' && { opacity: 0.4 }]}
+        >
+          {cardLoading ? (
             <>
               <SkeletonBlock style={styles.paySkAvatar} />
               <View style={{ flex: 1, gap: 7 }}>
@@ -177,19 +228,15 @@ export default function BuyScreen({ navigation, route }: { navigation: any; rout
             </>
           ) : (
             <>
-              <View style={styles.bank}>
-                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-                  <Path d="M3 9l9-5 9 5M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-                </Svg>
-              </View>
+              <ProviderMark provider={provider} size={52} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.payLabel, { color: muted }]}>Pay with</Text>
-                <Text style={[styles.payValue, { color: theme.ink }]}>{pay.label}</Text>
+                <Text style={[styles.payValue, { color: theme.ink }]}>{provider.name}</Text>
               </View>
               <ChevronRight size={18} color={muted} />
             </>
           )}
-        </View>
+        </Pressable>
       ) : (
         <View style={styles.sliderWrap}>
           <View style={[styles.sliderTrack, { backgroundColor: toggleBg }]}>
@@ -205,11 +252,7 @@ export default function BuyScreen({ navigation, route }: { navigation: any; rout
       <View style={styles.pad}>
         {KEYS.map((k) => (
           <Pressable key={k} style={styles.key} onPress={() => press(k)} hitSlop={2}>
-            {k === 'del' ? (
-              <BackspaceIcon size={28} color={theme.ink} />
-            ) : (
-              <Text style={[styles.keyText, { color: theme.ink }]}>{k}</Text>
-            )}
+            {k === 'del' ? <BackspaceIcon size={28} color={theme.ink} /> : <Text style={[styles.keyText, { color: theme.ink }]}>{k}</Text>}
           </Pressable>
         ))}
       </View>
@@ -221,18 +264,23 @@ export default function BuyScreen({ navigation, route }: { navigation: any; rout
             <Text style={[styles.ctaDisabledText, { color: muted }]}>Buy crypto first</Text>
           </View>
         ) : canContinue ? (
-          <PrimaryButton
-            label="Continue"
-            height={56}
-            arrow={false}
-            onPress={() => showToast('Onramp checkout arrives with the payment provider integration.', { kind: 'info', duration: 2600 })}
-          />
+          <PrimaryButton label="Continue" height={56} arrow={false} onPress={onContinue} />
         ) : (
           <View style={[styles.ctaDisabled, { backgroundColor: toggleBg }]}>
-            <Text style={[styles.ctaDisabledText, { color: muted }]}>Continue</Text>
+            <Text style={[styles.ctaDisabledText, { color: muted }]}>{ctaLabel}</Text>
           </View>
         )}
       </View>
+
+      <PayWithSheet
+        visible={payOpen}
+        providers={quote?.providers ?? PROVIDERS}
+        selectedId={provider.id}
+        fiat={fiat}
+        fiatFlag={cur?.flag ?? null}
+        onPick={setChosen}
+        onClose={() => setPayOpen(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -245,17 +293,19 @@ const styles = StyleSheet.create({
   toggleSeg: { flex: 1, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   toggleOn: { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
   toggleText: { fontSize: 16, fontFamily: 'Inter-700', fontWeight: '700' },
-  sellError: { color: '#B53332', fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600', textAlign: 'center', marginTop: 14 },
-  amountArea: { marginTop: 56, paddingHorizontal: 17 },
-  amountRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 75, gap: 12 },
-  amount: { flex: 1, fontSize: 60, lineHeight: 72, fontFamily: 'Inter-700', fontWeight: '700' },
-  subRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 12, height: 47, marginTop: 6 },
+  errorLine: { color: ERROR_RED, fontSize: 13, lineHeight: 18, fontFamily: 'Inter-600', fontWeight: '600', textAlign: 'center', marginTop: 4 },
+  errorSpacer: { height: 22 },
+  amountArea: { marginTop: 46, paddingHorizontal: 17 },
+  amountAreaErr: { marginTop: 56 },
+  amountRow: { flexDirection: 'row', alignItems: 'center', height: 90, gap: 12 },
+  amount: { flex: 1, textAlign: 'right', fontSize: 84, lineHeight: 100, fontFamily: 'Inter-700', fontWeight: '700' },
+  subRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 12, height: 47, marginTop: 4 },
   quote: { fontSize: 18, fontFamily: 'Inter-500', fontWeight: '500' },
-  quoteSk: { width: 160, height: 22, borderRadius: 6 },
+  quoteSk: { width: 160, height: 36, borderRadius: 6 },
+  dash: { width: 24, height: 3, borderRadius: 1.5 },
   chip: { height: 46, borderRadius: 23, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, gap: 8 },
   chipText: { fontSize: 16, fontFamily: 'Inter-700', fontWeight: '700' },
   payCard: { marginHorizontal: 17, height: 68, borderRadius: 18, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, gap: 14, marginTop: 'auto' },
-  bank: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#0A3A94', alignItems: 'center', justifyContent: 'center' },
   payLabel: { fontSize: 13, fontFamily: 'Inter-500', fontWeight: '500' },
   payValue: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600', marginTop: 2 },
   paySkAvatar: { width: 52, height: 52, borderRadius: 26 },
