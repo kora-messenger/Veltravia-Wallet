@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { useTheme } from '../theme/ThemeProvider';
-import AnimatedHomeIcon from './AnimatedHomeIcon';
+import AnimatedHomeIcon, { AnimatedHomeIconHandle } from './AnimatedHomeIcon';
 import {
   MarketsTabIcon,
   SwapIcon,
@@ -68,8 +68,11 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
   const insets = useSafeAreaInsets();
   const [pillW, setPillW] = React.useState(0);
   const focusedName = state.routes[state.index]?.name as string;
+  const homeRef = React.useRef<AnimatedHomeIconHandle>(null);
 
   const go = (name: string) => {
+    // Home pulses on every tap, even when already focused.
+    if (name === 'Home') homeRef.current?.pulse();
     const route = state.routes.find((r) => r.name === name);
     if (!route) return;
     const event = navigation.emit({
@@ -91,7 +94,12 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
             { backgroundColor: focused ? 'rgba(108,76,245,0.12)' : 'transparent' },
           ]}
         >
-          <Icon size={24} color={focused ? '#6C4CF5' : theme.inkMuted} filled={focused} />
+          <Icon
+            size={24}
+            color={focused ? '#6C4CF5' : theme.inkMuted}
+            filled={focused}
+            ref={name === 'Home' ? homeRef : undefined}
+          />
         </View>
       </Pressable>
     );
