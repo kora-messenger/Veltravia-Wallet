@@ -19,6 +19,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, StatusBar, Animated, Easing } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
+import { showToast } from '../components/Toast';
 import {
   BackIcon,
   DriveTriangleIcon,
@@ -62,9 +63,7 @@ export default function SelectRecoveryMethodScreen({
   const [expanded, setExpanded] = useState(true);
   const [swiftLoading, setSwiftLoading] = useState(false);
   const [swiftError, setSwiftError] = useState(false);
-  const [toast, setToast] = useState('');
   const shimmer = useRef(new Animated.Value(0.5)).current;
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // skeleton shimmer loop while Swift wallet "checks" for a wallet
   useEffect(() => {
@@ -80,17 +79,8 @@ export default function SelectRecoveryMethodScreen({
     return () => loop.stop();
   }, [swiftLoading, shimmer]);
 
-  useEffect(
-    () => () => {
-      if (toastTimer.current) clearTimeout(toastTimer.current);
-    },
-    [],
-  );
-
   const showComingSoon = useCallback((label: string) => {
-    setToast(`${label} restore is coming soon.`);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(''), 2200);
+    showToast(`${label} restore is coming soon.`, { kind: 'info' });
   }, []);
 
   const onSwift = useCallback(async () => {
@@ -192,13 +182,6 @@ export default function SelectRecoveryMethodScreen({
 
       {swiftLoading && <View style={styles.dim} pointerEvents="none" />}
 
-      {toast ? (
-        <View style={styles.toastWrap} pointerEvents="none">
-          <View style={[styles.toast, { backgroundColor: theme.surfaceAlt }]}>
-            <Text style={[styles.toastText, { color: theme.ink }]}>{toast}</Text>
-          </View>
-        </View>
-      ) : null}
     </SafeAreaView>
   );
 }
@@ -242,7 +225,4 @@ const styles = StyleSheet.create({
   skSub: { width: 90, height: 10 },
   skRightBar: { width: 56, height: 10 },
   dim: { ...StyleSheet.absoluteFill as any, backgroundColor: 'rgba(0,0,0,0.18)' },
-  toastWrap: { position: 'absolute', bottom: 32, left: 0, right: 0, alignItems: 'center' },
-  toast: { borderRadius: 12, paddingHorizontal: 18, paddingVertical: 10 },
-  toastText: { fontSize: 13, fontFamily: 'Inter-500' },
 });

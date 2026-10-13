@@ -12,8 +12,8 @@
  *   Network      : the pill swaps the sheet content to "Select network"
  *                  (back arrow), searchable list.
  *   Deposit      : "Deposit from Binance" (back arrow), search + skeleton list.
- *   Tap QR       : copies the address automatically (no toast, like Trust;
- *                  a light haptic confirms).
+ *   Tap QR       : copies the address automatically and shows the top
+ *                  "Address copied" toast (plus a light haptic).
  *   Share        : the Android share sheet with the address + QR payload.
  *
  * The sheet is tall (top ~6% down, 40dp corners), animates up, and can be
@@ -43,6 +43,7 @@ import QrCode from './QrCode';
 import CoinLogo from './CoinLogo';
 import { CloseIcon, BackIcon, ChevronDownIcon, CopyIcon, ShareIcon, AlertCircleIcon, SearchIcon } from './icons';
 import { copyToClipboard } from '../core/clipboard';
+import { showToast } from './Toast';
 import { RECEIVE_NETWORKS, ReceiveNetwork, getReceiveAddress } from '../core/receive';
 
 type View_ = 'receive' | 'network' | 'binance';
@@ -133,7 +134,9 @@ export default function ReceiveSheet({
   const circleBg = dark ? 'rgba(255,255,255,0.10)' : 'rgba(60,64,90,0.08)';
 
   const onCopy = () => {
-    if (address) copyToClipboard(address);
+    if (!address) return;
+    const ok = copyToClipboard(address);
+    showToast(ok ? 'Address copied' : "Couldn't copy the address", { kind: ok ? 'success' : 'error' });
   };
 
   const onShare = async () => {

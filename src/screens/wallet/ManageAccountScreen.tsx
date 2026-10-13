@@ -20,6 +20,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { useWallets } from '../../wallets/WalletsProvider';
 import LinearGradient from 'react-native-linear-gradient';
 import { WALLET_GRADIENTS, COLOR_ORDER, LogoColorGlyph, WalletColorKey } from '../../wallets/WalletGlyphs';
+import { showToast } from '../../components/Toast';
 import { WalletAvatar } from '../../wallets/WalletAvatar';
 import SecretPhraseGateSheet from '../../components/SecretPhraseGateSheet';
 import EditIconSheet from '../../components/EditIconSheet';
@@ -124,11 +125,7 @@ export default function ManageAccountScreen({
   };
 
   const showBackupInfo = () =>
-    Alert.alert(
-      'Back up wallet',
-      'Secure backup arrives with the Wallet Core integration. Until then, keep your device safe.',
-      [{ text: 'OK' }],
-    );
+    showToast('Secure backup arrives with the Wallet Core integration.', { kind: 'info', duration: 2600 });
 
   return (
     <KeyboardAvoidingView
@@ -343,11 +340,7 @@ export default function ManageAccountScreen({
         onClose={() => setGateOpen(false)}
         onContinue={() => {
           setGateOpen(false);
-          Alert.alert(
-            'Secret phrase',
-            'Phrase reveal needs device authentication and the Wallet Core key store, which arrive in the next phase.',
-            [{ text: 'OK' }],
-          );
+          showToast('Phrase reveal arrives with the Wallet Core key store.', { kind: 'info', duration: 2600 });
         }}
       />
     </KeyboardAvoidingView>

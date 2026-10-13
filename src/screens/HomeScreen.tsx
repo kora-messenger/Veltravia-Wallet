@@ -38,6 +38,7 @@ import AnimatedBellIcon from '../components/AnimatedBellIcon';
 import AnimatedScanIcon from '../components/AnimatedScanIcon';
 import Sparkline from '../components/Sparkline';
 import ReceiveSheet from '../components/ReceiveSheet';
+import { showToast } from '../components/Toast';
 import DonutChart from '../components/DonutChart';
 import {
   EyeIcon,
@@ -200,11 +201,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 fontSize={13}
                 arrow={false}
                 onPress={() =>
-                  Alert.alert(
-                    'Back up your wallet',
-                    'The secure backup flow (seed phrase reveal and verification) arrives with the Wallet Core integration. Until then, keep your device safe.',
-                    [{ text: 'Got it' }],
-                  )
+                  showToast('Secure backup arrives with the Wallet Core integration.', { kind: 'info', duration: 2600 })
                 }
               />
             </View>

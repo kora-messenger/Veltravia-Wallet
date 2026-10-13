@@ -12,6 +12,7 @@ import React, { useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, StatusBar, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
+import { showToast } from '../../components/Toast';
 import { useWallets } from '../../wallets/WalletsProvider';
 import { WalletAvatar } from '../../wallets/WalletAvatar';
 import AddWalletSheet from '../../components/AddWalletSheet';
@@ -131,11 +132,7 @@ export default function WalletsScreen({ navigation }: { navigation: any }) {
         }}
         onBackup={() => {
           setMenuWalletId(null);
-          Alert.alert(
-            'Back up wallet',
-            'Secure backup (recovery phrase reveal and verification) arrives with the Wallet Core integration.',
-            [{ text: 'OK' }],
-          );
+          showToast('Secure backup arrives with the Wallet Core integration.', { kind: 'info', duration: 2600 });
         }}
       />
 
