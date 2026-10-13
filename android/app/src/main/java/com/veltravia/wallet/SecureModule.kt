@@ -14,20 +14,17 @@ import com.facebook.react.bridge.ReactMethod
  * Passcode entry surfaces set it on mount and clear it on unmount so the
  * rest of the app behaves normally.
  */
-class SecureModule(reactContext: ReactApplicationContext) :
+class SecureModule(private val reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
 
   override fun getName() = "SecureModule"
 
   @ReactMethod
   fun setFlagSecure(enabled: Boolean) {
-    val activity = currentActivity ?: return
+    val activity = reactContext.currentActivity ?: return
     activity.runOnUiThread {
-      if (enabled) {
-        it.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
-      } else {
-        it.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
-      }
+      val flag = android.view.WindowManager.LayoutParams.FLAG_SECURE
+      if (enabled) activity.window.addFlags(flag) else activity.window.clearFlags(flag)
     }
   }
 }
