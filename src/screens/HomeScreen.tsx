@@ -34,10 +34,10 @@ import { Alert } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { useWallets } from '../wallets/WalletsProvider';
 import { WalletAvatar } from '../wallets/WalletAvatar';
+import AnimatedBellIcon from '../components/AnimatedBellIcon';
 import Sparkline from '../components/Sparkline';
 import DonutChart from '../components/DonutChart';
 import {
-  BellIcon,
   ScanIcon,
   EyeIcon,
   ChevronRight,
@@ -440,7 +440,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               onPress={() => navigation.navigate('Activity')}
               style={[styles.scanBtn, { backgroundColor: chipBg }]}
             >
-              <BellIcon size={22} color={theme.ink} />
+              <AnimatedBellIcon size={22} color={theme.ink} />
             </Pressable>
             <Pressable
               hitSlop={8}
