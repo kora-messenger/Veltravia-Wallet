@@ -14,7 +14,7 @@
  */
 
 import React, { useMemo } from 'react';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
 import { encodeQr } from '../core/qr';
 
 const QUIET = 0; // the card around the QR supplies the margin
@@ -44,7 +44,8 @@ export default function QrCode({
   /** Rendered in a rounded tile at the centre (14% of the width). */
   logo?: React.ReactNode;
 }) {
-  const matrix = useMemo(() => encodeQr(value), [value]);
+  // Version 4 (33x33) like Trust: finer, more refined dots than the minimal fit.
+  const matrix = useMemo(() => encodeQr(value, 4), [value]);
   const n = matrix.length;
   const unit = size / (n + QUIET * 2);
 
@@ -100,9 +101,8 @@ export default function QrCode({
       {dots}
       {eyes}
       {logo ? (
-        <Svg x={logoOffset} y={logoOffset} width={logoPx} height={logoPx}>
-          {logo}
-        </Svg>
+        // Logo art is authored on a 100x100 canvas; scale it into the centre tile.
+        <G transform={`translate(${logoOffset} ${logoOffset}) scale(${logoPx / 100})`}>{logo}</G>
       ) : null}
     </Svg>
   );

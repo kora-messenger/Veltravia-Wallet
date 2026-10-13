@@ -101,11 +101,21 @@ export default function ReceiveSheet({
     if (!visible) return;
     let cancelled = false;
     setAddress(null);
+    // Hold the skeleton for a minimum beat (Trust shows it on every open /
+    // network switch) so the crossfade is visible even though derivation is fast.
+    const MIN_SKELETON_MS = 650;
+    const started = Date.now();
+    let timer: ReturnType<typeof setTimeout> | null = null;
     getReceiveAddress(walletId, network).then((a) => {
-      if (!cancelled) setAddress(a);
+      if (cancelled) return;
+      const wait = Math.max(0, MIN_SKELETON_MS - (Date.now() - started));
+      timer = setTimeout(() => {
+        if (!cancelled) setAddress(a);
+      }, wait);
     });
     return () => {
       cancelled = true;
+      if (timer) clearTimeout(timer);
     };
   }, [visible, walletId, network]);
 
@@ -283,64 +293,77 @@ function ReceiveBody({
 }) {
   const { theme } = useTheme();
   const dark = theme.mode === 'dark';
-  const cardW = Math.min(winW - 32, 360);
-  const qrSize = cardW - 32;
+  // Trust: card is the sheet width minus 34dp gutters (342dp on a 411dp phone);
+  // the QR is 309dp inside it (16.5dp padding), so card and QR scale together.
+  const cardW = winW - 68;
+  const qrSize = Math.round(cardW * (309 / 342));
+  const cardPad = Math.round((cardW - qrSize) / 2);
 
-  if (!address) {
-    // Trust's loading layout, measured: pill 149x39, card 342x394, bar 376x70.
-    return (
-      <View style={styles.body}>
-        <SkeletonBlock style={{ width: 149, height: 39, borderRadius: 20, marginTop: 8 }} />
-        <SkeletonBlock style={{ width: winW - 68, height: 394, borderRadius: 24, marginTop: 8 }} />
-        <View style={styles.flex} />
-        <SkeletonBlock
-          style={{ width: winW - 32, height: 70, borderRadius: 24, marginBottom: Math.max(bottomInset, 12) + 8 }}
-        />
-      </View>
-    );
-  }
+  // Crossfade: skeleton fades OUT while the real content fades IN.
+  const fade = useRef(new Animated.Value(address ? 1 : 0)).current;
+  const [skeletonGone, setSkeletonGone] = useState(!!address);
+  useEffect(() => {
+    if (address) {
+      Animated.timing(fade, { toValue: 1, duration: 360, easing: Easing.out(Easing.quad), useNativeDriver: true }).start(
+        ({ finished }) => finished && setSkeletonGone(true),
+      );
+    } else {
+      setSkeletonGone(false);
+      fade.setValue(0);
+    }
+  }, [address, fade]);
+  const skeletonOpacity = fade.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
+  // Content ghost-layout uses the last known address until the real one lands.
+  const shownAddress = address ?? '0x0000000000000000000000000000000000000000';
 
-  // Split the address over two lines like Trust (first 40 chars then the rest).
-  const line1 = address.slice(0, 40);
-  const line2 = address.slice(40);
+  // Address on two balanced lines (Trust splits it evenly, never orphaning 2 chars).
+  const half = Math.ceil(shownAddress.length / 2);
+  const line1 = shownAddress.slice(0, half);
+  const line2 = shownAddress.slice(half);
 
   return (
     <View style={styles.body}>
-      {/* Network pill */}
-      <Pressable onPress={onPickNetwork} style={[styles.netPill, { backgroundColor: tile }]}>
-        <View style={styles.netLogo}>
-          <CoinLogo symbol={network.symbol} size={22} />
-        </View>
-        <Text style={[styles.netText, { color: theme.ink }]}>{network.name}</Text>
-        <ChevronDownIcon size={16} color={theme.ink} />
-      </Pressable>
+      {/* ---- content layer (fades in) ---- */}
+      <Animated.View style={[styles.layer, { opacity: fade }]} pointerEvents={address ? 'auto' : 'none'}>
+        {/* Network pill */}
+        <Pressable onPress={onPickNetwork} style={[styles.netPill, { backgroundColor: tile }]}>
+          <View style={styles.netLogo}>
+            <CoinLogo symbol={network.symbol} size={22} />
+          </View>
+          <Text style={[styles.netText, { color: theme.ink }]}>{network.name}</Text>
+          <ChevronDownIcon size={16} color={theme.ink} />
+        </Pressable>
 
-      {/* QR card: tapping it copies the address automatically.
-          The 16dp padding IS the QR quiet zone. Tested: 100% decode at 16dp,
-          94% at ~10dp, 0% with none. Do not reduce it. */}
-      <Pressable
-        onPress={onCopy}
-        style={[
-          styles.qrCard,
-          { width: cardW, backgroundColor: '#FFFFFF', borderColor: dark ? 'transparent' : 'rgba(20,21,43,0.06)' },
-        ]}
-      >
-        <QrCode
-          value={address}
-          size={qrSize}
-          logo={
-            <>
-              <SvgRect x="0" y="0" width="100" height="100" rx="22" fill="#14152B" />
-              <SvgPath d="M26 34l24 34 24-34" stroke="#FFFFFF" strokeWidth={11} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-            </>
-          }
-        />
-        <Text style={styles.addr}>
-          {line1}
-          {'\n'}
-          {line2}
-        </Text>
-      </Pressable>
+        {/* QR card: tapping it copies the address. The padding IS the quiet zone
+            (100% decode at >=16dp). */}
+        <Pressable
+          onPress={onCopy}
+          style={[
+            styles.qrCard,
+            {
+              width: cardW,
+              padding: cardPad,
+              backgroundColor: '#FFFFFF',
+              borderColor: dark ? 'transparent' : 'rgba(20,21,43,0.06)',
+            },
+          ]}
+        >
+          <QrCode
+            value={shownAddress}
+            size={qrSize}
+            logo={
+              <>
+                <SvgRect x="0" y="0" width="100" height="100" rx="22" fill="#14152B" />
+                <SvgPath d="M26 34l24 34 24-34" stroke="#FFFFFF" strokeWidth={11} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              </>
+            }
+          />
+          <Text style={styles.addr}>
+            {line1}
+            {'\n'}
+            {line2}
+          </Text>
+        </Pressable>
 
       {/* Warning */}
       <View style={[styles.warn, { backgroundColor: dark ? 'rgba(245,166,35,0.14)' : '#F7EDE3' }]}>
@@ -384,6 +407,20 @@ function ReceiveBody({
         </View>
         <Text style={[styles.binanceText, { color: theme.ink }]}>Deposit from Binance</Text>
       </Pressable>
+      </Animated.View>
+
+      {/* ---- skeleton layer (fades out; unmounted once fully gone) ---- */}
+      {!skeletonGone && (
+        <Animated.View style={[styles.layer, { opacity: skeletonOpacity }]} pointerEvents="none">
+          {/* Trust's loading layout, measured: pill 149x39, card 342x394, bar 376x70. */}
+          <SkeletonBlock style={{ width: 149, height: 39, borderRadius: 20, marginTop: 4 }} />
+          <SkeletonBlock style={{ width: cardW, height: 394, borderRadius: 24, marginTop: 10 }} />
+          <View style={styles.flex} />
+          <SkeletonBlock
+            style={{ width: winW - 32, height: 70, borderRadius: 24, marginBottom: Math.max(bottomInset, 12) + 8 }}
+          />
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -630,6 +667,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
 
   body: { flex: 1, alignItems: 'center', paddingHorizontal: 16, paddingTop: 4 },
+  layer: { position: 'absolute', top: 4, left: 16, right: 16, bottom: 0, alignItems: 'center' },
 
   netPill: { height: 39, borderRadius: 20, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 8 },
   netLogo: { width: 22, height: 22, borderRadius: 11, overflow: 'hidden' },
@@ -648,9 +686,10 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   addr: {
-    marginTop: 12,
-    fontSize: 14,
+    marginTop: 14,
+    fontSize: 13.5,
     lineHeight: 20,
+    letterSpacing: 0.1,
     textAlign: 'center',
     color: '#14152B',
     fontFamily: 'Inter-700',

@@ -326,9 +326,14 @@ function penalty(m: boolean[][]): number {
 }
 
 /** Encode text into a QR module matrix (true = dark). */
-export function encodeQr(text: string): Matrix {
+/**
+ * @param minVersion lowest QR version to use. Trust renders a 42-char address on a
+ * 33x33 grid (version 4); the smallest fit (version 3, 29x29) gives chunkier,
+ * less refined dots. Higher versions only add capacity, so decoding is unaffected.
+ */
+export function encodeQr(text: string, minVersion = 1): Matrix {
   const bytes = utf8(text);
-  let version = 1;
+  let version = Math.max(1, minVersion);
   while (version <= 10) {
     const overhead = version < 10 ? 2 : 3; // mode+length bytes (approx, rounded up)
     if (bytes.length + overhead <= dataCapacity(version)) break;
