@@ -518,6 +518,23 @@ export const ChevronDownIcon = ({ size = 16, color = '#000', strokeWidth = 2 }: 
   </Svg>
 );
 
+
+/** Copy (two overlapping rounded squares). */
+export const CopyIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Rect x="8.5" y="8.5" width="11.5" height="11.5" rx="3" {...stroke(color, strokeWidth)} />
+    <Path d="M15.5 8.5V7a3 3 0 00-3-3H7a3 3 0 00-3 3v5.5a3 3 0 003 3h1.5" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/** Share (tray with arrow leaving upward). */
+export const ShareIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M12 15V3.5M7.8 7.6L12 3.4l4.2 4.2" {...stroke(color, strokeWidth)} />
+    <Path d="M8 11H7a3 3 0 00-3 3v4a3 3 0 003 3h10a3 3 0 003-3v-4a3 3 0 00-3-3h-1" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
 /** Fingerprint illustration art for the Biometric Login popup. */
 export const FingerprintArt = ({ size = 108 }: { size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 120 120" fill="none">

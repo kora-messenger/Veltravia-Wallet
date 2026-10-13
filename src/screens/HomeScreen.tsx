@@ -37,6 +37,7 @@ import { WalletAvatar } from '../wallets/WalletAvatar';
 import AnimatedBellIcon from '../components/AnimatedBellIcon';
 import AnimatedScanIcon from '../components/AnimatedScanIcon';
 import Sparkline from '../components/Sparkline';
+import ReceiveSheet from '../components/ReceiveSheet';
 import DonutChart from '../components/DonutChart';
 import {
   EyeIcon,
@@ -117,6 +118,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const { width } = useWindowDimensions();
   const [hidden, setHidden] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [receiveOpen, setReceiveOpen] = useState(false);
   const { activeWallet } = useWallets();
 
   // Total portfolio + live 7D history. Phase 2 replaces the mock inside
@@ -217,7 +219,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <Pressable
                 key={key}
                 style={({ pressed }) => [styles.actionItem, { opacity: pressed ? 0.7 : 1 }]}
-                onPress={() => {}}
+                onPress={() => {
+                  if (key === 'receive') setReceiveOpen(true);
+                }}
               >
                 <View style={[styles.actionTile, { backgroundColor: bg }]}>
                   <Icon size={26} color={fg} />
@@ -452,6 +456,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           </View>
         </View>
 
+      <ReceiveSheet visible={receiveOpen} onClose={() => setReceiveOpen(false)} walletId={activeWallet.id} />
     </View>
   );
 }
