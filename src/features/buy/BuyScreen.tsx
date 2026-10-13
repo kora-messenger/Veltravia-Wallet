@@ -29,6 +29,10 @@ import { CURRENCIES } from './currencies';
 import { Flag } from './Flag';
 import { useBuyQuote } from './useBuyQuote';
 import { PROVIDERS, Provider } from './providers';
+import { PER_USD } from './useRates';
+
+/** Trust's ceiling: 360,000 USD (shown as "Max amount is 360,000 USD"). */
+const MAX_USD = 360000;
 import { ProviderMark } from './ProviderMark';
 import PayWithSheet from './PayWithSheet';
 
@@ -63,20 +67,19 @@ export default function BuyScreen({ navigation, route }: { navigation: any; rout
   const [fiat, setFiat] = useState('USD');
   const crypto = 'ETH';
 
-  // Amount sizing (Trust): 78sp digits (57dp cap height) with a 34dp left edge, growing left.
-  // Measured on Trust at 411dp: "10,000" spans x34..259, caret at x287, chip starts x325.
-  // So the digits+caret zone is [34, chipLeft - 38]. Steps down in fixed stages only when the
-  // text would overflow (never auto-shrinks to a speck).
+  // Amount sizing (Trust, measured from a screen recording at 411dp): the digits live in a
+  // fixed zone from x=34 to the caret at x~330 (~300dp). The font is the LARGEST step of this
+  // ladder whose text still fits that zone, so it shrinks stepwise as digits are added:
+  //   70 > 59 > 47 > 42 > 37 > 32.5 > 29 > 27 > 25.5sp (cap heights 50.6/43/34/30/27/23.6/21/19.4/18.6dp)
+  // Beyond the last step the text truncates with an ellipsis. Up to 3 digits it is a big ~70sp.
   const { width: winW } = useWindowDimensions();
-  const chipLeft = winW - 86;
-  const avail = chipLeft - 38 - 34;
+  const zone = Math.round(winW * (288 / 411)); // zone scales with the screen
   const text = groupDigits(amount);
   const amountFont = (() => {
-    const perChar = (f: number) => f * 0.545; // calibrated on Trust: "10,000" = 2.87em ink at 78sp
     const widthAt = (f: number) =>
-      [...text].reduce((w, ch) => w + (ch === ',' || ch === '.' ? f * 0.2 : perChar(f)), 0);
-    for (const f of [78, 66, 56, 48, 40, 34]) if (widthAt(f) <= avail) return f;
-    return 30;
+      [...text].reduce((w, ch) => w + (ch === ',' || ch === '.' ? f * 0.1 : f * 0.54), 0);
+    for (const f of [70, 59, 47, 42, 37, 32.5, 29, 27, 25.5]) if (widthAt(f) <= zone) return f;
+    return 25.5;
   })();
 
   // Blinking caret, like Trust's input.
@@ -139,8 +142,13 @@ export default function BuyScreen({ navigation, route }: { navigation: any; rout
   }, []);
 
   const cur = CURRENCIES.find((c) => c.code === fiat);
+  const amountNum = parseFloat(amount) || 0;
+  const maxFiat = Math.round(MAX_USD * (PER_USD[fiat] ?? 1));
+  // Over the max is instant (client-side): digits + message go red the moment it is crossed,
+  // before any quote is requested.
+  const overMax = mode === 'buy' && amountNum > maxFiat;
   const hasAmount = !!amount && parseFloat(amount) > 0;
-  const status = !hasAmount || quoting ? 'idle' : quote?.status ?? 'idle';
+  const status = overMax ? 'over_max' : !hasAmount || quoting ? 'idle' : quote?.status ?? 'idle';
   const cardLoading = bootLoading || (hasAmount && quoting);
   const provider: Provider = chosen ?? quote?.best ?? PROVIDERS[PROVIDERS.length - 1];
 
@@ -150,13 +158,14 @@ export default function BuyScreen({ navigation, route }: { navigation: any; rout
 
   const errorText = useMemo(() => {
     if (mode !== 'buy') return null;
+    if (overMax) return `Max amount is ${maxFiat.toLocaleString('en-US')} ${fiat}`;
     if (status === 'below_min' && quote?.minFiat) return `Min amount is ${quote.minFiat.toLocaleString('en-US')} ${fiat}`;
     if (status === 'no_provider') return 'No available provider';
     return null;
   }, [mode, status, quote, fiat]);
 
   const canContinue = mode === 'buy' && status === 'ok' && !cardLoading;
-  const ctaLabel = status === 'below_min' ? 'Correct amount' : 'Continue';
+  const ctaLabel = status === 'below_min' || status === 'over_max' ? 'Correct amount' : 'Continue';
 
   const onContinue = () => {
     Linking.openURL(provider.url).catch(() => showToast("Couldn't open the checkout. Try again later.", { kind: 'error' }));
@@ -201,17 +210,18 @@ export default function BuyScreen({ navigation, route }: { navigation: any; rout
               style={[
                 styles.amount,
                 { fontSize: amountFont, lineHeight: Math.round(amountFont * 1.18) },
-                { color: status === 'below_min' ? DIGIT_RED : theme.ink },
+                { color: status === 'below_min' || status === 'over_max' ? DIGIT_RED : theme.ink },
                 mode === 'buy' && !amount && { color: muted },
               ]}
               numberOfLines={1}
+              ellipsizeMode="tail"
             >
               {groupDigits(amount)}
             </Text>
             <Animated.View
               style={[
                 styles.cursor,
-                { height: Math.round(amountFont * 0.94), opacity: cursor, backgroundColor: '#8A7CFB' },
+                { height: Math.round(amountFont * 0.94), opacity: cursor, backgroundColor: status === 'below_min' || status === 'over_max' ? DIGIT_RED : '#8A7CFB' },
               ]}
             />
           </View>
