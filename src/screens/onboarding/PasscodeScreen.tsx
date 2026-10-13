@@ -187,9 +187,11 @@ export default function PasscodeScreen({
     <SafeAreaView style={[styles.root, { backgroundColor: theme.background }]}>
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
 
-      <Pressable hitSlop={14} onPress={goBack} style={styles.back}>
-        <BackIcon size={24} color={theme.ink} />
-      </Pressable>
+      {!flash && (
+        <Pressable hitSlop={14} onPress={goBack} style={styles.back}>
+          <BackIcon size={24} color={theme.ink} />
+        </Pressable>
+      )}
 
       <View style={styles.top}>
         <Text style={[styles.title, { color: theme.ink }]}>{title}</Text>
