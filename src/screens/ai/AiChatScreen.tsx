@@ -14,18 +14,18 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView, StyleSheet, KeyboardAvoidingView,
-  Platform, StatusBar, Animated, Easing, Modal,
+  Platform, StatusBar, Animated, Easing, Modal, Image,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../theme/ThemeProvider';
-import { CloseIcon, VeltraviaMark } from '../../components/icons';
+import { CloseIcon, PlusIcon, VeltraviaMark, WaveHandIcon } from '../../components/icons';
 import { useAiChat } from '../../ai/useAiChat';
 import { localBrain } from '../../ai/engine';
 import { openRouterBrain } from '../../ai/openrouterBrain';
 import { APP_CONFIG } from '../../config/env';
-import { DISCLAIMER, MENU_DISCLAIMER, type ChatAction, type ChatContext, type ChatMessage } from '../../ai/protocol';
+import { DISCLAIMER, type ChatAction, type ChatContext, type ChatMessage } from '../../ai/protocol';
 import { MOCK_HOLDINGS } from '../../services/portfolio';
 import { revalidate } from '../../ai/transfer';
 import { executeTransfer } from '../../ai/signer';
@@ -92,6 +92,16 @@ function Thinking({ label, color, ink }: { label: string; color: string; ink: st
   );
 }
 
+/** In-session chat history for the Recents drawer. Chats can contain balances,
+ *  so they live in memory only until an encrypted store backs them. */
+interface SavedChat { id: string; title: string; messages: ChatMessage[]; at: number }
+let RECENTS: SavedChat[] = [];
+
+const chatTitle = (msgs: ChatMessage[]) => {
+  const t = (msgs.find((m) => m.role === 'user')?.text ?? 'New Chat').replace(/\s+/g, ' ').trim();
+  return t.length > 40 ? t.slice(0, 38).trimEnd() + '…' : t;
+};
+
 export default function AiChatScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -100,6 +110,8 @@ export default function AiChatScreen() {
   const scrollRef = useRef<{ scrollToEnd: (o?: { animated?: boolean }) => void } | null>(null);
   const [draft, setDraft] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [recents, setRecents] = useState<SavedChat[]>(RECENTS);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [pendingApproval, setPendingApproval] = useState<{ messageId: string; proposalId: string } | null>(null);
   const [passcodeFor, setPasscodeFor] = useState<{ messageId: string; actionIdx: number } | null>(null);
   const [sending, setSending] = useState<string | null>(null);
@@ -125,6 +137,20 @@ export default function AiChatScreen() {
   const chat = useAiChat(ctx, brain);
   const { messages, thinking, busy } = chat;
   const started = messages.length > 0;
+
+  // Keep the active chat's snapshot in Recents as it grows.
+  useEffect(() => {
+    if (messages.length === 0 || busy) return;
+    const id = activeId ?? 'c' + Date.now().toString(36);
+    if (!activeId) setActiveId(id);
+    const entry: SavedChat = { id, title: chatTitle(messages), messages, at: Date.now() };
+    RECENTS = [entry, ...RECENTS.filter((c) => c.id !== id)].slice(0, 30);
+    setRecents(RECENTS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, busy]);
+
+  const newChat = () => { chat.reset(); setActiveId(null); setMenuOpen(false); };
+  const openChat = (c: SavedChat) => { chat.load(c.messages); setActiveId(c.id); setMenuOpen(false); };
   const firstUser = messages.find((m) => m.role === 'user')?.text;
   const title = firstUser ? firstUser : 'New Chat';
 
@@ -307,26 +333,13 @@ export default function AiChatScreen() {
         showsVerticalScrollIndicator={false}
       >
         {!started && (
-          <View>
-            <Text style={[styles.greet, { color: ink }]}>
-              Hi, how can I help? Choose an option below or type a message.
-            </Text>
-            <View style={styles.topics}>
-              {TOPICS.map((t) => (
-                <Pressable
-                  key={t.label}
-                  onPress={() => chat.send(t.label)}
-                  style={({ pressed }) => [styles.topic, { backgroundColor: topicBg, opacity: pressed ? 0.7 : 1 }]}
-                >
-                  <TopicIcon kind={t.icon} color={muted} />
-                  <Text style={[styles.topicText, { color: ink }]}>{t.label}</Text>
-                </Pressable>
-              ))}
+          <Text style={[styles.greet, { color: ink }]}>
+            {'Hi '}
+            <View style={styles.greetHand}>
+              <WaveHandIcon size={21} />
             </View>
-            <Text style={[styles.hint, { color: muted }]}>
-              Try: "Send $20 of USDT to 0x…" or "How is my portfolio doing?"
-            </Text>
-          </View>
+            {' How can I help? Choose an option below or type a message.'}
+          </Text>
         )}
 
         {messages.map((m) =>
@@ -339,6 +352,21 @@ export default function AiChatScreen() {
           )
         )}
       </ScrollView>
+
+      {!started && (
+        <View style={styles.topics}>
+          {TOPICS.map((t) => (
+            <Pressable
+              key={t.label}
+              onPress={() => chat.send(t.label)}
+              style={({ pressed }) => [styles.topic, { backgroundColor: topicBg, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <TopicIcon kind={t.icon} color={muted} />
+              <Text style={[styles.topicText, { color: ink }]}>{t.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
 
       {/* input */}
       <View style={[styles.inputWrap, { paddingBottom: Math.max(insets.bottom, 12) }]}>
@@ -372,17 +400,42 @@ export default function AiChatScreen() {
         <Text style={[styles.disclaimer, { color: muted }]}>{DISCLAIMER}</Text>
       </View>
 
-      {/* menu */}
-      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+      {/* menu: Trust-style drawer */}
+      <Modal visible={menuOpen} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setMenuOpen(false)}>
         <Pressable style={styles.scrim} onPress={() => setMenuOpen(false)}>
-          <Pressable style={[styles.menu, { backgroundColor: dark ? '#10182A' : '#FFFFFF', paddingTop: insets.top + 12 }]} onPress={() => {}}>
-            <Text style={[styles.menuTitle, { color: ink }]}>Veltravia AI</Text>
-            <Pressable style={styles.menuItem} onPress={() => { chat.reset(); setMenuOpen(false); }}>
-              <Text style={[styles.menuItemText, { color: ink }]}>New chat</Text>
-            </Pressable>
+          <Pressable
+            style={[
+              styles.menu,
+              { backgroundColor: dark ? '#10182A' : '#FCFCFD', paddingTop: Math.max(insets.top, StatusBar.currentHeight ?? 0) + 12 },
+            ]}
+            onPress={() => {}}
+          >
+            <View style={styles.menuHead}>
+              <Image source={require('../../assets/veltravia-ai-bot.png')} style={styles.menuBot} resizeMode="contain" />
+              <Text style={[styles.menuTitle, { color: ink }]}>Veltravia AI</Text>
+            </View>
+
             <Text style={[styles.menuLabel, { color: muted }]}>Recents</Text>
-            <Text style={[styles.menuEmpty, { color: muted }]}>Your recent chats will appear here.</Text>
-            <Text style={[styles.menuDisc, { color: muted }]}>{MENU_DISCLAIMER}</Text>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+              {recents.length === 0 ? (
+                <Text style={[styles.menuEmpty, { color: muted }]}>Your recent chats will appear here.</Text>
+              ) : (
+                recents.map((c) => (
+                  <Pressable key={c.id} style={styles.recentRow} onPress={() => openChat(c)}>
+                    <Text numberOfLines={1} style={[styles.recentText, { color: ink }]}>{c.title}</Text>
+                  </Pressable>
+                ))
+              )}
+            </ScrollView>
+
+            <Pressable
+              onPress={newChat}
+              accessibilityLabel="New chat"
+              style={[styles.menuNew, { backgroundColor: dark ? 'rgba(255,255,255,0.10)' : '#EFEFF3', marginBottom: Math.max(insets.bottom, 16) }]}
+            >
+              <PlusIcon size={20} color={ink} />
+              <Text style={[styles.menuNewText, { color: ink }]}>Chat</Text>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
@@ -408,14 +461,14 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 10, gap: 12 },
   hBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
-  title: { flex: 1, textAlign: 'center', fontSize: 17, fontFamily: 'Inter-700', fontWeight: '700' },
+  title: { flex: 1, textAlign: 'center', fontSize: 16, fontFamily: 'Inter-700', fontWeight: '700' },
   thread: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 20, gap: 14 },
-  threadEmpty: { flexGrow: 1, justifyContent: 'flex-end' },
-  greet: { fontSize: 17, lineHeight: 25, fontFamily: 'Inter-500', fontWeight: '500', marginBottom: 14 },
-  topics: { gap: 10, alignItems: 'flex-start' },
-  topic: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 24, paddingHorizontal: 16, paddingVertical: 11 },
-  topicText: { fontSize: 16, fontFamily: 'Inter-500', fontWeight: '500' },
-  hint: { fontSize: 13, marginTop: 16, fontFamily: 'Inter-500', fontWeight: '500' },
+  threadEmpty: { flexGrow: 1, justifyContent: 'flex-start' },
+  greet: { fontSize: 17, lineHeight: 25, fontFamily: 'Inter-500', fontWeight: '500' },
+  topics: { gap: 8, alignItems: 'flex-start', paddingHorizontal: 20, paddingBottom: 14 },
+  topic: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9 },
+  topicText: { fontSize: 15, fontFamily: 'Inter-500', fontWeight: '500' },
+  greetHand: { width: 21, height: 21, marginBottom: -4 },
   userBubble: { alignSelf: 'flex-end', maxWidth: '86%', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 12 },
   userText: { fontSize: 16, lineHeight: 22, fontFamily: 'Inter-500', fontWeight: '500' },
   aiBlock: { gap: 8 },
@@ -431,13 +484,16 @@ const styles = StyleSheet.create({
   inputText: { flex: 1, fontSize: 16, fontFamily: 'Inter-500', fontWeight: '500', paddingVertical: 0 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   stopSquare: { width: 16, height: 16, borderRadius: 3, backgroundColor: '#fff' },
-  disclaimer: { textAlign: 'center', fontSize: 13, marginTop: 10, fontFamily: 'Inter-500', fontWeight: '500' },
+  disclaimer: { textAlign: 'center', fontSize: 12, marginTop: 10, fontFamily: 'Inter-500', fontWeight: '500', opacity: 0.55 },
   scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' },
-  menu: { width: '78%', height: '100%', paddingHorizontal: 20 },
-  menuTitle: { fontSize: 20, fontFamily: 'Inter-700', fontWeight: '700', marginBottom: 18 },
-  menuItem: { paddingVertical: 12 },
-  menuItemText: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
-  menuLabel: { fontSize: 13, fontFamily: 'Inter-600', fontWeight: '600', marginTop: 20 },
-  menuEmpty: { fontSize: 14, marginTop: 8, fontFamily: 'Inter-500', fontWeight: '500' },
-  menuDisc: { fontSize: 12, lineHeight: 17, marginTop: 'auto' as any, paddingBottom: 24, fontFamily: 'Inter-500', fontWeight: '500' },
+  menu: { width: '80%', height: '100%', paddingHorizontal: 20, borderTopRightRadius: 28 },
+  menuHead: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 26 },
+  menuBot: { width: 56, height: 56 },
+  menuTitle: { fontSize: 18, fontFamily: 'Inter-700', fontWeight: '700' },
+  menuLabel: { fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600', marginBottom: 10 },
+  menuEmpty: { fontSize: 14, marginTop: 4, fontFamily: 'Inter-500', fontWeight: '500' },
+  recentRow: { paddingVertical: 12 },
+  recentText: { fontSize: 16, fontFamily: 'Inter-500', fontWeight: '500' },
+  menuNew: { height: 52, borderRadius: 26, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12 },
+  menuNewText: { fontSize: 16, fontFamily: 'Inter-700', fontWeight: '700' },
 });

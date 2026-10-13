@@ -133,8 +133,16 @@ export function useAiChat(ctx: ChatContext, brain: AiBrain = localBrain) {
     setBusy(false);
   }, []);
 
+  /** Replace the conversation with a saved one (opened from Recents). */
+  const load = useCallback((saved: ChatMessage[]) => {
+    signalRef.current.aborted = true;
+    setMessages(saved);
+    setThinking(false);
+    setBusy(false);
+  }, []);
+
   return useMemo(
-    () => ({ messages, thinking, busy, send, stop, answerConsent, resolveCard, appendAssistant, reset }),
-    [messages, thinking, busy, send, stop, answerConsent, resolveCard, appendAssistant, reset]
+    () => ({ messages, thinking, busy, send, stop, answerConsent, resolveCard, appendAssistant, reset, load }),
+    [messages, thinking, busy, send, stop, answerConsent, resolveCard, appendAssistant, reset, load]
   );
 }
