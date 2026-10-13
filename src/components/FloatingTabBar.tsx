@@ -15,8 +15,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { useTheme } from '../theme/ThemeProvider';
+import AnimatedHomeIcon from './AnimatedHomeIcon';
 import {
-  HomeTabIcon,
   MarketsTabIcon,
   SwapIcon,
   DiscoverTabIcon,
@@ -24,7 +24,7 @@ import {
 } from './icons';
 
 const TAB_ICONS: Record<string, React.ComponentType<any>> = {
-  Home: HomeTabIcon,
+  Home: AnimatedHomeIcon,
   Markets: MarketsTabIcon,
   Discover: DiscoverTabIcon,
   Settings: SettingsTabIcon,
