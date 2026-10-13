@@ -15,8 +15,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { useTheme } from '../theme/ThemeProvider';
-import AnimatedHomeIcon, { AnimatedHomeIconHandle } from './AnimatedHomeIcon';
+import AnimatedTabIcon, { TabIconHandle } from './AnimatedTabIcon';
 import {
+  HomeTabIcon,
   MarketsTabIcon,
   SwapIcon,
   DiscoverTabIcon,
@@ -24,7 +25,7 @@ import {
 } from './icons';
 
 const TAB_ICONS: Record<string, React.ComponentType<any>> = {
-  Home: AnimatedHomeIcon,
+  Home: HomeTabIcon,
   Markets: MarketsTabIcon,
   Discover: DiscoverTabIcon,
   Settings: SettingsTabIcon,
@@ -68,11 +69,11 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
   const insets = useSafeAreaInsets();
   const [pillW, setPillW] = React.useState(0);
   const focusedName = state.routes[state.index]?.name as string;
-  const homeRef = React.useRef<AnimatedHomeIconHandle>(null);
+  const tabRefs = React.useRef<Record<string, TabIconHandle | null>>({});
 
   const go = (name: string) => {
-    // Home pulses on every tap, even when already focused.
-    if (name === 'Home') homeRef.current?.pulse();
+    // Every bottom icon pulses on tap, even when already focused.
+    tabRefs.current[name]?.pulse();
     const route = state.routes.find((r) => r.name === name);
     if (!route) return;
     const event = navigation.emit({
@@ -94,12 +95,11 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
             { backgroundColor: focused ? 'rgba(108,76,245,0.12)' : 'transparent' },
           ]}
         >
-          <Icon
-            size={24}
-            color={focused ? '#6C4CF5' : theme.inkMuted}
-            filled={focused}
-            ref={name === 'Home' ? homeRef : undefined}
-          />
+          <AnimatedTabIcon
+            ref={(h) => { tabRefs.current[name] = h; }}
+          >
+            <Icon size={24} color={focused ? '#6C4CF5' : theme.inkMuted} filled={focused} />
+          </AnimatedTabIcon>
         </View>
       </Pressable>
     );
@@ -152,11 +152,15 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
           },
         ]}
       >
-        <SwapIcon
-          size={26}
-          color={swapFocused ? '#6C4CF5' : theme.inkMuted}
-          strokeWidth={2.2}
-        />
+        <AnimatedTabIcon
+          ref={(h) => { tabRefs.current.Swap = h; }}
+        >
+          <SwapIcon
+            size={26}
+            color={swapFocused ? '#6C4CF5' : theme.inkMuted}
+            strokeWidth={2.2}
+          />
+        </AnimatedTabIcon>
       </Pressable>
     </View>
   );

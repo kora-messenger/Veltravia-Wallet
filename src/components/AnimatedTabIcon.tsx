@@ -1,20 +1,18 @@
 /**
- * Veltravia Wallet — animated Home tab icon.
+ * Veltravia Wallet — animated wrapper for bottom bar icons.
  *
- * The house pulses on every tap (immediate pop + settle) and also does a
- * slow idle pulse so the pill feels alive, matching the bell/scan rhythm.
+ * Any tab icon wrapped here pulses on tap (immediate pop + settle) and
+ * keeps a slow idle pulse, matching the Home/bell/scan animation rhythm.
  */
 import React, { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
-import { Animated, Easing } from 'react-native';
-import { HomeTabIcon } from './icons';
+import { Animated, Easing, ViewStyle } from 'react-native';
 
-export type AnimatedHomeIconHandle = { pulse: () => void };
+export type TabIconHandle = { pulse: () => void };
 
-const AnimatedHomeIcon = forwardRef<AnimatedHomeIconHandle, {
-  size?: number;
-  color?: string;
-  filled?: boolean;
-}>(({ size = 24, color = '#000', filled }, ref) => {
+const AnimatedTabIcon = forwardRef<TabIconHandle, {
+  children: React.ReactNode;
+  style?: ViewStyle;
+}>(({ children, style }, ref) => {
   const scaleV = useRef(new Animated.Value(0)).current;
   const loopRef = useRef<Animated.CompositeAnimation | null>(null);
 
@@ -41,7 +39,6 @@ const AnimatedHomeIcon = forwardRef<AnimatedHomeIconHandle, {
     loopRef.current.start();
   };
 
-  // every tap: interrupt whatever is running and pop immediately
   useImperativeHandle(ref, () => ({
     pulse: () => {
       loopRef.current?.stop();
@@ -63,16 +60,10 @@ const AnimatedHomeIcon = forwardRef<AnimatedHomeIconHandle, {
   });
 
   return (
-    <Animated.View
-      style={{
-        alignItems: 'center',
-        justifyContent: 'center',
-        transform: [{ scale }],
-      }}
-    >
-      <HomeTabIcon size={size} color={color} filled={filled} />
+    <Animated.View style={[{ alignItems: 'center', justifyContent: 'center', transform: [{ scale }] }, style]}>
+      {children}
     </Animated.View>
   );
 });
 
-export default AnimatedHomeIcon;
+export default AnimatedTabIcon;
