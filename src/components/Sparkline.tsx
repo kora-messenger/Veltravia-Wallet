@@ -16,6 +16,10 @@ interface Props {
   strokeWidth?: number;
   /** Unique per instance when several sparklines share a screen. */
   id?: string;
+  /** 'glow' (default fade) or 'flat' (even translucent fill, sharp line). */
+  fill?: 'glow' | 'flat';
+  /** Straight segments instead of smoothing (market-card look). */
+  sharp?: boolean;
 }
 
 /** Catmull-Rom → cubic Bézier, gives the soft curve without overshoot noise. */
@@ -37,7 +41,7 @@ function smoothPath(pts: { x: number; y: number }[]): string {
   return d;
 }
 
-export default function Sparkline({ data, width, height, color = '#FFFFFF', strokeWidth = 1.8, id = 'main' }: Props) {
+export default function Sparkline({ data, width, height, color = '#FFFFFF', strokeWidth = 1.8, id = 'main', fill = 'glow', sharp = false }: Props) {
   const gid = `sparkFill-${id}`;
   const pad = 3;
   const min = Math.min(...data);
@@ -47,7 +51,9 @@ export default function Sparkline({ data, width, height, color = '#FFFFFF', stro
     x: pad + (i / (data.length - 1)) * (width - pad * 2),
     y: pad + (1 - (v - min) / range) * (height - pad * 2),
   }));
-  const line = smoothPath(pts);
+  const line = sharp
+    ? pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+    : smoothPath(pts);
   const area = `${line} L ${pts[pts.length - 1].x} ${height} L ${pts[0].x} ${height} Z`;
 
   return (
@@ -58,7 +64,11 @@ export default function Sparkline({ data, width, height, color = '#FFFFFF', stro
           <Stop offset="1" stopColor={color} stopOpacity={0} />
         </SvgGradient>
       </Defs>
-      <Path d={area} fill={`url(#${gid})`} />
+      <Path
+        d={area}
+        fill={fill === 'flat' ? color : `url(#${gid})`}
+        fillOpacity={fill === 'flat' ? 0.14 : 1}
+      />
       <Path
         d={line}
         fill="none"

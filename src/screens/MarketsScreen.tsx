@@ -12,14 +12,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import Sparkline from '../components/Sparkline';
+import CoinLogo from '../components/CoinLogo';
 import { SearchIcon } from '../components/icons';
-import { BtcGlyph, BnbGlyph, EthGlyph, SolGlyph, TrxGlyph, DollarGlyph } from '../wallets/WalletGlyphs';
 import { useTheme } from '../theme/ThemeProvider';
 import { GLOBAL_STATS, MARKET_COINS, MarketCoin } from '../services/marketData';
 
-const GLYPHS: Record<MarketCoin['glyph'], React.ComponentType<{ size?: number; color?: string }>> = {
-  btc: BtcGlyph, bnb: BnbGlyph, eth: EthGlyph, sol: SolGlyph, trx: TrxGlyph, dollar: DollarGlyph,
-};
+const MOVER_W = 188;
 
 const fmtUsd = (v: number) =>
   '$' + (v >= 1
@@ -139,19 +137,34 @@ export default function MarketsScreen() {
         <Text style={[styles.section, { color: theme.ink }]}>Top Movers</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.moversRow}>
           {movers.map((c) => {
-            const Glyph = GLYPHS[c.glyph];
             const up = c.change24h >= 0;
+            const tone = up ? theme.positive : theme.negative;
             return (
               <View key={c.id} style={[styles.moverCard, { backgroundColor: theme.surfaceAlt }]}>
-                <View style={styles.moverTop}>
-                  <View style={[styles.glyphCircle, { backgroundColor: c.color }]}>
-                    <Glyph size={18} color="#FFFFFF" />
-                  </View>
-                  <Text style={[styles.moverSymbol, { color: theme.ink }]}>{c.symbol}</Text>
-                  <ChangeChip v={c.change24h} />
+                <View style={styles.moverHead}>
+                  <Text numberOfLines={1} style={[styles.moverName, { color: theme.inkMuted }]}>
+                    {c.name}
+                  </Text>
+                  <CoinLogo symbol={c.symbol} color={c.color} size={32} />
                 </View>
-                <Text style={[styles.moverPrice, { color: theme.ink }]}>{fmtUsd(c.priceUsd)}</Text>
-                <Sparkline data={c.history} width={130} height={34} color={up ? theme.positive : theme.negative} strokeWidth={1.6} id={'mv-' + c.id} />
+                <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.moverPrice, { color: theme.ink }]}>
+                  {fmtUsd(c.priceUsd)}
+                </Text>
+                <Text style={[styles.moverChange, { color: tone }]}>
+                  {up ? '+' : ''}{c.change24h.toFixed(2)}%
+                </Text>
+                <View style={styles.moverChart}>
+                  <Sparkline
+                    data={c.history}
+                    width={MOVER_W - 36}
+                    height={72}
+                    color={tone}
+                    strokeWidth={2}
+                    fill="flat"
+                    sharp
+                    id={'mv-' + c.id}
+                  />
+                </View>
               </View>
             );
           })}
@@ -162,14 +175,11 @@ export default function MarketsScreen() {
           {chip === 'all' ? 'All Coins' : chip === 'favorites' ? 'Favorites' : chip === 'gainers' ? 'Top Gainers' : 'Top Losers'}
         </Text>
         {list.map((c) => {
-          const Glyph = GLYPHS[c.glyph];
           const up = c.change24h >= 0;
           const fav = favorites.has(c.id);
           return (
             <View key={c.id} style={[styles.row, { borderBottomColor: theme.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(6,14,44,0.06)' }]}>
-              <View style={[styles.glyphCircle, { backgroundColor: c.color }]}>
-                <Glyph size={18} color="#FFFFFF" />
-              </View>
+              <CoinLogo symbol={c.symbol} color={c.color} size={34} />
               <View style={styles.rowMid}>
                 <Text style={[styles.rowName, { color: theme.ink }]}>{c.name}</Text>
                 <Text style={[styles.rowSub, { color: theme.inkMuted }]}>
@@ -223,11 +233,12 @@ const styles = StyleSheet.create({
   chipLabel: { fontSize: 13, fontFamily: 'Inter-600', fontWeight: '600' },
   section: { fontSize: 18, fontFamily: 'Inter-700', fontWeight: '700', marginBottom: 12 },
   moversRow: { flexDirection: 'row', gap: 12, paddingBottom: 20 },
-  moverCard: { borderRadius: 16, padding: 14, width: 158, gap: 8 },
-  moverTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  moverSymbol: { fontSize: 13, fontFamily: 'Inter-700', fontWeight: '700', flex: 1 },
-  moverPrice: { fontSize: 17, fontFamily: 'Inter-700', fontWeight: '700' },
-  glyphCircle: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  moverCard: { borderRadius: 24, paddingTop: 18, paddingHorizontal: 18, paddingBottom: 0, width: MOVER_W, overflow: 'hidden' },
+  moverHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  moverName: { fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600', flex: 1, marginRight: 8 },
+  moverPrice: { fontSize: 24, fontFamily: 'Inter-700', fontWeight: '700', marginTop: 14 },
+  moverChange: { fontSize: 16, fontFamily: 'Inter-500', fontWeight: '500', marginTop: 6 },
+  moverChart: { marginTop: 14 },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth,
