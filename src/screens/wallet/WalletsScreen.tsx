@@ -57,7 +57,7 @@ export default function WalletsScreen({ navigation }: { navigation: any }) {
         <View style={styles.headerRight}>
           <Pressable
             hitSlop={10}
-            onPress={() => navigation.navigate('AiChat')}
+            onPress={() => navigation.navigate('AiChat', { mode: 'support' })}
             accessibilityLabel="Open Veltravia AI"
             style={[styles.headerBtn, { backgroundColor: chipBg }]}
           >

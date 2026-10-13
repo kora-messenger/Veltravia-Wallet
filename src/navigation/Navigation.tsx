@@ -55,7 +55,7 @@ export type RootStackParamList = {
   ManageAccount: { walletId: string };
   Activity: undefined;
   BalanceDetails: undefined;
-  AiChat: undefined;
+  AiChat: { mode?: 'support' | 'fresh' } | undefined;
 };
 
 export type MainTabParamList = {

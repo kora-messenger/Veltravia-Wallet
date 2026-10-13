@@ -18,9 +18,9 @@ import {
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../theme/ThemeProvider';
-import { CloseIcon, PlusIcon, VeltraviaMark, WaveHandIcon } from '../../components/icons';
+import { CloseIcon, PlusIcon, VeltraviaMark } from '../../components/icons';
 import { useAiChat } from '../../ai/useAiChat';
 import { localBrain } from '../../ai/engine';
 import { openRouterBrain } from '../../ai/openrouterBrain';
@@ -44,6 +44,24 @@ const TOPICS: { label: string; icon: 'coins' | 'fuel' | 'alert' | 'tool' | 'swap
   { label: 'Swap issue', icon: 'swap' },
   { label: 'Something else', icon: 'help' },
 ];
+
+/** "New chat" suggestions (Trust parity): three outlined pills with a leading icon. */
+const FRESH_SUGGESTIONS: { label: string; icon: 'sparkle' | 'trend' | 'plus' }[] = [
+  { label: 'How is my portfolio performing?', icon: 'sparkle' },
+  { label: "What's moving the crypto market?", icon: 'trend' },
+  { label: 'What are the top crypto trends?', icon: 'plus' },
+];
+
+function SuggestIcon({ kind, color }: { kind: 'sparkle' | 'trend' | 'plus'; color: string }) {
+  const p = { stroke: color, strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24">
+      {kind === 'sparkle' && (<><Path d="M10 4c.5 4 2.5 6 6.5 6.5-4 .5-6 2.5-6.5 6.5-.5-4-2.5-6-6.5-6.5C7.5 10 9.5 8 10 4z" fill={color} stroke={color} strokeWidth={0.6} strokeLinejoin="round" /><Path d="M18 15.5c.2 1.6.9 2.3 2.5 2.5-1.6.2-2.3.9-2.5 2.5-.2-1.6-.9-2.3-2.5-2.5 1.6-.2 2.3-.9 2.5-2.5z" fill={color} /></>)}
+      {kind === 'trend' && (<Path d="M4 17l6-6 4 4 6-7M15 8h5v5" {...p} />)}
+      {kind === 'plus' && (<><Path d="M12 21a9 9 0 100-18 9 9 0 000 18z" {...p} /><Path d="M12 8v8M8 12h8" {...p} /></>)}
+    </Svg>
+  );
+}
 
 function TopicIcon({ kind, color }: { kind: (typeof TOPICS)[number]['icon']; color: string }) {
   const p = { stroke: color, strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
@@ -106,7 +124,11 @@ export default function AiChatScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const dark = theme.mode === 'dark';
+  // Opened from the headset -> 'support' (greeting + support topics).
+  // "+ Chat" / "New chat" in the drawer -> 'fresh' (centered prompt + 3 suggestions).
+  const [mode, setMode] = useState<'support' | 'fresh'>(route.params?.mode === 'fresh' ? 'fresh' : 'support');
   const scrollRef = useRef<{ scrollToEnd: (o?: { animated?: boolean }) => void } | null>(null);
   const [draft, setDraft] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -149,10 +171,10 @@ export default function AiChatScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, busy]);
 
-  const newChat = () => { chat.reset(); setActiveId(null); setMenuOpen(false); };
+  const newChat = () => { chat.reset(); setActiveId(null); setMode('fresh'); setMenuOpen(false); };
   const openChat = (c: SavedChat) => { chat.load(c.messages); setActiveId(c.id); setMenuOpen(false); };
   const firstUser = messages.find((m) => m.role === 'user')?.text;
-  const title = firstUser ? firstUser : 'New Chat';
+  const title = firstUser ? firstUser : mode === 'fresh' ? 'Veltravia AI' : 'New Chat';
 
   useEffect(() => {
     const t = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 60);
@@ -332,14 +354,15 @@ export default function AiChatScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {!started && (
+        {!started && mode === 'support' && (
           <Text style={[styles.greet, { color: ink }]}>
-            {'Hi '}
-            <View style={styles.greetHand}>
-              <WaveHandIcon size={21} />
-            </View>
-            {' How can I help? Choose an option below or type a message.'}
+            {'Hi \u{1F44B} How can I help? Choose an option below or type a message.'}
           </Text>
+        )}
+        {!started && mode === 'fresh' && (
+          <View style={styles.freshWrap}>
+            <Text style={[styles.freshText, { color: muted }]}>How can I help you today?</Text>
+          </View>
         )}
 
         {messages.map((m) =>
@@ -353,7 +376,25 @@ export default function AiChatScreen() {
         )}
       </ScrollView>
 
-      {!started && (
+      {!started && mode === 'fresh' && (
+        <View style={styles.topics}>
+          {FRESH_SUGGESTIONS.map((t) => (
+            <Pressable
+              key={t.label}
+              onPress={() => chat.send(t.label)}
+              style={({ pressed }) => [
+                styles.suggest,
+                { borderColor: dark ? 'rgba(255,255,255,0.18)' : '#DEDEE4', opacity: pressed ? 0.7 : 1 },
+              ]}
+            >
+              <SuggestIcon kind={t.icon} color={muted} />
+              <Text style={[styles.topicText, { color: ink }]}>{t.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      {!started && mode === 'support' && (
         <View style={styles.topics}>
           {TOPICS.map((t) => (
             <Pressable
@@ -461,39 +502,41 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 10, gap: 12 },
   hBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
-  title: { flex: 1, textAlign: 'center', fontSize: 16, fontFamily: 'Inter-700', fontWeight: '700' },
+  title: { flex: 1, textAlign: 'center', fontSize: 15, fontFamily: 'Inter-700', fontWeight: '700' },
   thread: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 20, gap: 14 },
   threadEmpty: { flexGrow: 1, justifyContent: 'flex-start' },
-  greet: { fontSize: 17, lineHeight: 25, fontFamily: 'Inter-500', fontWeight: '500' },
+  greet: { fontSize: 15, lineHeight: 22, fontFamily: 'Inter-500', fontWeight: '500' },
   topics: { gap: 8, alignItems: 'flex-start', paddingHorizontal: 20, paddingBottom: 14 },
   topic: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9 },
-  topicText: { fontSize: 15, fontFamily: 'Inter-500', fontWeight: '500' },
-  greetHand: { width: 21, height: 21, marginBottom: -4 },
+  freshWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 360 },
+  freshText: { fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600' },
+  suggest: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 24, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12 },
+  topicText: { fontSize: 13, fontFamily: 'Inter-500', fontWeight: '500' },
   userBubble: { alignSelf: 'flex-end', maxWidth: '86%', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 12 },
-  userText: { fontSize: 16, lineHeight: 22, fontFamily: 'Inter-500', fontWeight: '500' },
+  userText: { fontSize: 15, lineHeight: 21, fontFamily: 'Inter-500', fontWeight: '500' },
   aiBlock: { gap: 8 },
-  aiText: { fontSize: 16, lineHeight: 24, fontFamily: 'Inter-400', fontWeight: '400' },
+  aiText: { fontSize: 15, lineHeight: 22, fontFamily: 'Inter-400', fontWeight: '400' },
   thinkRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  thinkText: { fontSize: 16, fontFamily: 'Inter-500', fontWeight: '500' },
+  thinkText: { fontSize: 14, fontFamily: 'Inter-500', fontWeight: '500' },
   quickWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   quick: { borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9 },
   shortcut: { alignSelf: 'flex-start', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, marginTop: 2 },
-  quickText: { fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600' },
+  quickText: { fontSize: 13, fontFamily: 'Inter-600', fontWeight: '600' },
   inputWrap: { paddingHorizontal: 20, paddingTop: 8 },
   input: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 28, paddingLeft: 18, paddingRight: 8, height: 60 },
-  inputText: { flex: 1, fontSize: 16, fontFamily: 'Inter-500', fontWeight: '500', paddingVertical: 0 },
+  inputText: { flex: 1, fontSize: 15, fontFamily: 'Inter-500', fontWeight: '500', paddingVertical: 0 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   stopSquare: { width: 16, height: 16, borderRadius: 3, backgroundColor: '#fff' },
-  disclaimer: { textAlign: 'center', fontSize: 12, marginTop: 10, fontFamily: 'Inter-500', fontWeight: '500', opacity: 0.55 },
+  disclaimer: { textAlign: 'center', fontSize: 11, marginTop: 10, fontFamily: 'Inter-500', fontWeight: '500', opacity: 0.55 },
   scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' },
   menu: { width: '80%', height: '100%', paddingHorizontal: 20, borderTopRightRadius: 28 },
   menuHead: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 26 },
   menuBot: { width: 56, height: 56 },
-  menuTitle: { fontSize: 18, fontFamily: 'Inter-700', fontWeight: '700' },
-  menuLabel: { fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600', marginBottom: 10 },
-  menuEmpty: { fontSize: 14, marginTop: 4, fontFamily: 'Inter-500', fontWeight: '500' },
+  menuTitle: { fontSize: 16, fontFamily: 'Inter-700', fontWeight: '700' },
+  menuLabel: { fontSize: 13, fontFamily: 'Inter-600', fontWeight: '600', marginBottom: 10 },
+  menuEmpty: { fontSize: 12, marginTop: 4, fontFamily: 'Inter-500', fontWeight: '500' },
   recentRow: { paddingVertical: 12 },
-  recentText: { fontSize: 16, fontFamily: 'Inter-500', fontWeight: '500' },
+  recentText: { fontSize: 14, fontFamily: 'Inter-500', fontWeight: '500' },
   menuNew: { height: 52, borderRadius: 26, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12 },
-  menuNewText: { fontSize: 16, fontFamily: 'Inter-700', fontWeight: '700' },
+  menuNewText: { fontSize: 14, fontFamily: 'Inter-700', fontWeight: '700' },
 });

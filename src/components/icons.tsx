@@ -604,12 +604,3 @@ export const TrendIcon = ({ size = 24, color = '#000', strokeWidth = 2.2 }: Icon
     <Path d="M15 8h5v5" {...stroke(color, strokeWidth)} />
   </Svg>
 );
-
-/** Waving hand (greeting). Flat two-tone SVG, replaces the emoji glyph. */
-export const WaveHandIcon = ({ size = 24 }: IconProps) => (
-  <Svg {...base(size)}>
-    <Path d="M8.2 11.2 5.9 8.9a1.5 1.5 0 0 1 2.1-2.1l3.2 3.2" fill="#FFC83D" stroke="#E09A00" strokeWidth={0.8} strokeLinejoin="round" />
-    <Path d="M10.4 5.3a1.5 1.5 0 0 1 2.1 0l5 5a6.2 6.2 0 0 1 0 8.8 6.2 6.2 0 0 1-8.8 0L4.5 14.3a1.5 1.5 0 0 1 2.1-2.1l1.8 1.8-2.6-2.6a1.5 1.5 0 0 1 2.1-2.1l2.1 2.1-2.1-2.4a1.5 1.5 0 0 1 2.1-2.1l2.5 2.4z" fill="#FFC83D" stroke="#E09A00" strokeWidth={0.8} strokeLinejoin="round" />
-    <Path d="M14.2 3.2c1.6.2 3 .9 4.1 2M3.2 15.8c.2 1.6.9 3 2 4.1" stroke="#E09A00" strokeWidth={1.1} strokeLinecap="round" fill="none" />
-  </Svg>
-);
