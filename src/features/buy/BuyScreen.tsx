@@ -16,8 +16,8 @@
  *  - Tapping the card opens the "Pay with" sheet (providers that qualify).
  *  - Continue hands off to the provider's checkout in the browser.
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, Vibration, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, Linking, Pressable, StyleSheet, Text, Vibration, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import { SkeletonBlock } from '../../components/Skeleton';
@@ -62,6 +62,35 @@ export default function BuyScreen({ navigation, route }: { navigation: any; rout
   const [amount, setAmount] = useState('');
   const [fiat, setFiat] = useState('USD');
   const crypto = 'ETH';
+
+  // Amount sizing (Trust): 78sp digits (57dp cap height) with a 34dp left edge, growing left.
+  // Measured on Trust at 411dp: "10,000" spans x34..259, caret at x287, chip starts x325.
+  // So the digits+caret zone is [34, chipLeft - 38]. Steps down in fixed stages only when the
+  // text would overflow (never auto-shrinks to a speck).
+  const { width: winW } = useWindowDimensions();
+  const chipLeft = winW - 86;
+  const avail = chipLeft - 38 - 34;
+  const text = groupDigits(amount);
+  const amountFont = (() => {
+    const perChar = (f: number) => f * 0.545; // calibrated on Trust: "10,000" = 2.87em ink at 78sp
+    const widthAt = (f: number) =>
+      [...text].reduce((w, ch) => w + (ch === ',' || ch === '.' ? f * 0.2 : perChar(f)), 0);
+    for (const f of [78, 66, 56, 48, 40, 34]) if (widthAt(f) <= avail) return f;
+    return 30;
+  })();
+
+  // Blinking caret, like Trust's input.
+  const cursor = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(cursor, { toValue: 0, duration: 520, easing: Easing.linear, useNativeDriver: true }),
+        Animated.timing(cursor, { toValue: 1, duration: 520, easing: Easing.linear, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [cursor]);
   const [flagReady, setFlagReady] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
   const [chosen, setChosen] = useState<Provider | null>(null);
@@ -167,18 +196,25 @@ export default function BuyScreen({ navigation, route }: { navigation: any; rout
       {/* amount area */}
       <View style={[styles.amountArea, errorText || mode === 'sell' ? styles.amountAreaErr : null]}>
         <View style={styles.amountRow}>
-          <Text
-            style={[
-              styles.amount,
-              { color: status === 'below_min' ? DIGIT_RED : theme.ink },
-              mode === 'buy' && !amount && { color: muted },
-            ]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.5}
-          >
-            {groupDigits(amount)}
-          </Text>
+          <View style={styles.amountBox}>
+            <Text
+              style={[
+                styles.amount,
+                { fontSize: amountFont, lineHeight: Math.round(amountFont * 1.18) },
+                { color: status === 'below_min' ? DIGIT_RED : theme.ink },
+                mode === 'buy' && !amount && { color: muted },
+              ]}
+              numberOfLines={1}
+            >
+              {groupDigits(amount)}
+            </Text>
+            <Animated.View
+              style={[
+                styles.cursor,
+                { height: Math.round(amountFont * 0.94), opacity: cursor, backgroundColor: '#8A7CFB' },
+              ]}
+            />
+          </View>
           {mode === 'buy' ? (
             <Chip
               left={<Flag code={cur?.flag ?? null} size={20} ready={flagReady} />}
@@ -297,8 +333,10 @@ const styles = StyleSheet.create({
   errorSpacer: { height: 22 },
   amountArea: { marginTop: 46, paddingHorizontal: 17 },
   amountAreaErr: { marginTop: 56 },
-  amountRow: { flexDirection: 'row', alignItems: 'center', height: 90, gap: 12 },
-  amount: { flex: 1, textAlign: 'right', fontSize: 84, lineHeight: 100, fontFamily: 'Inter-700', fontWeight: '700' },
+  amountRow: { flexDirection: 'row', alignItems: 'center', height: 96, gap: 12 },
+  amountBox: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 2 },
+  amount: { fontFamily: 'Inter-700', fontWeight: '700', textAlign: 'right' },
+  cursor: { width: 2, borderRadius: 1, marginLeft: 3 },
   subRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 12, height: 47, marginTop: 4 },
   quote: { fontSize: 18, fontFamily: 'Inter-500', fontWeight: '500' },
   quoteSk: { width: 160, height: 36, borderRadius: 6 },
