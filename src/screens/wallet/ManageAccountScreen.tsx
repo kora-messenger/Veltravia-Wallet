@@ -14,19 +14,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ScrollView,
-  TextInput,
-  StatusBar,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  useWindowDimensions,
-} from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, StatusBar, Alert, KeyboardAvoidingView, Platform, useWindowDimensions, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useWallets } from '../../wallets/WalletsProvider';
@@ -70,6 +58,8 @@ export default function ManageAccountScreen({
   const inputRef = useRef<{ focus: () => void } | null>(null);
   const stripRef = useRef<{ scrollTo: (o: { x: number; animated: boolean }) => void } | null>(null);
   const { width: screenW } = useWindowDimensions();
+  // Live horizontal scroll offset of the colour strip (drives the ring contents).
+  const scrollX = useRef(new Animated.Value(0)).current;
 
   const currentColor = wallet
     ? wallet.color === 'veltravia' && wallet.icon === 'veltravia'
@@ -171,11 +161,13 @@ export default function ManageAccountScreen({
       >
         {/* ---------- Avatar strip: fixed centre ring, scrolling circles ---------- */}
         <View style={styles.stripWrap}>
-          <ScrollView
-            ref={(r) => {
+          <Animated.ScrollView
+            ref={(r: unknown) => {
               stripRef.current = r as unknown as { scrollTo: (o: { x: number; animated: boolean }) => void } | null;
             }}
             horizontal
+            scrollEventThrottle={16}
+            onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], { useNativeDriver: true })}
             showsHorizontalScrollIndicator={false}
             snapToInterval={ITEM}
             decelerationRate="fast"
@@ -209,12 +201,37 @@ export default function ManageAccountScreen({
                 )}
               </Pressable>
             ))}
-          </ScrollView>
+          </Animated.ScrollView>
 
           {/* Fixed centre: ring + current avatar + pen. Never scrolls. */}
           <View style={styles.centerRing} pointerEvents="box-none">
             <Pressable onPress={() => setIconOpen(true)} style={styles.ringTouch}>
-              <WalletAvatar icon={wallet.icon} color={currentColor} size={BIG} />
+              {/*
+                Ring contents follow the scroll, like Trust: every colour has its own
+                avatar stacked in the ring, visible only while THAT circle is centred.
+                Between circles the ring is empty (the circles pass through it).
+              */}
+              {COLOR_ORDER.map((c, i) => {
+                const opacity = scrollX.interpolate({
+                  inputRange: [(i - 0.3) * ITEM, i * ITEM, (i + 0.3) * ITEM],
+                  outputRange: [0, 1, 0],
+                  extrapolate: 'clamp',
+                });
+                const scale = scrollX.interpolate({
+                  inputRange: [(i - 0.3) * ITEM, i * ITEM, (i + 0.3) * ITEM],
+                  outputRange: [0.86, 1, 0.86],
+                  extrapolate: 'clamp',
+                });
+                return (
+                  <Animated.View
+                    key={c}
+                    pointerEvents="none"
+                    style={[StyleSheet.absoluteFill, styles.ringAvatar, { opacity, transform: [{ scale }] }]}
+                  >
+                    <WalletAvatar icon={c === 'original' ? 'veltravia' : wallet.icon} color={c} size={BIG} />
+                  </Animated.View>
+                );
+              })}
               <View style={styles.pencil}>
                 <PencilIcon size={14} color="#FFFFFF" />
               </View>
@@ -367,6 +384,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  ringAvatar: { alignItems: 'center', justifyContent: 'center' },
   pencil: {
     position: 'absolute',
     right: -2,
