@@ -14,7 +14,6 @@ import Svg, {
   LinearGradient as SvgGradient,
   Stop,
   G,
-  Polyline,
 } from 'react-native-svg';
 
 interface IconProps {
@@ -24,6 +23,13 @@ interface IconProps {
 }
 
 const base = (size: number) => ({ width: size, height: size, viewBox: '0 0 24 24' });
+const sharp = (color: string, w: number) => ({
+  stroke: color,
+  strokeWidth: w,
+  strokeLinecap: 'butt' as const,
+  strokeLinejoin: 'miter' as const,
+  fill: 'none' as const,
+});
 const stroke = (color: string, w: number) => ({
   stroke: color,
   strokeWidth: w,
@@ -144,11 +150,16 @@ export const HomeTabIcon = ({ size = 24, color = '#000', filled }: IconProps & {
 );
 
 export const MarketsTabIcon = ({ size = 24, color = '#000' }: IconProps) => (
+  /* Sharp candlestick chart: butt caps + miter joins, no rounding. */
   <Svg {...base(size)}>
-    <Path d="M6 20V11" {...stroke(color, 2)} />
-    <Path d="M12 20V5" {...stroke(color, 2)} />
-    <Path d="M18 20v-6" {...stroke(color, 2)} />
-    <Path d="M4 20h16" {...stroke(color, 1.6)} />
+    <G stroke={color} strokeWidth={2} strokeLinecap="butt" strokeLinejoin="miter">
+      <Path d="M5 4v16" />
+      <Path d="M12 3v18" />
+      <Path d="M19 8v12" />
+    </G>
+    <Rect x="2.5" y="8" width="5" height="6" {...sharp(color, 2)} />
+    <Rect x="9.5" y="6" width="5" height="8" {...sharp(color, 2)} />
+    <Rect x="16.5" y="10.5" width="5" height="6" {...sharp(color, 2)} />
   </Svg>
 );
 
