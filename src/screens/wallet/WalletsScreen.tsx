@@ -16,7 +16,8 @@ import { useWallets } from '../../wallets/WalletsProvider';
 import { WalletAvatar } from '../../wallets/WalletAvatar';
 import AddWalletSheet from '../../components/AddWalletSheet';
 import WalletActionMenu, { MenuAnchor } from '../../components/WalletActionMenu';
-import { CloseIcon, SupportIcon, GearIcon, MoreIcon } from '../../components/icons';
+import { CloseIcon, GearIcon, MoreIcon } from '../../components/icons';
+import AnimatedSupportIcon from '../../components/AnimatedSupportIcon';
 
 export default function WalletsScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
@@ -55,7 +56,7 @@ export default function WalletsScreen({ navigation }: { navigation: any }) {
         </View>
         <View style={styles.headerRight}>
           <Pressable hitSlop={10} style={[styles.headerBtn, { backgroundColor: chipBg }]}>
-            <SupportIcon size={24} color={theme.ink} />
+            <AnimatedSupportIcon size={24} color={theme.ink} />
           </Pressable>
           <Pressable hitSlop={10} style={[styles.headerBtn, { backgroundColor: chipBg }]}>
             <GearIcon size={24} color={theme.ink} />
