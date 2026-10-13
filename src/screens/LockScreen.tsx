@@ -18,9 +18,9 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Image, Pressable, StyleSheet, Animated, Easing, StatusBar, Vibration, AppState } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
-import { FingerprintIcon, BackspaceIcon } from '../components/icons';
+import { FingerprintIcon, BackspaceIcon, ScanFaceIcon } from '../components/icons';
 import { verifyPasscode } from '../core/storage/passcode';
-import { isBiometricsSupported, isBiometricUnlockEnabled, promptBiometrics } from '../core/security/biometrics';
+import { isBiometricsSupported, isBiometricUnlockEnabled, promptBiometrics, getBiometryType, type BiometryType } from '../core/security/biometrics';
 
 const LEN = 6;
 const KEYS: (string | 'finger' | 'del')[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'finger', '0', 'del'];
@@ -37,6 +37,7 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
   const [mismatch, setMismatch] = useState(false);
   const [busy, setBusy] = useState(false);
   const [bioOk, setBioOk] = useState(false);
+  const [bioType, setBioType] = useState<BiometryType>('none');
   const [attempts, setAttempts] = useState(0);
   const [lockLeft, setLockLeft] = useState(0);
   const shake = useRef(new Animated.Value(0)).current;
@@ -51,6 +52,7 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
   useEffect(() => {
     (async () => {
       if (await isBiometricsSupported()) {
+        setBioType(await getBiometryType());
         setBioOk(await isBiometricUnlockEnabled());
       }
     })().catch(() => {});
@@ -224,7 +226,11 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
             android_ripple={{ color: theme.border, borderless: true, radius: 40 }}
           >
             {k === 'finger' ? (
-              <FingerprintIcon size={34} color={bioOk ? theme.brand : theme.inkMuted} />
+              bioType === 'faceId' ? (
+                <ScanFaceIcon size={30} color={bioOk ? theme.brand : theme.inkMuted} />
+              ) : (
+                <FingerprintIcon size={34} color={bioOk ? theme.brand : theme.inkMuted} />
+              )
             ) : k === 'del' ? (
               <BackspaceIcon size={30} color={theme.inkMuted} />
             ) : (

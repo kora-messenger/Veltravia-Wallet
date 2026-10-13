@@ -15,13 +15,29 @@ import * as Keychain from 'react-native-keychain';
 const SERVICE = 'com.veltravia.wallet';
 const KEY_BIOMarker = 'veltravia.bio.prompt';
 
-export async function isBiometricsSupported(): Promise<boolean> {
+export type BiometryType = 'faceId' | 'touchId' | 'other' | 'none';
+
+/**
+ * Trust-parity mapping (their getBiometryType): faceId / touchId / other /
+ * none, so the UI can adapt the icon and copy per device. On Android the
+ * OS prompt itself handles ANY sensor class (under-display, rear, side
+ * power-button, face) — this only decides which art we draw.
+ */
+export async function getBiometryType(): Promise<BiometryType> {
   try {
     const t = await Keychain.getSupportedBiometryType();
-    return t !== null && t !== (Keychain.BIOMETRY_TYPE as any).NONE;
+    if (t === (Keychain.BIOMETRY_TYPE as any).FACE_ID) return 'faceId';
+    if (t === (Keychain.BIOMETRY_TYPE as any).TOUCH_ID) return 'touchId';
+    if (t === (Keychain.BIOMETRY_TYPE as any).IRIS) return 'other';
+    return t ? 'other' : 'none';
   } catch {
-    return false;
+    return 'none';
   }
+}
+
+export async function isBiometricsSupported(): Promise<boolean> {
+  const t = await getBiometryType();
+  return t !== 'none';
 }
 
 /**
