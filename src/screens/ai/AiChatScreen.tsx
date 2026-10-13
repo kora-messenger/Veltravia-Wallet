@@ -462,7 +462,11 @@ export default function AiChatScreen() {
             onPress={() => {}}
           >
             <View style={styles.menuHead}>
-              <Image source={require('../../assets/veltravia-ai-bot.png')} style={styles.menuBot} resizeMode="contain" />
+              <Image
+                source={dark ? require('../../assets/veltravia-ai-bot-dark.png') : require('../../assets/veltravia-ai-bot-light.png')}
+                style={styles.menuBot}
+                resizeMode="contain"
+              />
               <Text style={[styles.menuTitle, { color: ink }]}>Veltravia AI</Text>
             </View>
 
@@ -541,7 +545,7 @@ const styles = StyleSheet.create({
   scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' },
   menu: { width: '80%', height: '100%', paddingHorizontal: 20, borderTopRightRadius: 28 },
   menuHead: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 26 },
-  menuBot: { width: 56, height: 56 },
+  menuBot: { width: 64, height: 64 },
   menuTitle: { fontSize: 16, fontFamily: 'Inter-700', fontWeight: '700' },
   menuLabel: { fontSize: 13, fontFamily: 'Inter-600', fontWeight: '600', marginBottom: 10 },
   menuEmpty: { fontSize: 12, marginTop: 4, fontFamily: 'Inter-500', fontWeight: '500' },
