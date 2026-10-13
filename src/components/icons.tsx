@@ -425,7 +425,24 @@ export const CoinSolana = ({ size = 40 }: { size?: number }) => (
   </Svg>
 );
 
+
+export const CoinBtc = ({ size = 40 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 40 40">
+    <Circle cx="20" cy="20" r="20" fill="#F7931A" />
+    {/* B glyph: stem + two bowls, with the two short bars top and bottom */}
+    <Path
+      d="M15.5 11.5h6.2c2.5 0 4.2 1.300 4.200 3.500 0 1.500-.8 2.600-2.100 3.100 1.700.4 2.800 1.700 2.800 3.500 0 2.600-1.900 4.200-5 4.200h-6.100v-14.300z"
+      fill="none"
+      stroke="#fff"
+      strokeWidth={2.4}
+      strokeLinejoin="round"
+    />
+    <Path d="M15.500 18.100h6.100M18 9v2.500M21.500 9v2.500M18 25.800v2.500M21.500 25.800v2.500" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" />
+  </Svg>
+);
+
 export const COIN_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
+  BTC: CoinBtc,
   ETH: CoinEth,
   BNB: CoinBnb,
   USDT: CoinUsdt,
@@ -523,5 +540,51 @@ export const FingerprintArt = ({ size = 108 }: { size?: number }) => (
     <Path d="M78 46c3 4 4.5 8.5 4.5 13.5V88" stroke="url(#vFp)" strokeWidth={4.5} strokeLinecap="round" />
     <Path d="M88 40c4.5 6 7 13 7 20.5V90" stroke="url(#vFp)" strokeWidth={4.5} strokeLinecap="round" opacity={0.55} />
     <Path d="M68 60v28" stroke="url(#vFp)" strokeWidth={4.5} strokeLinecap="round" opacity={0.55} />
+  </Svg>
+);
+
+/* ---------------- home redesign icons ---------------- */
+export const ClockIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Circle cx="12" cy="12" r="9" {...stroke(color, strokeWidth)} />
+    <Path d="M12 7v5l3.2 2" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+export const BarsIcon = ({ size = 24, color = '#000', strokeWidth = 2.4 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M6 19v-6M12 19V6M18 19v-9" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+export const ArrowDownTx = ({ size = 24, color = '#000', strokeWidth = 2.2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M12 5v14M6 13l6 6 6-6" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+export const ArrowUpRightTx = ({ size = 24, color = '#000', strokeWidth = 2.2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M7 17L17 7M8 7h9v9" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+export const SwapArrowsTx = ({ size = 24, color = '#000', strokeWidth = 2.2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+export const ShieldLockIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M12 3l7 3v5.5c0 4.2-2.9 7.9-7 9.5-4.1-1.6-7-5.3-7-9.5V6l7-3z" {...stroke(color, strokeWidth)} />
+    <Path d="M9 12l2.2 2.2L15.5 10" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+export const TrendIcon = ({ size = 24, color = '#000', strokeWidth = 2.2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M4 17l5-5 4 4 7-8" {...stroke(color, strokeWidth)} />
+    <Path d="M15 8h5v5" {...stroke(color, strokeWidth)} />
   </Svg>
 );

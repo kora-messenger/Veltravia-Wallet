@@ -13,6 +13,9 @@ interface Props {
   width: number;
   height: number;
   color?: string;
+  strokeWidth?: number;
+  /** Unique per instance when several sparklines share a screen. */
+  id?: string;
 }
 
 /** Catmull-Rom → cubic Bézier, gives the soft curve without overshoot noise. */
@@ -34,7 +37,8 @@ function smoothPath(pts: { x: number; y: number }[]): string {
   return d;
 }
 
-export default function Sparkline({ data, width, height, color = '#FFFFFF' }: Props) {
+export default function Sparkline({ data, width, height, color = '#FFFFFF', strokeWidth = 1.8, id = 'main' }: Props) {
+  const gid = `sparkFill-${id}`;
   const pad = 3;
   const min = Math.min(...data);
   const max = Math.max(...data);
@@ -49,17 +53,17 @@ export default function Sparkline({ data, width, height, color = '#FFFFFF' }: Pr
   return (
     <Svg width={width} height={height}>
       <Defs>
-        <SvgGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
+        <SvgGradient id={gid} x1="0" y1="0" x2="0" y2="1">
           <Stop offset="0" stopColor={color} stopOpacity={0.22} />
           <Stop offset="1" stopColor={color} stopOpacity={0} />
         </SvgGradient>
       </Defs>
-      <Path d={area} fill="url(#sparkFill)" />
+      <Path d={area} fill={`url(#${gid})`} />
       <Path
         d={line}
         fill="none"
         stroke={color}
-        strokeWidth={1.8}
+        strokeWidth={strokeWidth}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
