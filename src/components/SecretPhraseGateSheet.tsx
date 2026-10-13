@@ -20,11 +20,12 @@ import {
   Animated,
   PanResponder,
   Easing,
+  Image,
   useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
-import { CloseIcon, CheckIcon, InfoCircleIcon, SecretShieldArt } from './icons';
+import { CloseIcon, CheckIcon, InfoCircleIcon } from './icons';
 
 const POINTS = [
   'Veltravia Wallet does not have access to this secret phrase.',
@@ -141,7 +142,7 @@ export default function SecretPhraseGateSheet({
           </View>
 
           <View style={styles.art}>
-            <SecretShieldArt size={156} />
+            <Image source={require('../assets/secret-shield.png')} style={styles.artImg} resizeMode="contain" />
           </View>
 
           <View style={styles.eyes}>
@@ -201,6 +202,7 @@ const styles = StyleSheet.create({
   closeRow: { alignItems: 'flex-end' },
   closeBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   art: { alignItems: 'center', marginTop: 8 },
+  artImg: { width: 156, height: 156 },
   eyes: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 18 },
   eyesText: { fontSize: 13, fontFamily: 'Inter-600', fontWeight: '600' },
   headline: {

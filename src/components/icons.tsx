@@ -323,28 +323,6 @@ export const CheckIcon = ({ size = 24, color = '#000', strokeWidth = 2.6 }: Icon
   </Svg>
 );
 
-/** Shield with a fingerprint-style lock, used on the secret-phrase gate sheet. */
-export const SecretShieldArt = ({ size = 150 }: { size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 160 160">
-    <Defs>
-      <SvgGradient id="ssA" x1="0" y1="0" x2="1" y2="1">
-        <Stop offset="0" stopColor="#6C63FF" />
-        <Stop offset="1" stopColor="#4A90D9" />
-      </SvgGradient>
-      <SvgGradient id="ssB" x1="0" y1="0" x2="0" y2="1">
-        <Stop offset="0" stopColor="#7CF2C4" />
-        <Stop offset="1" stopColor="#3FA9F5" />
-      </SvgGradient>
-    </Defs>
-    <Path d="M80 14l50 20v38c0 32-21 55-50 68-29-13-50-36-50-68V34l50-20z" fill="url(#ssB)" />
-    <Path d="M80 14l50 20v38c0 32-21 55-50 68V14z" fill="url(#ssA)" opacity={0.85} />
-    <Rect x="56" y="62" width="58" height="34" rx="6" fill="#FFFFFF" opacity={0.95} />
-    <Path d="M66 79h6M78 79h6M90 79h6" stroke="#6C63FF" strokeWidth={4} strokeLinecap="round" />
-    <Rect x="64" y="38" width="52" height="30" rx="6" fill="none" stroke="#FFFFFF" strokeWidth={3} opacity={0.9} />
-    <Path d="M90 44c-5 0-9 4-9 9v6M90 48c-3 0-5 2-5 5v6M90 52v7M96 49c2 1 4 3 4 6v5" stroke="#FFFFFF" strokeWidth={2.4} strokeLinecap="round" fill="none" />
-  </Svg>
-);
-
 export const ShieldCheckIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
   <Svg {...base(size)}>
     <Path d="M12 3l7 3v5.5c0 4.6-3 8-7 9.5-4-1.5-7-4.9-7-9.5V6l7-3z" {...stroke(color, strokeWidth)} />
