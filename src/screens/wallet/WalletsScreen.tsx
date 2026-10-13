@@ -55,7 +55,12 @@ export default function WalletsScreen({ navigation }: { navigation: any }) {
           <Text style={[styles.title, { color: theme.ink }]}>Wallets</Text>
         </View>
         <View style={styles.headerRight}>
-          <Pressable hitSlop={10} style={[styles.headerBtn, { backgroundColor: chipBg }]}>
+          <Pressable
+            hitSlop={10}
+            onPress={() => navigation.navigate('AiChat')}
+            accessibilityLabel="Open Veltravia AI"
+            style={[styles.headerBtn, { backgroundColor: chipBg }]}
+          >
             <AnimatedSupportIcon size={24} color={theme.ink} />
           </Pressable>
           <Pressable hitSlop={10} style={[styles.headerBtn, { backgroundColor: chipBg }]}>

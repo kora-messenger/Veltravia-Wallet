@@ -24,6 +24,7 @@ import NameWalletScreen from '../screens/wallet/NameWalletScreen';
 import ImportWalletScreen from '../screens/wallet/ImportWalletScreen';
 import ManageAccountScreen from '../screens/wallet/ManageAccountScreen';
 import BalanceDetailsScreen from '../screens/wallet/BalanceDetailsScreen';
+import AiChatScreen from '../screens/ai/AiChatScreen';
 import PasscodeScreen from '../screens/onboarding/PasscodeScreen';
 import SelectRecoveryMethodScreen from '../screens/SelectRecoveryMethodScreen';
 import NotificationSheet from '../components/NotificationSheet';
@@ -54,6 +55,7 @@ export type RootStackParamList = {
   ManageAccount: { walletId: string };
   Activity: undefined;
   BalanceDetails: undefined;
+  AiChat: undefined;
 };
 
 export type MainTabParamList = {
@@ -211,6 +213,7 @@ export default function Navigation() {
         <Stack.Screen name="ManageAccount" component={ManageAccountScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="Activity" component={ActivityScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="BalanceDetails" component={BalanceDetailsScreen} options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="AiChat" component={AiChatScreen} options={{ animation: 'slide_from_bottom' }} />
       </Stack.Navigator>
       <NotificationSheet visible={notifPrompt} onClose={() => setNotifPrompt(false)} />
       </React.Fragment>
