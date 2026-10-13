@@ -143,9 +143,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         {/* ---------- Balance card (opens Balance Details) ---------- */}
         <Pressable onPress={() => navigation.navigate('BalanceDetails')} style={{ marginBottom: 20 }}>
         <LinearGradient
-          colors={[theme.cardGradient[0], theme.cardGradient[1]]}
-          start={{ x: 0, y: 0.15 }}
-          end={{ x: 1, y: 0.85 }}
+          colors={[...theme.cardGradient]}
+          locations={[0, 0.5, 1]}
+          start={{ x: 0, y: 0.55 }}
+          end={{ x: 1, y: 0.45 }}
           style={[styles.card, { width: cardW }]}
         >
           <View style={styles.cardLabelRow}>

@@ -46,8 +46,10 @@ export const palette = {
 
   // Balance card gradient (measured): left→right
   card: {
-    light: ['#6A4BFC', '#1FA0FD'],
-    dark: ['#3A22CC', '#1368E0'],
+    // Fitted from Ijezie's approved home mockup (sampled 18 points):
+    // sharp 3-stop violet → royal blue → cyan, near-horizontal.
+    light: ['#663DFB', '#3F66FC', '#24B6FC'],
+    dark: ['#5A2FF0', '#2E52D8', '#0E9CEC'],
   },
 
   // Quick-action tiles (measured): [background, icon]
@@ -81,7 +83,7 @@ export type Theme = {
   positive: string;
   negative: string;
   warning: string;
-  cardGradient: readonly [string, string];
+  cardGradient: readonly [string, string, string];
   tiles: Record<'send' | 'receive' | 'swap' | 'buy', readonly [string, string]>;
 };
 
@@ -100,7 +102,7 @@ export const themes: Record<'light' | 'dark', Theme> = {
     positive: palette.green,
     negative: palette.red,
     warning: palette.amber,
-    cardGradient: palette.card.light as unknown as readonly [string, string],
+    cardGradient: palette.card.light as unknown as readonly [string, string, string],
     tiles: palette.tiles.light as unknown as Theme['tiles'],
   },
   dark: {
@@ -117,7 +119,7 @@ export const themes: Record<'light' | 'dark', Theme> = {
     positive: palette.green,
     negative: palette.red,
     warning: palette.amber,
-    cardGradient: palette.card.dark as unknown as readonly [string, string],
+    cardGradient: palette.card.dark as unknown as readonly [string, string, string],
     tiles: palette.tiles.dark as unknown as Theme['tiles'],
   },
 };
