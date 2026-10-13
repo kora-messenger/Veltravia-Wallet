@@ -22,6 +22,9 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { CloseIcon, VeltraviaMark } from '../../components/icons';
 import { useAiChat } from '../../ai/useAiChat';
+import { localBrain } from '../../ai/engine';
+import { openRouterBrain } from '../../ai/openrouterBrain';
+import { APP_CONFIG } from '../../config/env';
 import { DISCLAIMER, MENU_DISCLAIMER, type ChatAction, type ChatContext, type ChatMessage } from '../../ai/protocol';
 import { MOCK_HOLDINGS } from '../../services/portfolio';
 import { revalidate } from '../../ai/transfer';
@@ -117,7 +120,9 @@ export default function AiChatScreen() {
     []
   );
 
-  const chat = useAiChat(ctx);
+  // Hosted brain when the build has a key, otherwise the offline engine.
+  const brain = APP_CONFIG.OPENROUTER_API_KEY ? openRouterBrain : localBrain;
+  const chat = useAiChat(ctx, brain);
   const { messages, thinking, busy } = chat;
   const started = messages.length > 0;
   const firstUser = messages.find((m) => m.role === 'user')?.text;

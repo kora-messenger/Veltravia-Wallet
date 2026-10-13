@@ -17,6 +17,10 @@ interface EnvConfig {
   API_BASE_URL: string;
   WS_BASE_URL: string;
   EXPLORER_TEMPLATE: Record<string, string>;
+  /** Hosted-AI gateway key (OpenRouter). Empty => the on-device rule engine. */
+  OPENROUTER_API_KEY: string;
+  /** Model id on the gateway, e.g. "anthropic/claude-haiku-5.5". */
+  AI_MODEL: string;
 }
 
 // react-native-config reads from .env files at build time.
@@ -26,6 +30,8 @@ const ENV: Record<BuildEnv, Omit<EnvConfig, 'env'>> = {
   development: {
     API_BASE_URL: Config.API_BASE_URL ?? 'https://api.dev.veltravia.app',
     WS_BASE_URL: Config.WS_BASE_URL ?? 'wss://stream.dev.veltravia.app',
+    OPENROUTER_API_KEY: Config.OPENROUTER_API_KEY ?? '',
+    AI_MODEL: Config.AI_MODEL ?? 'anthropic/claude-haiku-5.5',
     EXPLORER_TEMPLATE: {
       '1': 'https://sepolia.etherscan.io/tx/{hash}',
       '97': 'https://testnet.bscscan.com/tx/{hash}',
@@ -35,6 +41,8 @@ const ENV: Record<BuildEnv, Omit<EnvConfig, 'env'>> = {
   staging: {
     API_BASE_URL: Config.API_BASE_URL ?? 'https://api.stg.veltravia.app',
     WS_BASE_URL: Config.WS_BASE_URL ?? 'wss://stream.stg.veltravia.app',
+    OPENROUTER_API_KEY: Config.OPENROUTER_API_KEY ?? '',
+    AI_MODEL: Config.AI_MODEL ?? 'anthropic/claude-haiku-5.5',
     EXPLORER_TEMPLATE: {
       '1': 'https://sepolia.etherscan.io/tx/{hash}',
       '97': 'https://testnet.bscscan.com/tx/{hash}',
@@ -44,6 +52,8 @@ const ENV: Record<BuildEnv, Omit<EnvConfig, 'env'>> = {
   production: {
     API_BASE_URL: Config.API_BASE_URL ?? 'https://api.veltravia.app',
     WS_BASE_URL: Config.WS_BASE_URL ?? 'wss://stream.veltravia.app',
+    OPENROUTER_API_KEY: Config.OPENROUTER_API_KEY ?? '',
+    AI_MODEL: Config.AI_MODEL ?? 'anthropic/claude-haiku-5.5',
     EXPLORER_TEMPLATE: {
       '1': 'https://etherscan.io/tx/{hash}',
       '56': 'https://bscscan.com/tx/{hash}',
