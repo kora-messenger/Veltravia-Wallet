@@ -18,6 +18,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Image, Pressable, StyleSheet, Animated, Easing, StatusBar, Vibration, AppState } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
+import BiometricSplash from '../components/BiometricSplash';
 import { FingerprintIcon, BackspaceIcon, ScanFaceIcon } from '../components/icons';
 import { verifyPasscode } from '../core/storage/passcode';
 import { isBiometricsSupported, isBiometricUnlockEnabled, promptBiometrics, getBiometryType, type BiometryType } from '../core/security/biometrics';
@@ -38,6 +39,8 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
   const [busy, setBusy] = useState(false);
   const [bioOk, setBioOk] = useState(false);
   const [bioType, setBioType] = useState<BiometryType>('none');
+  const [splash, setSplash] = useState(false); // gradient + V while the OS prompt is up
+  const cancelledRef = useRef(false);
   const [attempts, setAttempts] = useState(0);
   const [lockLeft, setLockLeft] = useState(0);
   const shake = useRef(new Animated.Value(0)).current;
@@ -128,20 +131,33 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
     if (lockLeft > 0) return;
     if (AppState.currentState !== 'active') return;
     busyRef.current = true;
+    cancelledRef.current = false;
     setBusy(true);
+    setSplash(true); // Trust opens its biometric screen: gradient + brand V
     promptBiometrics('Veltravia Wallet', 'Unlock your wallet')
       .then((ok) => {
-        if (ok) unlock();
-        else {
+        if (ok && !cancelledRef.current) {
+          unlock(); // splash stays up through the unlock beat
+        } else {
+          setSplash(false);
           busyRef.current = false;
           setBusy(false);
         }
       })
       .catch(() => {
+        setSplash(false);
         busyRef.current = false;
         setBusy(false);
       });
   }, [bioOk, lockLeft, unlock]);
+
+  // Back arrow on the splash: abandon the biometric attempt, show the keypad.
+  const cancelBio = useCallback(() => {
+    cancelledRef.current = true;
+    setSplash(false);
+    busyRef.current = false;
+    setBusy(false);
+  }, []);
 
   // Auto-present once per mount when biometric unlock is on.
   useEffect(() => {
@@ -239,6 +255,7 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
           </Pressable>
         ))}
       </View>
+      {splash && <BiometricSplash onBack={cancelBio} />}
     </SafeAreaView>
   );
 }

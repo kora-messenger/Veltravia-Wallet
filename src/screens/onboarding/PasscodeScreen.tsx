@@ -19,9 +19,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Animated, Easing, StatusBar, Vibration } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
 import { useTheme } from '../../theme/ThemeProvider';
-import { BackIcon, FingerprintIcon, BackspaceIcon, VeltraviaMark } from '../../components/icons';
+import { BackIcon, FingerprintIcon, BackspaceIcon } from '../../components/icons';
+import BiometricSplash from '../../components/BiometricSplash';
 import BiometricLoginSheet from '../../components/BiometricLoginSheet';
 import { isBiometricsSupported, promptBiometrics } from '../../core/security/biometrics';
 
@@ -235,19 +235,8 @@ export default function PasscodeScreen({
 
       <BiometricLoginSheet visible={bioSheet} onDeny={() => finishFromBiometric('denied')} onConfirm={onBioConfirm} />
 
-      {/* Splash flash while the OS biometric prompt opens */}
-      {flash && (
-        <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          <LinearGradient
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            colors={['#6C63FF', BLUE]}
-            style={styles.flash}
-          >
-            <VeltraviaMark size={72} />
-          </LinearGradient>
-        </View>
-      )}
+      {/* Same biometric splash as the lock screen: gradient + V, back arrow */}
+      {flash && <BiometricSplash />}
     </SafeAreaView>
   );
 }
@@ -264,5 +253,4 @@ const styles = StyleSheet.create({
   pad: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 36, paddingBottom: 24 },
   key: { width: '33.333%', height: 76, alignItems: 'center', justifyContent: 'center' },
   keyText: { fontFamily: 'Inter-600', fontSize: 30, lineHeight: 36 },
-  flash: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });
