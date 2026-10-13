@@ -22,6 +22,7 @@ import BiometricSplash from '../components/BiometricSplash';
 import { FingerprintIcon, BackspaceIcon, ScanFaceIcon } from '../components/icons';
 import { verifyPasscode } from '../core/storage/passcode';
 import { isBiometricsSupported, isBiometricUnlockEnabled, promptBiometrics, getBiometryType, type BiometryType } from '../core/security/biometrics';
+import { setFlagSecure } from '../core/security';
 
 const LEN = 6;
 const KEYS: (string | 'finger' | 'del')[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'finger', '0', 'del'];
@@ -50,6 +51,12 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
   useEffect(() => {
     valueRef.current = value;
   }, [value]);
+
+  // Block screenshots / recents preview while a passcode is on screen.
+  useEffect(() => {
+    setFlagSecure(true);
+    return () => setFlagSecure(false);
+  }, []);
 
   // Is the fingerprint key usable at all?
   useEffect(() => {
