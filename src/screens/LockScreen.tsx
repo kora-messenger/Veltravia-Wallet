@@ -151,13 +151,6 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
       });
   }, [bioOk, lockLeft, unlock]);
 
-  // Back arrow on the splash: abandon the biometric attempt, show the keypad.
-  const cancelBio = useCallback(() => {
-    cancelledRef.current = true;
-    setSplash(false);
-    busyRef.current = false;
-    setBusy(false);
-  }, []);
 
   // Auto-present once per mount when biometric unlock is on.
   useEffect(() => {
@@ -250,7 +243,7 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
           </Pressable>
         ))}
       </View>
-      {splash && <BiometricSplash onBack={cancelBio} />}
+      {splash && <BiometricSplash />}
     </SafeAreaView>
   );
 }

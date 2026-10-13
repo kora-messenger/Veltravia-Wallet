@@ -12,8 +12,7 @@
  * Tapping the back arrow cancels and returns to the passcode keypad.
  */
 import React from 'react';
-import { View, Image, Pressable, StyleSheet, StatusBar, useWindowDimensions } from 'react-native';
-import { BackIcon } from './icons';
+import { View, Image, StyleSheet, StatusBar, useWindowDimensions } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 
 export default function BiometricSplash({ onBack }: { onBack?: () => void }) {
@@ -26,16 +25,6 @@ export default function BiometricSplash({ onBack }: { onBack?: () => void }) {
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: splashColor }]}>
       <StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />
-      {/* Only cancellable splashes (lock screen) get a back arrow. */}
-      {onBack && (
-        <Pressable
-          onPress={onBack}
-          hitSlop={14}
-          style={{ position: 'absolute', top: height * 0.1, left: width * 0.07, width: 36, height: 36, justifyContent: 'center' }}
-        >
-          <BackIcon size={24} color={dark ? '#FFFFFF' : '#111111'} />
-        </Pressable>
-      )}
       <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="none">
         <View style={{ marginTop: height * 0.02 }}>
           <Image source={require('../assets/veltravia-shield.png')} style={{ width: markSize, height: markSize }} resizeMode="contain" />
