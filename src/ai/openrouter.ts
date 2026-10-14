@@ -75,8 +75,8 @@ function body(o: StreamOptions): string {
   return JSON.stringify({
     model: o.model,
     stream: true,
-    max_tokens: o.maxTokens ?? 800,
-    temperature: o.temperature ?? 0.4,
+    max_tokens: o.maxTokens ?? 900,
+    temperature: o.temperature ?? 0.7,
     messages: o.messages,
   });
 }
