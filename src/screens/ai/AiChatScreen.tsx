@@ -464,7 +464,16 @@ export default function AiChatScreen() {
 
       {/* input */}
       <View style={[styles.inputWrap, { paddingBottom: kbOpen ? 10 : Math.max(insets.bottom, 12) }]}>
-        <View style={[styles.input, { borderColor: dark ? 'rgba(255,255,255,0.14)' : '#E3E3E8', backgroundColor: dark ? 'rgba(255,255,255,0.04)' : '#FFFFFF' }]}>
+        <View
+          style={[
+            styles.input,
+            {
+              borderColor: dark ? 'rgba(255,255,255,0.14)' : '#E3E3E8',
+              backgroundColor: dark ? 'rgba(255,255,255,0.04)' : '#FFFFFF',
+              opacity: offline ? 0.55 : 1,
+            },
+          ]}
+        >
           <TextInput
             value={draft}
             onChangeText={setDraft}
@@ -473,7 +482,7 @@ export default function AiChatScreen() {
             style={[styles.inputText, { color: ink }]}
             onSubmitEditing={submit}
             returnKeyType="send"
-            editable={!busy}
+            editable={!busy && !offline}
             multiline={false}
           />
           {busy ? (
@@ -483,7 +492,7 @@ export default function AiChatScreen() {
           ) : (
             <Pressable
               onPress={submit}
-              disabled={!draft.trim()}
+              disabled={!draft.trim() || offline}
               style={[styles.sendBtn, { backgroundColor: draft.trim() ? PURPLE : dark ? 'rgba(255,255,255,0.08)' : '#F0F0F5' }]}
               accessibilityLabel="Send"
             >
