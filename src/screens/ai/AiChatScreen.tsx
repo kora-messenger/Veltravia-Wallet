@@ -19,6 +19,7 @@ import {
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import NetInfo from '@react-native-community/netinfo';
 import { useTheme } from '../../theme/ThemeProvider';
 import { CloseIcon, PlusIcon, VeltraviaMark } from '../../components/icons';
 import { useAiChat } from '../../ai/useAiChat';
@@ -89,6 +90,32 @@ const SendArrow = ({ color }: { color: string }) => (
   </Svg>
 );
 
+/** Header spinner: a 3/4 arc that rotates until the connection returns. */
+function ArcSpinner({ color, size = 22 }: { color: string; size?: number }) {
+  const r = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const l = Animated.loop(Animated.timing(r, { toValue: 1, duration: 900, easing: Easing.linear, useNativeDriver: true }));
+    l.start();
+    return () => l.stop();
+  }, [r]);
+  const rotate = r.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const rad = size / 2 - 2.5;
+  const c = size / 2;
+  return (
+    <Animated.View style={{ width: size, height: size, transform: [{ rotate }] }}>
+      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <Path
+          d={`M ${c} ${c - rad} A ${rad} ${rad} 0 1 1 ${c - rad} ${c}`}
+          stroke={color}
+          strokeWidth={2.5}
+          strokeLinecap="round"
+          fill="none"
+        />
+      </Svg>
+    </Animated.View>
+  );
+}
+
 /** Shield-and-dots shimmer used while the AI thinks. */
 function Thinking({ label, color, ink }: { label: string; color: string; ink: string }) {
   const a = useRef(new Animated.Value(0.35)).current;
@@ -142,6 +169,15 @@ export default function AiChatScreen() {
     return () => { a.remove(); b.remove(); };
   }, []);
   const kbOpen = kbHeight > 0;
+  // Offline => the header shows "Reconnecting..." until the network is back (Trust parity).
+  const [offline, setOffline] = useState(false);
+  useEffect(() => {
+    const unsub = NetInfo.addEventListener((st) => {
+      // isInternetReachable is null while unknown; only treat an explicit false / not-connected as offline.
+      setOffline(st.isConnected === false || st.isInternetReachable === false);
+    });
+    return () => unsub();
+  }, []);
   const [recents, setRecents] = useState<SavedChat[]>(RECENTS);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pendingApproval, setPendingApproval] = useState<{ messageId: string; proposalId: string } | null>(null);
@@ -351,7 +387,14 @@ export default function AiChatScreen() {
         <Pressable hitSlop={10} onPress={() => setMenuOpen(true)} style={[styles.hBtn, { backgroundColor: chipBg }]}>
           <MenuLinesIcon color={ink} />
         </Pressable>
-        <Text numberOfLines={1} style={[styles.title, { color: ink }]}>{title}</Text>
+        {offline ? (
+          <View style={styles.reconnect}>
+            <ArcSpinner color={muted} />
+            <Text numberOfLines={1} style={[styles.reconnectText, { color: muted }]}>Reconnecting...</Text>
+          </View>
+        ) : (
+          <Text numberOfLines={1} style={[styles.title, { color: ink }]}>{title}</Text>
+        )}
         <Pressable hitSlop={10} onPress={() => navigation.goBack()} style={[styles.hBtn, { backgroundColor: chipBg }]}>
           <CloseIcon size={22} color={ink} />
         </Pressable>
@@ -516,6 +559,8 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 10, gap: 12 },
   hBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  reconnect: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  reconnectText: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
   title: { flex: 1, textAlign: 'center', fontSize: 15, fontFamily: 'Inter-700', fontWeight: '700' },
   thread: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 20, gap: 14 },
   threadEmpty: { flexGrow: 1, justifyContent: 'flex-start' },
