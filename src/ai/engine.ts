@@ -14,6 +14,7 @@
  *                  approval, anything it cannot verify.
  */
 
+import { runThinking } from './thinking';
 import type { AiBrain, AiEvent, ChatContext, ChatMessage, ConsentRequest, ToolName } from './protocol';
 import { TOOL_LABEL } from './protocol';
 import { looksLikeTransfer, parseTransfer, prepareTransfer, type ParsedTransfer } from './transfer';
@@ -116,7 +117,7 @@ async function handleTransfer(text: string, ctx: ChatContext, history: ChatMessa
 export const localBrain: AiBrain = {
   async send(userText, history, ctx, emit, signal) {
     emit({ type: 'THINKING_STARTED' });
-    await sleep(700);
+    await runThinking(userText, emit, signal);
     if (signal.aborted) return emit({ type: 'THINKING_STOPPED' });
     const text = userText.trim();
     const lower = text.toLowerCase();

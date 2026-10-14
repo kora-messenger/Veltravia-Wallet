@@ -21,7 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import NetInfo from '@react-native-community/netinfo';
 import { useTheme } from '../../theme/ThemeProvider';
-import { CloseIcon, PlusIcon, VeltraviaMark } from '../../components/icons';
+import { CloseIcon, PlusIcon } from '../../components/icons';
 import { useAiChat } from '../../ai/useAiChat';
 import { localBrain } from '../../ai/engine';
 import { openRouterBrain } from '../../ai/openrouterBrain';
@@ -144,7 +144,7 @@ function Thinking({ label, color, ink }: { label: string; color: string; ink: st
   }, [a]);
   return (
     <View style={styles.thinkRow}>
-      <VeltraviaMark size={22} />
+      <Image source={require('../../assets/veltravia-shield.png')} style={styles.thinkLogo} resizeMode="contain" />
       <Animated.Text style={[styles.thinkText, { color, opacity: a }]}>{label}</Animated.Text>
     </View>
   );
@@ -604,6 +604,7 @@ const styles = StyleSheet.create({
   userText: { fontSize: 15, lineHeight: 21, fontFamily: 'Inter-500', fontWeight: '500' },
   aiBlock: { gap: 8 },
   aiText: { fontSize: 15, lineHeight: 22, fontFamily: 'Inter-400', fontWeight: '400' },
+  thinkLogo: { width: 22, height: 22 },
   thinkRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   thinkText: { fontSize: 14, fontFamily: 'Inter-500', fontWeight: '500' },
   quickWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },

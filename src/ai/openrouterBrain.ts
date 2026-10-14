@@ -18,6 +18,7 @@ import { streamChat, OpenRouterError, type ChatCompletionMessage } from './openr
 import { prepareTransfer, type ParsedTransfer } from './transfer';
 import { MARKET_COINS } from '../services/marketData';
 import { APP_CONFIG } from '../config/env';
+import { runThinking } from './thinking';
 
 type Emit = (e: any) => void;
 type Signal = { aborted: boolean };
@@ -206,12 +207,30 @@ export const openRouterBrain: AiBrain = {
     const splitter = newSplitter();
     let directiveComplete = false;
 
+    // Reply text is held until the visible thinking sequence has run its course
+    // (2s "AI is thinking...", then "Checking trending tokens..." for market asks).
+    const startedAt = Date.now();
+    let released = false;
+    let held = '';
+    const thinkingDone = runThinking(userText, emit, signal, startedAt).then(() => {
+      released = true;
+      if (held && !signal.aborted) {
+        emit({ type: 'THINKING_STOPPED' });
+        emit({ type: 'text_delta', text: held });
+      }
+      held = '';
+    });
+
     const onDelta = (text: string) => {
       if (signal.aborted || directiveComplete) return;
       const visible = feedSplitter(splitter, text);
       if (visible) {
-        emit({ type: 'THINKING_STOPPED' });
-        emit({ type: 'text_delta', text: visible });
+        if (!released) {
+          held += visible;
+        } else {
+          emit({ type: 'THINKING_STOPPED' });
+          emit({ type: 'text_delta', text: visible });
+        }
       }
       if (splitter.mode === 'directive') {
         // Directive: complete once the closing fence arrives.
@@ -232,7 +251,14 @@ export const openRouterBrain: AiBrain = {
         APP_CONFIG.OPENROUTER_API_KEY || processOpenRouterKey()
       );
       const tail = flushSplitter(splitter);
-      if (tail && !signal.aborted) emit({ type: 'text_delta', text: tail });
+      if (tail) {
+        if (released) {
+          if (!signal.aborted) emit({ type: 'text_delta', text: tail });
+        } else {
+          held += tail;
+        }
+      }
+      await thinkingDone; // flushes any held text
       if (splitter.mode === 'directive' && !signal.aborted) {
         await handleDirective(parseDirective(splitter.directive), ctx, emit);
       }
