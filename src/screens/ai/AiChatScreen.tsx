@@ -2,7 +2,7 @@
  * Veltravia AI — chat screen.
  *
  * Layout mirrors Trust's assistant (from the screen recording):
- *   header:  menu button | title ("New Chat" -> first message) | close
+ *   header:  menu button | [new-chat button once started] | title ("New Chat") | close
  *   empty:   greeting + topic chips (support triage)
  *   thread:  right-aligned grey user bubble, assistant text with shield
  *            "AI is thinking..." / tool progress lines, cards for actions
@@ -77,6 +77,19 @@ function TopicIcon({ kind, color }: { kind: (typeof TOPICS)[number]['icon']; col
     </Svg>
   );
 }
+
+const ComposeIcon = ({ color }: { color: string }) => (
+  <Svg width={26} height={26} viewBox="0 0 26 26" fill="none">
+    <Path
+      d="M12 4.5H8.2C6 4.5 4.5 6 4.5 8.2v6.6c0 2.2 1.5 3.7 3.7 3.7H9v3.2l4-3.2h3.8c2.2 0 3.7-1.5 3.7-3.7V13"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Path d="M18.5 3v6.5M15.25 6.25h6.5" stroke={color} strokeWidth={2} strokeLinecap="round" />
+  </Svg>
+);
 
 const MenuLinesIcon = ({ color }: { color: string }) => (
   <Svg width={22} height={22} viewBox="0 0 24 24">
@@ -220,7 +233,9 @@ export default function AiChatScreen() {
   const newChat = () => { chat.reset(); setActiveId(null); setMode('fresh'); setMenuOpen(false); };
   const openChat = (c: SavedChat) => { chat.load(c.messages); setActiveId(c.id); setMenuOpen(false); };
   const firstUser = messages.find((m) => m.role === 'user')?.text;
-  const title = firstUser ? firstUser : mode === 'fresh' ? 'Veltravia AI' : 'New Chat';
+  // Trust parity: a fresh chat shows 'Veltravia AI' until the first send, then 'New Chat'. The first
+  // message text only names the chat in the drawer's recents, never the header.
+  const title = firstUser ? 'New Chat' : mode === 'fresh' ? 'Veltravia AI' : 'New Chat';
 
   useEffect(() => {
     const t = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 60);
@@ -387,6 +402,11 @@ export default function AiChatScreen() {
         <Pressable hitSlop={10} onPress={() => setMenuOpen(true)} style={[styles.hBtn, { backgroundColor: chipBg }]}>
           <MenuLinesIcon color={ink} />
         </Pressable>
+        {started && (
+          <Pressable hitSlop={10} onPress={newChat} accessibilityLabel="New chat" style={[styles.hBtn, { backgroundColor: chipBg }]}>
+            <ComposeIcon color={ink} />
+          </Pressable>
+        )}
         {offline ? (
           <View style={styles.reconnect}>
             <ArcSpinner color={muted} />
