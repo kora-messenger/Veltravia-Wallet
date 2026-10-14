@@ -502,8 +502,13 @@ export default function AiChatScreen() {
             style={[styles.inputText, { color: ink }]}
             onSubmitEditing={submit}
             returnKeyType="send"
+            // Wrap onto new lines instead of scrolling sideways, but keep the keyboard's
+            // "Send" key: submitBehavior=submit stops Enter from inserting a newline.
+            multiline
+            submitBehavior="submit"
+            textAlignVertical="center"
+            scrollEnabled
             editable={!busy && !offline}
-            multiline={false}
           />
           {busy ? (
             <Pressable onPress={chat.stop} style={[styles.sendBtn, { backgroundColor: PURPLE }]} accessibilityLabel="Stop generating">
@@ -612,8 +617,8 @@ const styles = StyleSheet.create({
   shortcut: { alignSelf: 'flex-start', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, marginTop: 2 },
   quickText: { fontSize: 13, fontFamily: 'Inter-600', fontWeight: '600' },
   inputWrap: { paddingHorizontal: 20, paddingTop: 8 },
-  input: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 28, paddingLeft: 18, paddingRight: 8, height: 60 },
-  inputText: { flex: 1, fontSize: 15, fontFamily: 'Inter-500', fontWeight: '500', paddingVertical: 0 },
+  input: { flexDirection: 'row', alignItems: 'flex-end', borderWidth: 1, borderRadius: 28, paddingLeft: 18, paddingRight: 8, minHeight: 60, paddingVertical: 8 },
+  inputText: { flex: 1, fontSize: 15, lineHeight: 21, fontFamily: 'Inter-500', fontWeight: '500', paddingVertical: 6, marginBottom: 5, maxHeight: 21 * 5 + 12 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   stopSquare: { width: 16, height: 16, borderRadius: 3, backgroundColor: '#fff' },
   disclaimer: { textAlign: 'center', fontSize: 11, marginTop: 10, fontFamily: 'Inter-500', fontWeight: '500', opacity: 0.55 },
