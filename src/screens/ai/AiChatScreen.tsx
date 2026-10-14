@@ -386,7 +386,7 @@ export default function AiChatScreen() {
         )}
       </ScrollView>
 
-      {!started && !kbOpen && mode === 'fresh' && (
+      {!started && mode === 'fresh' && (
         <View style={styles.topics}>
           {FRESH_SUGGESTIONS.map((t) => (
             <Pressable
@@ -404,7 +404,7 @@ export default function AiChatScreen() {
         </View>
       )}
 
-      {!started && !kbOpen && mode === 'support' && (
+      {!started && mode === 'support' && (
         <View style={styles.topics}>
           {TOPICS.map((t) => (
             <Pressable
