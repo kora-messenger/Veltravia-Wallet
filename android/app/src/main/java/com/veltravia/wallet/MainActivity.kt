@@ -42,6 +42,25 @@ class MainActivity : ReactActivity() {
         .setBackgroundColor(resources.getColor(R.color.splashBackground, theme))
   }
 
+  /**
+   * Privacy (Trust parity): the recents snapshot is taken right after onPause,
+   * so set FLAG_SECURE THERE — blanking the app-switcher preview of whatever
+   * screen the user left (QR / balances). JS cannot win this race; by the time
+   * the JS 'background' AppState fires the snapshot is already captured.
+   * onResume clears it again unless the lock screen is holding it (SecureModule).
+   */
+  override fun onPause() {
+    window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+    super.onPause()
+  }
+
+  override fun onResume() {
+    super.onResume()
+    if (!SecureModule.jsRequested) {
+      window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+    }
+  }
+
   // Fires when the in-app light/dark toggle changes the native night mode.
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)

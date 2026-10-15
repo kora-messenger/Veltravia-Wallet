@@ -66,6 +66,10 @@ function Mark({ symbol }: { symbol: string }) {
   }
 }
 
+export function CoinMark({ symbol }: { symbol: string }) {
+  return <Mark symbol={symbol} />;
+}
+
 export default function CoinLogo({ symbol, size = 32 }: Props) {
   return (
     <Svg width={size} height={size} viewBox="0 0 32 32">

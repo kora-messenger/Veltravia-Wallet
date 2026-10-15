@@ -159,20 +159,26 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
   }, [bioOk, lockLeft, unlock]);
 
 
-  // Auto-present once per mount when biometric unlock is on.
+  // Auto-present once per mount when biometric unlock is on. The biometric
+  // splash shows the instant bioOk is known — Trust opens straight into it.
   useEffect(() => {
     if (!bioOk) return;
+    setSplash(true);
     const t = setTimeout(() => presentBio(), 400);
     return () => clearTimeout(t);
   }, [bioOk]);
 
-  // Re-present when the app returns to the foreground while still locked.
+  // Re-present when the app returns to the foreground while still locked. The
+  // biometric splash shows at once (Trust re-opens its biometric screen); the
+  // prompt follows ~150ms later. Never pre-empt a prompt that is already up.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (st) => {
-      if (st === 'active') setTimeout(() => presentBio(), 150);
+      if (st !== 'active') return;
+      if (bioOk && !busyRef.current) setSplash(true);
+      setTimeout(() => presentBio(), 150);
     });
     return () => sub.remove();
-  }, [presentBio]);
+  }, [presentBio, bioOk]);
 
   const press = useCallback(
     (k: string) => {

@@ -17,6 +17,11 @@ import com.facebook.react.bridge.ReactMethod
 class SecureModule(private val reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
 
+  companion object {
+    /** True while JS wants FLAG_SECURE held (lock/passcode screens mounted). */
+    @Volatile var jsRequested = false
+  }
+
   override fun getName() = "SecureModule"
 
   @ReactMethod
@@ -24,6 +29,7 @@ class SecureModule(private val reactContext: ReactApplicationContext) :
     val activity = reactContext.currentActivity ?: return
     activity.runOnUiThread {
       val flag = android.view.WindowManager.LayoutParams.FLAG_SECURE
+      jsRequested = enabled
       if (enabled) activity.window.addFlags(flag) else activity.window.clearFlags(flag)
     }
   }

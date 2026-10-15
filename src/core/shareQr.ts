@@ -30,13 +30,10 @@ export interface ShareTarget {
 /** Installed apps that can receive the QR image. Empty when unsupported. */
 export function getShareTargets(): Promise<ShareTarget[]> {
   if (!Native?.getShareTargets) return Promise.resolve([]);
-  return new Promise((resolve) => {
-    try {
-      Native.getShareTargets((targets: ShareTarget[]) => resolve(targets ?? []), () => resolve([]));
-    } catch {
-      resolve([]);
-    }
-  });
+  // Native signature is (promise) — calling it with callbacks crashes the bridge.
+  return Promise.resolve(Native.getShareTargets() as Promise<ShareTarget[]>)
+    .then((targets) => targets ?? [])
+    .catch(() => []);
 }
 
 /** Share the QR image + text directly to one target. False when unsupported. */

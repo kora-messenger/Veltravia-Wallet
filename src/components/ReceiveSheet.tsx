@@ -36,12 +36,12 @@ import {
   Image,
   useWindowDimensions,
 } from 'react-native';
-import Svg, { Rect as SvgRect, Path as SvgPath, Circle as SvgCircle } from 'react-native-svg';
+import Svg, { G, Rect as SvgRect, Path as SvgPath, Circle as SvgCircle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
 import { SkeletonBlock } from './Skeleton';
 import QrCode from './QrCode';
-import CoinLogo from './CoinLogo';
+import CoinLogo, { CoinMark } from './CoinLogo';
 import { CloseIcon, BackIcon, ChevronDownIcon, CopyIcon, ShareIcon, AlertCircleIcon, SearchIcon } from './icons';
 import { copyToClipboard } from '../core/clipboard';
 import { encodeQr } from '../core/qr';
@@ -353,8 +353,11 @@ function ReceiveBody({
             size={qrSize}
             logo={
               <>
-                <SvgRect x="0" y="0" width="100" height="100" rx="22" fill="#14152B" />
-                <SvgPath d="M26 34l24 34 24-34" stroke="#FFFFFF" strokeWidth={11} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                {/* White halo tile first so the logo never fuses with dark modules */}
+                <SvgRect x="-8" y="-8" width="116" height="116" rx="28" fill="#FFFFFF" />
+                <G transform="translate(9 9) scale(2.6)">
+                  <CoinMark symbol={network.symbol} />
+                </G>
               </>
             }
           />
@@ -470,8 +473,10 @@ function ShareVia({
           size={qrSize}
           logo={
             <>
-              <SvgRect x="-6" y="-6" width="112" height="112" rx="26" fill="#FFFFFF" />
-              <SvgCircle cx="50" cy="50" r="50" fill={coinColor(network.symbol)} />
+              <SvgRect x="-8" y="-8" width="116" height="116" rx="28" fill="#FFFFFF" />
+              <G transform="translate(9 9) scale(2.6)">
+                <CoinMark symbol={network.symbol} />
+              </G>
             </>
           }
         />

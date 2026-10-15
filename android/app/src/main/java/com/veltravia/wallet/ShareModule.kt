@@ -13,6 +13,7 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.WritableArray
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.bridge.WritableNativeArray
@@ -86,8 +87,8 @@ class ShareModule(private val reactContext: ReactApplicationContext) :
 
   /** Share the QR + text directly to one chosen app. */
   @ReactMethod
-  fun shareQrTo(packageName: String, className: String, matrix: Array<BooleanArray>, text: String, logoColor: String) {
-    val uri = writeQr(matrix, logoColor)
+  fun shareQrTo(packageName: String, className: String, matrix: ReadableArray, text: String, logoColor: String) {
+    val uri = writeQr(toMatrix(matrix), logoColor)
     val send = Intent(Intent.ACTION_SEND).apply {
       component = android.content.ComponentName(packageName, className)
       type = "image/png"
@@ -101,8 +102,8 @@ class ShareModule(private val reactContext: ReactApplicationContext) :
 
   /** Open the system chooser with the QR + text (the "More" path). */
   @ReactMethod
-  fun shareQrImage(matrix: Array<BooleanArray>, text: String, logoColor: String) {
-    val uri = writeQr(matrix, logoColor)
+  fun shareQrImage(matrix: ReadableArray, text: String, logoColor: String) {
+    val uri = writeQr(toMatrix(matrix), logoColor)
     val send = Intent(Intent.ACTION_SEND).apply {
       type = "image/png"
       putExtra(Intent.EXTRA_STREAM, uri)
@@ -113,6 +114,19 @@ class ShareModule(private val reactContext: ReactApplicationContext) :
     reactContext.startActivity(Intent.createChooser(send, "Share address").apply {
       addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     })
+  }
+
+  /** JS nested boolean arrays arrive as ReadableArray — the bridge has no Array<BooleanArray>. */
+  private fun toMatrix(arr: ReadableArray?): Array<BooleanArray> {
+    if (arr == null) return arrayOf()
+    val out = Array(arr.size()) { BooleanArray(0) }
+    for (i in 0 until arr.size()) {
+      val row = arr.getArray(i) ?: continue
+      val b = BooleanArray(row.size())
+      for (j in 0 until row.size()) b[j] = row.getBoolean(j)
+      out[i] = b
+    }
+    return out
   }
 
   /** Render the QR bitmap to the share cache and return its content URI. */
