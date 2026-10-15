@@ -100,6 +100,11 @@ export default function Navigation() {
   const [locked, setLocked] = React.useState(true);
   const [booted, setBooted] = React.useState(false);
   const [walletExists, setWalletExists] = React.useState(false);
+  // Cached passcode state so the background lock is SYNCHRONOUS. Reading the
+  // keychain first leaves a window where the app resumes straight into the
+  // screen the user left (e.g. the share view) with only the OS fingerprint
+  // dialog over it — the lock screen must already be painted when we return.
+  const hasPassRef = React.useRef(false);
 
   React.useEffect(() => {
     let alive = true;
@@ -109,6 +114,7 @@ export default function Navigation() {
       // biometric-protected item and would pop a prompt just to check.)
       const has = await hasPasscode();
       if (alive) {
+        hasPassRef.current = has;
         setWalletExists(has);
         setLocked(has);
         setBooted(true);
@@ -127,10 +133,13 @@ export default function Navigation() {
   React.useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'background') {
-        // Passcode exists => wallet exists. Re-read so the stack restarts
-        // on MainTabs after the unlock, even for a wallet made this session.
+        // Lock IMMEDIATELY from the cached state so the lock screen is the
+        // frame the system shows on resume; the async re-read only reconciles
+        // the stack (a wallet created this session).
+        setLocked(hasPassRef.current);
         hasPasscode()
           .then((has) => {
+            hasPassRef.current = has;
             setWalletExists(has);
             setLocked(has);
           })

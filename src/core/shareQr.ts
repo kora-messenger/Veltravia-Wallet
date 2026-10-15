@@ -5,7 +5,6 @@
  * false when the module is unavailable (caller falls back to text-only).
  */
 import { NativeModules } from 'react-native';
-import { coinColor } from './coinColors';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Native = (NativeModules as any).VeltraviaShare;
@@ -13,7 +12,7 @@ const Native = (NativeModules as any).VeltraviaShare;
 export function shareQrImage(matrix: boolean[][], text: string, symbol: string): boolean {
   try {
     if (!Native?.shareQrImage) return false;
-    Native.shareQrImage(matrix, text, coinColor(symbol));
+    Native.shareQrImage(matrix, text, symbol);
     return true;
   } catch {
     return false;
@@ -40,7 +39,7 @@ export function getShareTargets(): Promise<ShareTarget[]> {
 export function shareQrTo(t: ShareTarget, matrix: boolean[][], text: string, symbol: string): boolean {
   try {
     if (!Native?.shareQrTo) return false;
-    Native.shareQrTo(t.packageName, t.className, matrix, text, coinColor(symbol));
+    Native.shareQrTo(t.packageName, t.className, matrix, text, symbol);
     return true;
   } catch {
     return false;

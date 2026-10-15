@@ -153,7 +153,7 @@ export default function ReceiveSheet({
     showToast(ok ? 'Address copied' : "Couldn't copy the address", { kind: ok ? 'success' : 'error' });
   };
 
-  const shareText = address ? `My ${network.name} address to receive ${network.symbol}:\n${address}` : '';
+  const shareText = address ? `My ${network.name} address to receive:\n${address}` : '';
 
   const openChooser = async () => {
     if (!address) return;
