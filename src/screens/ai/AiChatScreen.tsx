@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
   quickText: { fontSize: 13, fontFamily: 'Inter-600', fontWeight: '600' },
   inputWrap: { paddingHorizontal: 20, paddingTop: 8 },
   input: { flexDirection: 'row', alignItems: 'flex-end', borderWidth: 1, borderRadius: 28, paddingLeft: 18, paddingRight: 8, minHeight: 60, paddingVertical: 8 },
-  inputText: { flex: 1, fontSize: 15, lineHeight: 21, fontFamily: 'Inter-500', fontWeight: '500', paddingTop: 12, paddingBottom: 10, maxHeight: Math.round(21 * 12 + 22) },
+  inputText: { flex: 1, fontSize: 15, lineHeight: 21, fontFamily: 'Inter-500', fontWeight: '500', paddingTop: 12, paddingBottom: 10, maxHeight: 118 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   stopSquare: { width: 16, height: 16, borderRadius: 3, backgroundColor: '#fff' },
   disclaimer: { textAlign: 'center', fontSize: 11, marginTop: 10, fontFamily: 'Inter-500', fontWeight: '500', opacity: 0.55 },
