@@ -11,7 +11,7 @@
  * until it is unlocked again.
  */
 import React, { useEffect, useState } from 'react';
-import { Modal, View, Text, Pressable, StyleSheet, TextInput, Animated, Easing, ScrollView } from 'react-native';
+import { Modal, View, Text, Pressable, StyleSheet, TextInput, Animated, Easing, ScrollView, Platform, Keyboard } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import { CloseIcon, ShieldLockIcon, CheckIcon } from '../../components/icons';
@@ -46,6 +46,17 @@ export default function WalletLockSheet({ visible, onClose }: { visible: boolean
   const [verifyErr, setVerifyErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [passcodeStep, setPasscodeStep] = useState(false);
+
+  // Edge-to-edge Android ignores adjustResize, so the keyboard would simply
+  // overlay this sheet. Track its height and lift the sheet above it instead.
+  const [kb, setKb] = useState(0);
+  useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const a = Keyboard.addListener(showEvt, (e) => setKb(e.endCoordinates?.height ?? 0));
+    const b = Keyboard.addListener(hideEvt, () => setKb(0));
+    return () => { a.remove(); b.remove(); };
+  }, []);
 
   const shake = useState(new Animated.Value(0))[0];
   const doShake = () =>
@@ -127,7 +138,7 @@ export default function WalletLockSheet({ visible, onClose }: { visible: boolean
   return (
     <>
       <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-        <View style={[styles.scrim, { backgroundColor: 'rgba(0,0,0,0.45)' }]}>
+        <View style={[styles.scrim, { backgroundColor: 'rgba(0,0,0,0.45)', paddingBottom: kb }]}>
           <View style={[styles.sheet, { backgroundColor: theme.background, paddingBottom: Math.max(insets.bottom, 20) }]}>
             <View style={styles.grabWrap}>
               <View style={[styles.grab, { backgroundColor: dark ? 'rgba(255,255,255,0.25)' : 'rgba(6,14,44,0.15)' }]} />
@@ -146,7 +157,11 @@ export default function WalletLockSheet({ visible, onClose }: { visible: boolean
               </Pressable>
             </View>
 
-            <ScrollView contentContainerStyle={{ paddingBottom: 10 }}>
+            <ScrollView
+              contentContainerStyle={{ paddingBottom: 10 }}
+              keyboardShouldPersistTaps="handled"
+              automaticallyAdjustKeyboardInsets
+            >
               <View style={[styles.statusCard, { backgroundColor: panel }]}>
                 <Text style={[styles.statusKicker, { color: theme.inkMuted }]}>STATUS</Text>
                 <Text style={[styles.statusText, { color: locked ? RED : GREEN }]}>
@@ -154,8 +169,8 @@ export default function WalletLockSheet({ visible, onClose }: { visible: boolean
                 </Text>
                 <Text style={[styles.statusBody, { color: theme.inkMuted }]}>
                   {locked
-                    ? 'Sending and swapping are blocked. Balances stay visible and receiving still works.'
-                    : 'Locking freezes sending and swapping while keeping your wallet looking normal.'}
+                    ? 'Sending and swapping are paused until you unlock your wallet.'
+                    : 'Lock to pause sending and swapping across this wallet.'}
                 </Text>
               </View>
 
@@ -163,8 +178,8 @@ export default function WalletLockSheet({ visible, onClose }: { visible: boolean
                 <View style={styles.section}>
                   <Text style={[styles.sectionTitle, { color: theme.ink }]}>Create your security password</Text>
                   <Text style={[styles.sectionBody, { color: theme.inkMuted }]}>
-                    A text password for “{activeWallet.name}”, separate from your 6-digit passcode and biometrics. Each
-                    wallet has its own AI, its own security password and its own lock.
+                    Use it to lock and unlock this wallet. Keep it private — it's separate from your passcode and
+                    biometrics.
                   </Text>
                   <Input value={pw1} onChange={setPw1} placeholder={`Password (min ${MIN_LEN} characters)`} err={!!createErr} />
                   <Input value={pw2} onChange={setPw2} placeholder="Confirm password" err={!!createErr} />
@@ -184,7 +199,7 @@ export default function WalletLockSheet({ visible, onClose }: { visible: boolean
                     {locked ? 'Unlock your wallet' : 'Lock your wallet'}
                   </Text>
                   <Text style={[styles.sectionBody, { color: theme.inkMuted }]}>
-                    Enter your security password, then confirm with biometrics or your passcode.
+                    Enter your security password to continue, then confirm with biometrics or your passcode.
                   </Text>
                   <Animated.View style={{ transform: [{ translateX: shakeX }] }}>
                     <Input value={pw} onChange={setPw} placeholder="Security password" err={!!verifyErr} />
