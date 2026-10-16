@@ -92,7 +92,13 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
         <View
           style={[
             styles.iconWrap,
-            { backgroundColor: focused ? 'rgba(108,76,245,0.12)' : 'transparent' },
+            {
+              backgroundColor: focused
+                ? theme.mode === 'dark'
+                  ? '#1D2133' // Trust dark-mode indicator
+                  : '#EFEFF1' // Trust light-mode indicator
+                : 'transparent',
+            },
           ]}
         >
           <AnimatedTabIcon
@@ -206,9 +212,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 64,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
   },
