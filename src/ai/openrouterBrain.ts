@@ -20,7 +20,6 @@ import { MARKET_COINS } from '../services/marketData';
 import { APP_CONFIG } from '../config/env';
 import { runThinking } from './thinking';
 import { walletLocked } from '../core/security/walletLock';
-import { hasSecurityPassword } from '../core/storage/securityPassword';
 
 type Emit = (e: any) => void;
 type Signal = { aborted: boolean };
@@ -79,8 +78,8 @@ WALLET LOCK — follow exactly:
 \`\`\`
 - If they ask to unlock it: {"action":"wallet_unlock"} in the same directive form.
 - Never claim the wallet is locked or unlocked yourself. The app shows an approval card where the user types their SECURITY PASSWORD (a text password, different from their passcode), then confirms with biometrics; only then does the lock state change.
-- The security password is separate from the passcode and biometrics. If the user asks to lock/unlock but has not set one, do not send the directive: tell them to set it in Settings → Wallet Lock first.
-- The wallet is currently ${walletLocked() ? 'LOCKED: transfers are refused until it is unlocked' : 'unlocked'}.
+- The security password is separate from the passcode and biometrics and is set per wallet. If the user has not set one yet, the approval card lets them create it right there — no need to send them to Settings.
+- The wallet you serve is "${ctx.walletName}" and it is currently ${walletLocked(ctx.walletId) ? 'LOCKED: transfers are refused until it is unlocked' : 'unlocked'}.
 
 TRANSFER PROTOCOL — follow exactly:
 - v1 can only send: ETH (Ethereum), BNB (BNB Smart Chain), POL/MATIC (Polygon), USDT (BNB Smart Chain), USDC (Ethereum). If the user asks to send anything else (e.g. BTC), say it is not supported yet in this build.
@@ -181,15 +180,6 @@ async function handleDirective(
   const action = json?.action;
   if ((action === 'wallet_lock' || action === 'wallet_unlock') && json) {
     const lock = action === 'wallet_lock';
-    if (!(await hasSecurityPassword())) {
-      emit({
-        type: 'text_delta',
-        text:
-          'You need a security password before I can lock or unlock your wallet. Set one in Settings → Wallet Lock, then ask me again. ',
-      });
-      emit({ type: 'action', action: { kind: 'open_settings', label: 'Open Settings' } });
-      return;
-    }
     // Same status choreography as the offline brain.
     emit({ type: 'tool_call', tool: 'wallet-lock', label: lock ? 'Requesting wallet lock...' : 'Requesting wallet unlock...' });
     await sleep(900);
@@ -198,8 +188,8 @@ async function handleDirective(
     emit({
       type: 'text_delta',
       text: lock
-        ? "Wallet lock requested. Review the card below and approve it to lock your wallet — you'll confirm with your security password. "
-        : "Wallet unlock requested. Review the card below and approve it to unlock your wallet — you'll confirm with your security password. ",
+        ? `Wallet lock requested for ${ctx.walletName}. Review the card below — type your security password (create it there if you haven't yet) and confirm with biometrics or your passcode. `
+        : `Wallet unlock requested for ${ctx.walletName}. Review the card below — type your security password and confirm with biometrics or your passcode. `,
     });
     emit({ type: 'action', action: { kind: 'wallet_lock', lock } });
     return;

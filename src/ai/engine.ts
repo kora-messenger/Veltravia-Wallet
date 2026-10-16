@@ -20,7 +20,6 @@ import { TOOL_LABEL } from './protocol';
 import { looksLikeTransfer, parseTransfer, prepareTransfer, type ParsedTransfer } from './transfer';
 import { MARKET_COINS } from '../services/marketData';
 import { walletLocked } from '../core/security/walletLock';
-import { hasSecurityPassword } from '../core/storage/securityPassword';
 
 type Emit = (e: AiEvent) => void;
 type Signal = { aborted: boolean };
@@ -129,18 +128,9 @@ async function handleTransfer(text: string, ctx: ChatContext, history: ChatMessa
  *   password; the "Initiating..." sequence runs AFTER authentication, in
  *   the chat screen (it owns the execution step).
  */
-async function handleWalletLock(lock: boolean, emit: Emit, signal: Signal) {
-  if (!(await hasSecurityPassword())) {
-    await say(
-      `You need a security password before I can ${lock ? 'lock' : 'unlock'} your wallet. ` +
-        'Set one in Settings → Wallet Lock, then ask me again.',
-      emit,
-      signal
-    );
-    if (!signal.aborted) emit({ type: 'action', action: { kind: 'open_settings', label: 'Open Settings' } });
-    return;
-  }
-  if (lock && walletLocked()) {
+async function handleWalletLock(lock: boolean, ctx: ChatContext, emit: Emit, signal: Signal) {
+  const wid = ctx.walletId;
+  if (lock && walletLocked(wid)) {
     await say(
       'Your wallet is already locked. Balances stay visible, but sending is blocked until you unlock it.',
       emit,
@@ -148,7 +138,7 @@ async function handleWalletLock(lock: boolean, emit: Emit, signal: Signal) {
     );
     return;
   }
-  if (!lock && !walletLocked()) {
+  if (!lock && !walletLocked(wid)) {
     await say('Your wallet is not locked right now — sending works normally. Only lock it when you want transfers frozen.', emit, signal);
     return;
   }
@@ -159,8 +149,8 @@ async function handleWalletLock(lock: boolean, emit: Emit, signal: Signal) {
   if (signal.aborted) return;
   await say(
     lock
-      ? "Wallet lock requested. Review the card below and approve it to lock your wallet — you'll confirm with your security password."
-      : "Wallet unlock requested. Review the card below and approve it to unlock your wallet — you'll confirm with your security password.",
+      ? `Wallet lock requested for ${ctx.walletName}. Review the card below and approve it — type your security password, then confirm with biometrics or your passcode.`
+      : `Wallet unlock requested for ${ctx.walletName}. Review the card below and approve it — type your security password, then confirm with biometrics or your passcode.`,
     emit,
     signal
   );
@@ -196,12 +186,12 @@ export const localBrain: AiBrain = {
       // 2. AI-initiated wallet lock / unlock
       if (/\bunlock\b[^.]*\bwallet\b|\bwallet\b[^.]*\bunlock\b/i.test(lower)) {
         emit({ type: 'THINKING_STOPPED' });
-        await handleWalletLock(false, emit, signal);
+        await handleWalletLock(false, ctx, emit, signal);
         return emit({ type: 'done' });
       }
       if (/\b(lock|freeze)\b[^.]*\bwallet\b|\bwallet\b[^.]*\b(lock|freeze)\b/i.test(lower)) {
         emit({ type: 'THINKING_STOPPED' });
-        await handleWalletLock(true, emit, signal);
+        await handleWalletLock(true, ctx, emit, signal);
         return emit({ type: 'done' });
       }
 

@@ -130,6 +130,10 @@ export interface ChatMessage {
 }
 
 export interface ChatContext {
+  /** Wallet account id — lock flag + security password are per wallet. */
+  walletId: string;
+  /** Display name of the wallet this AI serves. */
+  walletName: string;
   /** The wallet's receive address on each chain id. */
   addresses: Record<string, string>;
   holdings: { symbol: string; amount: number; price: number; change24h: number }[];

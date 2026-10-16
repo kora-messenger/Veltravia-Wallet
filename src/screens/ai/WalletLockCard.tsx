@@ -24,7 +24,9 @@ export default function WalletLockCard({
   busy,
   noPassword,
   error,
+  walletName,
   onApprove,
+  onSetup,
   onReject,
   onOpenSettings,
 }: {
@@ -36,7 +38,11 @@ export default function WalletLockCard({
   noPassword?: boolean;
   /** Verification failed: shake + red line, card stays open for retry. */
   error?: string | null;
+  /** Wallet this lock applies to (each wallet has its own AI + password). */
+  walletName?: string;
   onApprove: (password: string) => void;
+  /** First use: create the security password right here, then continue. */
+  onSetup: (password: string) => void;
   onReject: () => void;
   onOpenSettings: () => void;
 }) {
@@ -48,12 +54,15 @@ export default function WalletLockCard({
   const state = resolved;
 
   const [pw, setPw] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [setupErr, setSetupErr] = useState<string | null>(null);
   const shake = useRef(new Animated.Value(0)).current;
 
   // Wrong password: shake the field and clear it for another try.
   useEffect(() => {
     if (!error) return;
     setPw('');
+    setPw2('');
     Animated.sequence([
       Animated.timing(shake, { toValue: 1, duration: 40, useNativeDriver: true, easing: Easing.linear }),
       Animated.timing(shake, { toValue: -1, duration: 80, useNativeDriver: true, easing: Easing.linear }),
@@ -88,17 +97,64 @@ export default function WalletLockCard({
           : 'Unlocking re-enables sending, swapping and AI transfers. Your balances never changed while it was locked.'}
       </Text>
 
-      {noPassword ? (
+      {noPassword && !state ? (
         <>
           <Text style={[styles.body, { color: theme.ink }]}>
-            You haven't set a security password yet. Set one in Settings → Wallet Lock, then ask me again.
+            You haven't set a security password for this wallet yet. Create one below — you'll use it every time you lock or unlock.
           </Text>
-          <Pressable
-            onPress={onOpenSettings}
-            style={({ pressed }) => [styles.btn, { backgroundColor: GREEN, opacity: pressed ? 0.85 : 1 }]}
-          >
-            <Text style={[styles.btnText, { color: '#fff' }]}>Open Settings</Text>
-          </Pressable>
+          <Animated.View style={{ transform: [{ translateX: shakeX }] }}>
+            <TextInput
+              value={pw}
+              onChangeText={setPw}
+              secureTextEntry
+              autoCorrect={false}
+              autoCapitalize="none"
+              placeholder="Security password (min 6 characters)"
+              placeholderTextColor={theme.inkMuted}
+              selectionColor={theme.brand}
+              style={[styles.input, { backgroundColor: fieldBg, color: theme.ink, borderColor: error ? RED : 'transparent' }]}
+              editable={!busy}
+            />
+          </Animated.View>
+          <TextInput
+            value={pw2}
+            onChangeText={setPw2}
+            secureTextEntry
+            autoCorrect={false}
+            autoCapitalize="none"
+            placeholder="Confirm password"
+            placeholderTextColor={theme.inkMuted}
+            selectionColor={theme.brand}
+            style={[styles.input, { backgroundColor: fieldBg, color: theme.ink, borderColor: error ? RED : 'transparent' }]}
+            editable={!busy}
+          />
+          {!!(setupErr ?? error) && <Text style={styles.errText}>{setupErr ?? error}</Text>}
+          <View style={styles.btnRow}>
+            <Pressable
+              onPress={onReject}
+              disabled={busy}
+              style={({ pressed }) => [styles.btn, styles.btnGhost, { backgroundColor: dark ? 'rgba(255,255,255,0.10)' : '#E4E4EA', opacity: pressed ? 0.7 : 1 }]}
+            >
+              <CloseIcon size={18} color={theme.ink} />
+              <Text style={[styles.btnText, { color: theme.ink }]}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                if (pw.length < 6) return setSetupErr('Use at least 6 characters.');
+                if (pw !== pw2) return setSetupErr('Passwords do not match.');
+                setSetupErr(null);
+                onSetup(pw);
+              }}
+              disabled={busy || pw.length === 0}
+              style={({ pressed }) => [styles.btn, { backgroundColor: GREEN, opacity: busy ? 0.6 : pressed ? 0.85 : 1 }]}
+            >
+              {busy ? <ActivityIndicator color="#fff" /> : <CheckIcon size={18} color="#fff" />}
+              <Text style={[styles.btnText, { color: '#fff' }]}>Set password & Approve</Text>
+            </Pressable>
+          </View>
+          <Text style={[styles.timer, { color: theme.inkMuted }]}>
+            After Approve, you'll confirm with biometrics or your passcode.
+          </Text>
         </>
       ) : !state ? (
         <>

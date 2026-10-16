@@ -8,12 +8,14 @@
  * Tapping a row switches to that wallet and returns to Home.
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, StatusBar, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import { showToast } from '../../components/Toast';
 import { useWallets } from '../../wallets/WalletsProvider';
+import { ShieldLockIcon } from '../../components/icons';
+import { allWalletLocks, refreshWalletLocks } from '../../core/security/walletLock';
 import { WalletAvatar } from '../../wallets/WalletAvatar';
 import AddWalletSheet from '../../components/AddWalletSheet';
 import WalletActionMenu, { MenuAnchor } from '../../components/WalletActionMenu';
@@ -25,10 +27,15 @@ export default function WalletsScreen({ navigation }: { navigation: any }) {
   const insets = useSafeAreaInsets();
   const { wallets, activeWallet, switchWallet } = useWallets();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [lockMap, setLockMap] = useState<Record<string, boolean>>({});
   const [menuWalletId, setMenuWalletId] = useState<string | null>(null);
   const [anchor, setAnchor] = useState<MenuAnchor | null>(null);
   const moreRefs = useRef<Record<string, { measureInWindow: (cb: (x: number, y: number, w: number, h: number) => void) => void } | null>>({});
   const menuWallet = wallets.find((w) => w.id === menuWalletId) ?? null;
+
+  useEffect(() => {
+    refreshWalletLocks().then(setLockMap).catch(() => setLockMap(allWalletLocks()));
+  }, []);
 
   const openMenu = (id: string) => {
     moreRefs.current[id]?.measureInWindow((x, y, w, h) => {
@@ -58,7 +65,7 @@ export default function WalletsScreen({ navigation }: { navigation: any }) {
         <View style={styles.headerRight}>
           <Pressable
             hitSlop={10}
-            onPress={() => navigation.navigate('AiChat', { mode: 'support' })}
+            onPress={() => navigation.navigate('AiChat', { mode: 'support', walletId: activeWallet.id })}
             accessibilityLabel="Open Veltravia AI"
             style={[styles.headerBtn, { backgroundColor: chipBg }]}
           >
@@ -93,6 +100,11 @@ export default function WalletsScreen({ navigation }: { navigation: any }) {
               <Text style={[styles.rowName, { color: theme.ink }]} numberOfLines={1}>
                 {w.name}
               </Text>
+              {lockMap[w.id] === true && (
+                <View style={[styles.lockBadge, { backgroundColor: pillBg }]} accessibilityLabel={`${w.name} is locked`}>
+                  <ShieldLockIcon size={14} color={dotColor} />
+                </View>
+              )}
               <Pressable
                 ref={(r) => {
                   moreRefs.current[w.id] = r;
@@ -134,6 +146,11 @@ export default function WalletsScreen({ navigation }: { navigation: any }) {
           setMenuWalletId(null);
           showToast('Secure backup arrives with the Wallet Core integration.', { kind: 'info', duration: 2600 });
         }}
+        onAskAi={menuWallet ? () => {
+          const id = menuWallet.id;
+          setMenuWalletId(null);
+          navigation.navigate('AiChat', { mode: 'support', walletId: id });
+        } : undefined}
       />
 
       <AddWalletSheet
@@ -207,6 +224,7 @@ const styles = StyleSheet.create({
   },
   radioDot: { width: 14, height: 14, borderRadius: 7 },
   rowName: { flex: 1, fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600', letterSpacing: -0.2 },
+  lockBadge: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   moreBtn: {
     width: 36,
     height: 36,

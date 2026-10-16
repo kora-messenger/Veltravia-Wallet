@@ -157,7 +157,7 @@ let seq = 0;
 
 export function prepareTransfer(p: ParsedTransfer, ctx: ChatContext): PrepareResult {
   // Wallet lock guard: value movement is frozen until the user unlocks again.
-  if (walletLocked()) {
+  if (walletLocked(ctx.walletId)) {
     return {
       ok: false,
       needs: 'unlock',

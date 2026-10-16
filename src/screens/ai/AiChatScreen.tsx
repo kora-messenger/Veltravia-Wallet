@@ -28,11 +28,13 @@ import { openRouterBrain } from '../../ai/openrouterBrain';
 import { APP_CONFIG } from '../../config/env';
 import { DISCLAIMER, type ChatAction, type ChatContext, type ChatMessage } from '../../ai/protocol';
 import { MOCK_HOLDINGS } from '../../services/portfolio';
+import { useWallets } from '../../wallets/WalletsProvider';
 import { revalidate } from '../../ai/transfer';
 import { executeTransfer } from '../../ai/signer';
 import { promptBiometrics, isBiometricUnlockEnabled } from '../../core/security/biometrics';
 import { refreshWalletLock, setWalletLocked } from '../../core/security/walletLock';
-import { hasSecurityPassword, verifySecurityPassword } from '../../core/storage/securityPassword';
+import { showToast } from '../../components/Toast';
+import { hasSecurityPassword, verifySecurityPassword, setSecurityPassword } from '../../core/storage/securityPassword';
 import ConsentCard from './ConsentCard';
 import TransferApprovalCard from './TransferApprovalCard';
 import PasscodeConfirmSheet from './PasscodeConfirmSheet';
@@ -158,7 +160,8 @@ function Thinking({ label, color, ink }: { label: string; color: string; ink: st
 /** In-session chat history for the Recents drawer. Chats can contain balances,
  *  so they live in memory only until an encrypted store backs them. */
 interface SavedChat { id: string; title: string; messages: ChatMessage[]; at: number }
-let RECENTS: SavedChat[] = [];
+/** Chat history is PER WALLET: every wallet has its own AI + its own recents. */
+let RECENTS: Record<string, SavedChat[]> = {};
 
 const chatTitle = (msgs: ChatMessage[]) => {
   const t = (msgs.find((m) => m.role === 'user')?.text ?? 'New Chat').replace(/\s+/g, ' ').trim();
@@ -174,6 +177,12 @@ export default function AiChatScreen() {
   // Opened from the headset -> 'support' (greeting + support topics).
   // "+ Chat" / "New chat" in the drawer -> 'fresh' (centered prompt + 3 suggestions).
   const [mode, setMode] = useState<'support' | 'fresh'>(route.params?.mode === 'fresh' ? 'fresh' : 'support');
+  const { wallets } = useWallets();
+  // This chat serves ONE wallet: the one it was opened for (falls back to active).
+  const [walletId, setWalletId] = useState<string>(
+    route.params?.walletId ?? wallets.find((w) => w.active)?.id ?? wallets[0]?.id ?? 'default'
+  );
+  const walletName = wallets.find((w) => w.id === walletId)?.name ?? 'your wallet';
   const scrollRef = useRef<{ scrollToEnd: (o?: { animated?: boolean }) => void } | null>(null);
   const [draft, setDraft] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -196,7 +205,7 @@ export default function AiChatScreen() {
     });
     return () => unsub();
   }, []);
-  const [recents, setRecents] = useState<SavedChat[]>(RECENTS);
+  const [recents, setRecents] = useState<SavedChat[]>(RECENTS[walletId] ?? []);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pendingApproval, setPendingApproval] = useState<{ messageId: string; proposalId: string } | null>(null);
   const [passcodeFor, setPasscodeFor] = useState<{ messageId: string; actionIdx: number; kind: 'transfer' | 'wallet_lock' } | null>(null);
@@ -209,6 +218,8 @@ export default function AiChatScreen() {
   // until derivation is bundled we pass the active wallet's known addresses.
   const ctx: ChatContext = useMemo(
     () => ({
+      walletId,
+      walletName,
       addresses: {
         '1': '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
         '56': '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
@@ -224,9 +235,9 @@ export default function AiChatScreen() {
   // Keep the cached wallet-lock flag fresh for the transfer guard, and know
   // whether the security password exists (the lock card needs it).
   useEffect(() => {
-    refreshWalletLock().catch(() => {});
-    hasSecurityPassword().then(setNoSecurityPw).catch(() => setNoSecurityPw(false));
-  }, []);
+    refreshWalletLock(walletId).catch(() => {});
+    hasSecurityPassword(walletId).then(setNoSecurityPw).catch(() => setNoSecurityPw(false));
+  }, [walletId]);
 
   // Hosted brain when the build has a key, otherwise the offline engine.
   const brain = APP_CONFIG.OPENROUTER_API_KEY ? openRouterBrain : localBrain;
@@ -240,8 +251,8 @@ export default function AiChatScreen() {
     const id = activeId ?? 'c' + Date.now().toString(36);
     if (!activeId) setActiveId(id);
     const entry: SavedChat = { id, title: chatTitle(messages), messages, at: Date.now() };
-    RECENTS = [entry, ...RECENTS.filter((c) => c.id !== id)].slice(0, 30);
-    setRecents(RECENTS);
+    RECENTS[walletId] = [entry, ...RECENTS[walletId].filter((c) => c.id !== id)].slice(0, 30);
+    setRecents(RECENTS[walletId]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, busy]);
 
@@ -340,7 +351,7 @@ export default function AiChatScreen() {
         emit({ type: 'tool_call', tool: 'wallet-lock', label: lock ? 'Initiating wallet lock...' : 'Initiating wallet unlock...' });
         await sleep(1100);
         if (signal.aborted) return;
-        await setWalletLocked(lock);
+        await setWalletLocked(walletId, lock);
         emit({ type: 'tool_call', tool: 'wallet-lock', label: lock ? 'Wallet lock initiated' : 'Wallet unlock initiated' });
         await sleep(600);
         if (signal.aborted) return;
@@ -359,16 +370,8 @@ export default function AiChatScreen() {
     [chat]
   );
 
-  const onLockApprove = useCallback(
-    async (messageId: string, lock: boolean, password: string) => {
-      if (lockBusyMsg) return;
-      // Step 1: the SECURITY PASSWORD (separate from the passcode/biometrics).
-      if (!(await verifySecurityPassword(password))) {
-        setLockError({ msgId: messageId, text: 'Incorrect security password. Try again.' });
-        return;
-      }
-      setLockError(null);
-      // Step 2: final verification with biometrics (passcode sheet as fallback).
+  const finalizeLock = useCallback(
+    async (messageId: string, lock: boolean) => {
       let ok = false;
       if (await isBiometricUnlockEnabled()) {
         ok = await promptBiometrics('Confirm wallet lock', lock ? 'Lock your wallet' : 'Unlock your wallet');
@@ -380,7 +383,34 @@ export default function AiChatScreen() {
         setPasscodeFor({ messageId, actionIdx: idx, kind: 'wallet_lock' });
       }
     },
-    [lockBusyMsg, messages, runLockExecution]
+    [messages, runLockExecution]
+  );
+
+  const onLockApprove = useCallback(
+    async (messageId: string, lock: boolean, password: string) => {
+      if (lockBusyMsg) return;
+      // Step 1: the SECURITY PASSWORD (separate from the passcode/biometrics).
+      if (!(await verifySecurityPassword(walletId, password))) {
+        setLockError({ msgId: messageId, text: 'Incorrect security password. Try again.' });
+        return;
+      }
+      setLockError(null);
+      await finalizeLock(messageId, lock);
+    },
+    [lockBusyMsg, walletId, finalizeLock]
+  );
+
+  /** First use: create the security password right in the chat, then verify. */
+  const onLockSetup = useCallback(
+    async (messageId: string, lock: boolean, password: string) => {
+      if (lockBusyMsg || password.length < 6) return;
+      await setSecurityPassword(walletId, password);
+      setNoSecurityPw(false);
+      showToast('Security password set', { kind: 'success' });
+      setLockError(null);
+      await finalizeLock(messageId, lock);
+    },
+    [lockBusyMsg, walletId, finalizeLock]
   );
 
   const onLockReject = useCallback(
@@ -465,7 +495,9 @@ export default function AiChatScreen() {
               busy={lockBusyMsg === m.id}
               noPassword={noSecurityPw}
               error={lockError?.msgId === m.id ? lockError.text : null}
+              walletName={walletName}
               onApprove={(pw) => onLockApprove(m.id, a.lock, pw)}
+              onSetup={(pw) => onLockSetup(m.id, a.lock, pw)}
               onReject={() => onLockReject(m.id)}
               onOpenSettings={() => navigation.navigate('MainTabs', { screen: 'Settings' })}
             />

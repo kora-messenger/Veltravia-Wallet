@@ -9,7 +9,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, useWindowDimensions } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
-import { GearIcon, CloudIcon } from './icons';
+import { GearIcon, CloudIcon, SupportIcon } from './icons';
 
 export interface MenuAnchor {
   /** Bottom edge of the tapped button, in window coordinates. */
@@ -25,6 +25,7 @@ export default function WalletActionMenu({
   onClose,
   onManage,
   onBackup,
+  onAskAi,
 }: {
   visible: boolean;
   anchor: MenuAnchor | null;
@@ -32,6 +33,8 @@ export default function WalletActionMenu({
   onClose: () => void;
   onManage: () => void;
   onBackup: () => void;
+  /** Opens THIS wallet's own AI chat (each wallet has its own). */
+  onAskAi?: () => void;
 }) {
   const { theme } = useTheme();
   const { width } = useWindowDimensions();
@@ -57,6 +60,13 @@ export default function WalletActionMenu({
             <GearIcon size={20} color={theme.ink} />
             <Text style={[styles.label, { color: theme.ink }]}>Manage</Text>
           </Pressable>
+
+          {onAskAi && (
+            <Pressable style={({ pressed }) => [styles.item, { opacity: pressed ? 0.6 : 1 }]} onPress={onAskAi}>
+              <SupportIcon size={20} color={theme.ink} />
+              <Text style={[styles.label, { color: theme.ink }]}>Ask AI about this wallet</Text>
+            </Pressable>
+          )}
 
           <Pressable style={({ pressed }) => [styles.item, { opacity: pressed ? 0.6 : 1 }]} onPress={onBackup}>
             <View>

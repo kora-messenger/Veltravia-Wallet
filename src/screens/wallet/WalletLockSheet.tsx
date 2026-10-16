@@ -20,6 +20,7 @@ import { promptBiometrics, isBiometricUnlockEnabled } from '../../core/security/
 import { hasSecurityPassword, setSecurityPassword, verifySecurityPassword } from '../../core/storage/securityPassword';
 import { walletLocked, refreshWalletLock, setWalletLocked } from '../../core/security/walletLock';
 import PasscodeConfirmSheet from '../ai/PasscodeConfirmSheet';
+import { useWallets } from '../../wallets/WalletsProvider';
 
 const GREEN = '#12915E';
 const RED = '#E5484D';
@@ -27,6 +28,8 @@ const MIN_LEN = 6;
 
 export default function WalletLockSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { theme } = useTheme();
+  const { activeWallet } = useWallets();
+  const walletId = activeWallet.id;
   const dark = theme.mode === 'dark';
   const insets = useSafeAreaInsets();
 
@@ -55,28 +58,28 @@ export default function WalletLockSheet({ visible, onClose }: { visible: boolean
   const shakeX = shake.interpolate({ inputRange: [-1, 0, 1], outputRange: [-8, 0, 8] });
 
   const sync = async () => {
-    setHasPw(await hasSecurityPassword().catch(() => false));
-    setLocked(await refreshWalletLock().catch(() => false));
+    setHasPw(await hasSecurityPassword(walletId).catch(() => false));
+    setLocked(await refreshWalletLock(walletId).catch(() => false));
   };
   useEffect(() => {
     if (visible) {
       setPw1(''); setPw2(''); setCreateErr(null); setPw(''); setVerifyErr(null);
       sync().catch(() => {});
     }
-  }, [visible]);
+  }, [visible, walletId]);
 
   const createPassword = async () => {
     if (pw1.length < MIN_LEN) return setCreateErr(`Use at least ${MIN_LEN} characters.`);
     if (pw1 !== pw2) return setCreateErr('Passwords do not match.');
-    await setSecurityPassword(pw1);
+    await setSecurityPassword(walletId, pw1);
     showToast('Security password set', { kind: 'success' });
     setHasPw(true);
   };
 
   const finish = async (lock: boolean) => {
     setBusy(true);
-    await setWalletLocked(lock);
-    await refreshWalletLock();
+    await setWalletLocked(walletId, lock);
+    await refreshWalletLock(walletId);
     setLocked(lock);
     setBusy(false);
     setPw('');
@@ -86,7 +89,7 @@ export default function WalletLockSheet({ visible, onClose }: { visible: boolean
   const toggleLock = async () => {
     if (busy) return;
     const wantLock = !locked;
-    if (!(await verifySecurityPassword(pw))) {
+    if (!(await verifySecurityPassword(walletId, pw))) {
       setVerifyErr('Incorrect security password. Try again.');
       setPw('');
       doShake();
@@ -134,7 +137,10 @@ export default function WalletLockSheet({ visible, onClose }: { visible: boolean
               <View style={[styles.iconWrap, { backgroundColor: dark ? 'rgba(255,255,255,0.10)' : '#F1F1F5' }]}>
                 <ShieldLockIcon size={24} color={theme.brand} />
               </View>
-              <Text style={[styles.title, { color: theme.ink }]}>Wallet Lock</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.title, { color: theme.ink }]}>Wallet Lock</Text>
+                <Text style={[styles.walletSub, { color: theme.inkMuted }]}>{activeWallet.name}</Text>
+              </View>
               <Pressable hitSlop={10} onPress={onClose} style={[styles.closeBtn, { backgroundColor: dark ? 'rgba(255,255,255,0.10)' : '#F1F1F5' }]}>
                 <CloseIcon size={20} color={theme.ink} />
               </Pressable>
@@ -157,8 +163,8 @@ export default function WalletLockSheet({ visible, onClose }: { visible: boolean
                 <View style={styles.section}>
                   <Text style={[styles.sectionTitle, { color: theme.ink }]}>Create your security password</Text>
                   <Text style={[styles.sectionBody, { color: theme.inkMuted }]}>
-                    A text password, separate from your 6-digit passcode and biometrics. The AI asks for it whenever
-                    you lock or unlock your wallet.
+                    A text password for “{activeWallet.name}”, separate from your 6-digit passcode and biometrics. Each
+                    wallet has its own AI, its own security password and its own lock.
                   </Text>
                   <Input value={pw1} onChange={setPw1} placeholder={`Password (min ${MIN_LEN} characters)`} err={!!createErr} />
                   <Input value={pw2} onChange={setPw2} placeholder="Confirm password" err={!!createErr} />
@@ -242,4 +248,5 @@ const styles = StyleSheet.create({
   errText: { fontSize: 12, fontFamily: 'Inter-500', fontWeight: '500', color: RED },
   btn: { height: 48, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   btnText: { fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600' },
+  walletSub: { fontSize: 12, marginTop: 1, fontFamily: 'Inter-400', fontWeight: '400' },
 });
