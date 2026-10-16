@@ -31,11 +31,16 @@ import { MOCK_HOLDINGS } from '../../services/portfolio';
 import { revalidate } from '../../ai/transfer';
 import { executeTransfer } from '../../ai/signer';
 import { promptBiometrics, isBiometricUnlockEnabled } from '../../core/security/biometrics';
+import { refreshWalletLock, setWalletLocked } from '../../core/security/walletLock';
+import { hasSecurityPassword, verifySecurityPassword } from '../../core/storage/securityPassword';
 import ConsentCard from './ConsentCard';
 import TransferApprovalCard from './TransferApprovalCard';
 import PasscodeConfirmSheet from './PasscodeConfirmSheet';
+import WalletLockCard from './WalletLockCard';
 
 const PURPLE = '#4A3CF0';
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 const TOPICS: { label: string; icon: 'coins' | 'fuel' | 'alert' | 'tool' | 'swap' | 'help' }[] = [
   { label: 'Token or balance not showing', icon: 'coins' },
@@ -194,7 +199,10 @@ export default function AiChatScreen() {
   const [recents, setRecents] = useState<SavedChat[]>(RECENTS);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pendingApproval, setPendingApproval] = useState<{ messageId: string; proposalId: string } | null>(null);
-  const [passcodeFor, setPasscodeFor] = useState<{ messageId: string; actionIdx: number } | null>(null);
+  const [passcodeFor, setPasscodeFor] = useState<{ messageId: string; actionIdx: number; kind: 'transfer' | 'wallet_lock' } | null>(null);
+  const [lockBusyMsg, setLockBusyMsg] = useState<string | null>(null);
+  const [lockError, setLockError] = useState<{ msgId: string; text: string } | null>(null);
+  const [noSecurityPw, setNoSecurityPw] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
 
   // Wallet context handed to the brain. Addresses come from the wallet layer;
@@ -212,6 +220,13 @@ export default function AiChatScreen() {
     }),
     []
   );
+
+  // Keep the cached wallet-lock flag fresh for the transfer guard, and know
+  // whether the security password exists (the lock card needs it).
+  useEffect(() => {
+    refreshWalletLock().catch(() => {});
+    hasSecurityPassword().then(setNoSecurityPw).catch(() => setNoSecurityPw(false));
+  }, []);
 
   // Hosted brain when the build has a key, otherwise the offline engine.
   const brain = APP_CONFIG.OPENROUTER_API_KEY ? openRouterBrain : localBrain;
@@ -297,7 +312,7 @@ export default function AiChatScreen() {
       } else {
         // biometrics off, cancelled, or failed -> passcode is the fallback
         const idx = messages.find((m) => m.id === messageId)?.actions.indexOf(action) ?? 0;
-        setPasscodeFor({ messageId, actionIdx: idx });
+        setPasscodeFor({ messageId, actionIdx: idx, kind: 'transfer' });
       }
     },
     [chat, ctx, messages, runApproval, sending]
@@ -311,6 +326,71 @@ export default function AiChatScreen() {
     [chat]
   );
 
+  /* ---- wallet lock approval pipeline: authenticate -> status sequence ---- */
+  const runLockExecution = useCallback(
+    async (messageId: string, lock: boolean) => {
+      setLockBusyMsg(messageId);
+      // Status choreography after the user authenticates:
+      //   "AI is thinking..." -> "Initiating wallet lock..." ->
+      //   "Wallet lock initiated" -> confirmation text.
+      await chat.runLocal(async (emit, signal) => {
+        emit({ type: 'THINKING_STARTED' });
+        await sleep(1000);
+        if (signal.aborted) return;
+        emit({ type: 'tool_call', tool: 'wallet-lock', label: lock ? 'Initiating wallet lock...' : 'Initiating wallet unlock...' });
+        await sleep(1100);
+        if (signal.aborted) return;
+        await setWalletLocked(lock);
+        emit({ type: 'tool_call', tool: 'wallet-lock', label: lock ? 'Wallet lock initiated' : 'Wallet unlock initiated' });
+        await sleep(600);
+        if (signal.aborted) return;
+        emit({ type: 'THINKING_STOPPED' });
+        emit({
+          type: 'text_delta',
+          text: lock
+            ? 'Wallet lock initiated. Your wallet keeps its normal look, but sending and swapping are blocked until you unlock it. Ask me to unlock your wallet whenever you need to send.'
+            : 'Wallet unlock initiated. Your wallet is fully active again — sending and swapping work normally.',
+        });
+        emit({ type: 'done' });
+      });
+      setLockBusyMsg(null);
+      chat.resolveCard(messageId, 'approved');
+    },
+    [chat]
+  );
+
+  const onLockApprove = useCallback(
+    async (messageId: string, lock: boolean, password: string) => {
+      if (lockBusyMsg) return;
+      // Step 1: the SECURITY PASSWORD (separate from the passcode/biometrics).
+      if (!(await verifySecurityPassword(password))) {
+        setLockError({ msgId: messageId, text: 'Incorrect security password. Try again.' });
+        return;
+      }
+      setLockError(null);
+      // Step 2: final verification with biometrics (passcode sheet as fallback).
+      let ok = false;
+      if (await isBiometricUnlockEnabled()) {
+        ok = await promptBiometrics('Confirm wallet lock', lock ? 'Lock your wallet' : 'Unlock your wallet');
+      }
+      if (ok) {
+        await runLockExecution(messageId, lock);
+      } else {
+        const idx = messages.find((m) => m.id === messageId)?.actions.findIndex((a) => a.kind === 'wallet_lock' && (a as any).lock === lock) ?? 0;
+        setPasscodeFor({ messageId, actionIdx: idx, kind: 'wallet_lock' });
+      }
+    },
+    [lockBusyMsg, messages, runLockExecution]
+  );
+
+  const onLockReject = useCallback(
+    (messageId: string) => {
+      chat.resolveCard(messageId, 'rejected');
+      chat.appendAssistant('Okay, I cancelled that. Your wallet is unchanged.');
+    },
+    [chat]
+  );
+
   const runShortcut = useCallback(
     (a: ChatAction) => {
       switch (a.kind) {
@@ -319,6 +399,9 @@ export default function AiChatScreen() {
           break;
         case 'open_activity':
           navigation.navigate('Activity');
+          break;
+        case 'open_settings':
+          navigation.navigate('MainTabs', { screen: 'Settings' });
           break;
         case 'open_receive':
           navigation.navigate('MainTabs', { screen: 'Home' });
@@ -370,6 +453,21 @@ export default function AiChatScreen() {
               busy={sending === a.proposal.id || pendingApproval?.proposalId === a.proposal.id}
               onApprove={() => onApprove(m.id, a)}
               onReject={() => onReject(m.id)}
+            />
+          );
+        }
+        if (a.kind === 'wallet_lock') {
+          return (
+            <WalletLockCard
+              key={i}
+              lock={a.lock}
+              resolved={m.resolved}
+              busy={lockBusyMsg === m.id}
+              noPassword={noSecurityPw}
+              error={lockError?.msgId === m.id ? lockError.text : null}
+              onApprove={(pw) => onLockApprove(m.id, a.lock, pw)}
+              onReject={() => onLockReject(m.id)}
+              onOpenSettings={() => navigation.navigate('MainTabs', { screen: 'Settings' })}
             />
           );
         }
@@ -584,6 +682,10 @@ export default function AiChatScreen() {
           if (!pf) return;
           const msg = messages.find((m) => m.id === pf.messageId);
           const act = msg?.actions[pf.actionIdx];
+          if (pf.kind === 'wallet_lock' && act && act.kind === 'wallet_lock') {
+            await runLockExecution(pf.messageId, act.lock);
+            return;
+          }
           if (act && act.kind === 'transfer_approval') await runApproval(pf.messageId, act);
         }}
       />

@@ -22,7 +22,8 @@ export type ToolName =
   | 'website-security'
   | 'buy-quote'
   | 'swap'
-  | 'transfer';
+  | 'transfer'
+  | 'wallet-lock';
 
 export const TOOL_LABEL: Record<ToolName, string> = {
   'asset-info': 'Looking up asset info...',
@@ -35,6 +36,7 @@ export const TOOL_LABEL: Record<ToolName, string> = {
   'buy-quote': 'Preparing buy quote...',
   swap: 'Preparing swap...',
   transfer: 'Preparing transfer...',
+  'wallet-lock': 'Requesting wallet lock...',
 };
 
 /** What a transfer proposal looks like once validated. Nothing is sent yet. */
@@ -65,6 +67,8 @@ export interface TransferProposal {
 
 export type ActionKind =
   | 'transfer_approval'
+  | 'wallet_lock'
+  | 'open_settings'
   | 'open_swap'
   | 'open_receive'
   | 'open_activity'
@@ -79,6 +83,9 @@ export interface QuickReply {
 
 export type ChatAction =
   | { kind: 'transfer_approval'; proposal: TransferProposal }
+  /** AI-initiated wallet lock/unlock; Approve + security password required. */
+  | { kind: 'wallet_lock'; lock: boolean }
+  | { kind: 'open_settings'; label: string }
   | { kind: 'open_swap'; label: string; from?: string; to?: string }
   | { kind: 'open_receive'; label: string; symbol?: string }
   | { kind: 'open_activity'; label: string }

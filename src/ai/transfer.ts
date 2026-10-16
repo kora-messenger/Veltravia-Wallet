@@ -12,6 +12,7 @@
  */
 
 import { CHAINS } from '../config/chains';
+import { walletLocked } from '../core/security/walletLock';
 import type { ChatContext, TransferProposal } from './protocol';
 
 /** Symbol -> chain that v1 can actually send on. */
@@ -150,11 +151,21 @@ export function parseTransfer(text: string): ParsedTransfer {
 
 export type PrepareResult =
   | { ok: true; proposal: TransferProposal }
-  | { ok: false; reason: string; needs?: 'amount' | 'asset' | 'address' };
+  | { ok: false; reason: string; needs?: 'amount' | 'asset' | 'address' | 'unlock' };
 
 let seq = 0;
 
 export function prepareTransfer(p: ParsedTransfer, ctx: ChatContext): PrepareResult {
+  // Wallet lock guard: value movement is frozen until the user unlocks again.
+  if (walletLocked()) {
+    return {
+      ok: false,
+      needs: 'unlock',
+      reason:
+        'Your wallet is locked, so I cannot prepare transfers. Sending is blocked until you unlock it — ' +
+        'just tell me to unlock your wallet.',
+    };
+  }
   if (!p.symbol) {
     return { ok: false, needs: 'asset', reason: 'Which coin would you like to send?' };
   }

@@ -63,6 +63,29 @@ export function useAiChat(ctx: ChatContext, brain: AiBrain = localBrain) {
     patch(assistantId, (m) => ({ ...m, streaming: false, toolLabel: undefined }));
   }, [patch]);
 
+  /**
+   * App-driven sequence (no brain): creates a streaming assistant message and
+   * lets the screen emit the same event stream — "AI is thinking..." ->
+   * tool label -> text. Used for the wallet lock APPROVAL choreography, which
+   * runs after authentication rather than as a chat turn.
+   */
+  const runLocal = useCallback(
+    async (run: (emit: (e: AiEvent) => void, signal: { aborted: boolean }) => Promise<void>) => {
+      const assistant: ChatMessage = {
+        id: nid('a'), role: 'assistant', text: '', actions: [], streaming: true, createdAt: Date.now(),
+      };
+      setMessages((prev) => [...prev, assistant]);
+      setBusy(true);
+      signalRef.current = { aborted: false };
+      try {
+        await run(makeEmitter(assistant.id), signalRef.current);
+      } finally {
+        finish(assistant.id);
+      }
+    },
+    [finish, makeEmitter]
+  );
+
   const send = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
@@ -142,7 +165,7 @@ export function useAiChat(ctx: ChatContext, brain: AiBrain = localBrain) {
   }, []);
 
   return useMemo(
-    () => ({ messages, thinking, busy, send, stop, answerConsent, resolveCard, appendAssistant, reset, load }),
-    [messages, thinking, busy, send, stop, answerConsent, resolveCard, appendAssistant, reset, load]
+    () => ({ messages, thinking, busy, send, stop, answerConsent, resolveCard, appendAssistant, runLocal, reset, load }),
+    [messages, thinking, busy, send, stop, answerConsent, resolveCard, appendAssistant, runLocal, reset, load]
   );
 }

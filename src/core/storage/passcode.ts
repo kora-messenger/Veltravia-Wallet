@@ -77,7 +77,8 @@ function randomSalt(): string {
   return toHex(b);
 }
 
-function digest(passcode: string, salt: string): string {
+/** Salted, iterated SHA-256 digest — also used by the security password store. */
+export function digest(passcode: string, salt: string): string {
   let cur = sha256(fromAscii(`${salt}:${passcode}`));
   for (let i = 0; i < ROUNDS; i++) {
     const next = new Uint8Array(cur.length + 16);

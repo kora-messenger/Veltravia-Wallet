@@ -19,6 +19,8 @@ import type { AiBrain, AiEvent, ChatContext, ChatMessage, ConsentRequest, ToolNa
 import { TOOL_LABEL } from './protocol';
 import { looksLikeTransfer, parseTransfer, prepareTransfer, type ParsedTransfer } from './transfer';
 import { MARKET_COINS } from '../services/marketData';
+import { walletLocked } from '../core/security/walletLock';
+import { hasSecurityPassword } from '../core/storage/securityPassword';
 
 type Emit = (e: AiEvent) => void;
 type Signal = { aborted: boolean };
@@ -92,6 +94,10 @@ async function handleTransfer(text: string, ctx: ChatContext, history: ChatMessa
   const result = prepareTransfer(merged, ctx);
   if (!result.ok) {
     await say(result.reason, emit, signal);
+    if (result.needs === 'unlock') {
+      emit({ type: 'action', action: { kind: 'quick_reply', replies: [{ label: 'Unlock my wallet', send: 'Unlock my wallet' }] } });
+      return;
+    }
     if (result.needs === 'asset') {
       emit({
         type: 'action',
@@ -112,6 +118,53 @@ async function handleTransfer(text: string, ctx: ChatContext, history: ChatMessa
     signal
   );
   if (!signal.aborted) emit({ type: 'action', action: { kind: 'transfer_approval', proposal: p } });
+}
+
+/**
+ * AI-initiated wallet lock / unlock.
+ *
+ * Status choreography (product spec):
+ *   "AI is thinking..." -> "Requesting wallet lock..." -> "Wallet lock requested"
+ *   -> approval card (Cancel / Approve). Approve asks for the security
+ *   password; the "Initiating..." sequence runs AFTER authentication, in
+ *   the chat screen (it owns the execution step).
+ */
+async function handleWalletLock(lock: boolean, emit: Emit, signal: Signal) {
+  if (!(await hasSecurityPassword())) {
+    await say(
+      `You need a security password before I can ${lock ? 'lock' : 'unlock'} your wallet. ` +
+        'Set one in Settings → Wallet Lock, then ask me again.',
+      emit,
+      signal
+    );
+    if (!signal.aborted) emit({ type: 'action', action: { kind: 'open_settings', label: 'Open Settings' } });
+    return;
+  }
+  if (lock && walletLocked()) {
+    await say(
+      'Your wallet is already locked. Balances stay visible, but sending is blocked until you unlock it.',
+      emit,
+      signal
+    );
+    return;
+  }
+  if (!lock && !walletLocked()) {
+    await say('Your wallet is not locked right now — sending works normally. Only lock it when you want transfers frozen.', emit, signal);
+    return;
+  }
+  await tool('wallet-lock', emit, signal, 900); // "Requesting wallet lock..."
+  if (signal.aborted) return;
+  emit({ type: 'tool_call', tool: 'wallet-lock', label: lock ? 'Wallet lock requested' : 'Wallet unlock requested' });
+  await sleep(600);
+  if (signal.aborted) return;
+  await say(
+    lock
+      ? "Wallet lock requested. Review the card below and approve it to lock your wallet — you'll confirm with your security password."
+      : "Wallet unlock requested. Review the card below and approve it to unlock your wallet — you'll confirm with your security password.",
+    emit,
+    signal
+  );
+  if (!signal.aborted) emit({ type: 'action', action: { kind: 'wallet_lock', lock } });
 }
 
 export const localBrain: AiBrain = {
@@ -140,7 +193,19 @@ export const localBrain: AiBrain = {
         return emit({ type: 'done' });
       }
 
-      // 2. transfers
+      // 2. AI-initiated wallet lock / unlock
+      if (/\bunlock\b[^.]*\bwallet\b|\bwallet\b[^.]*\bunlock\b/i.test(lower)) {
+        emit({ type: 'THINKING_STOPPED' });
+        await handleWalletLock(false, emit, signal);
+        return emit({ type: 'done' });
+      }
+      if (/\b(lock|freeze)\b[^.]*\bwallet\b|\bwallet\b[^.]*\b(lock|freeze)\b/i.test(lower)) {
+        emit({ type: 'THINKING_STOPPED' });
+        await handleWalletLock(true, emit, signal);
+        return emit({ type: 'done' });
+      }
+
+      // 2b. transfers
       const mentionsAddr = /0x[0-9a-fA-F]{6,}/.test(text);
       const priorTransferTurn =
         mentionsAddr && history.slice(-4).some((m) => m.role === 'user' && looksLikeTransfer(m.text));

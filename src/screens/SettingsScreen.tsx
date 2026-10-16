@@ -2,13 +2,16 @@
  * Veltravia Wallet — Settings tab. v1: security, wallet, appearance.
  * Phase 2 wires each row to its real screen from the approved 17-screen map.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
+import { ShieldLockIcon } from '../components/icons';
+import WalletLockSheet from './wallet/WalletLockSheet';
 
 export default function SettingsScreen() {
   const { theme, setOverride, isDark } = useTheme();
+  const [lockSheet, setLockSheet] = useState(false);
 
   const rows = [
     { label: 'Security', detail: 'PIN, biometrics, auto-lock' },
@@ -35,6 +38,21 @@ export default function SettingsScreen() {
           </View>
         </Pressable>
 
+        <Pressable
+          style={[styles.row, { backgroundColor: theme.surface }]}
+          onPress={() => setLockSheet(true)}
+        >
+          <View style={styles.rowTop}>
+            <ShieldLockIcon size={22} color={theme.brand} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.rowLabel, { color: theme.ink }]}>Wallet Lock</Text>
+              <Text style={[styles.rowDetail, { color: theme.inkMuted }]}>
+                Freeze sending and swapping with your security password
+              </Text>
+            </View>
+          </View>
+        </Pressable>
+
         {rows.map((row) => (
           <Pressable
             key={row.label}
@@ -48,6 +66,8 @@ export default function SettingsScreen() {
           </Pressable>
         ))}
       </ScrollView>
+
+      <WalletLockSheet visible={lockSheet} onClose={() => setLockSheet(false)} />
     </SafeAreaView>
   );
 }
@@ -59,4 +79,5 @@ const styles = StyleSheet.create({
   row: { borderRadius: 16, padding: 16, marginBottom: 10 },
   rowLabel: { fontSize: 16, fontFamily: 'Inter-500', fontWeight: '500' },
   rowDetail: { fontSize: 12, marginTop: 2, fontFamily: 'Inter-400' },
+  rowTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
 });
