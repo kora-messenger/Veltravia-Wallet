@@ -100,6 +100,14 @@ export function useAiChat(ctx: ChatContext, brain: AiBrain = localBrain) {
       signalRef.current = { aborted: false };
       try {
         await brain.send(trimmed, history, ctxRef.current, makeEmitter(assistant.id), signalRef.current);
+      } catch (e) {
+        // A brain crash must never take the app down or leave a stuck
+        // streaming bubble — surface it as an assistant error line instead.
+        makeEmitter(assistant.id)({
+          type: 'error',
+          code: 'UNKNOWN',
+          message: 'Something went wrong on my side. Please try again.',
+        });
       } finally {
         finish(assistant.id);
       }

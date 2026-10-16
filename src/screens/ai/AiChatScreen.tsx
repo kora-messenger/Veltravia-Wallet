@@ -251,8 +251,10 @@ export default function AiChatScreen() {
     const id = activeId ?? 'c' + Date.now().toString(36);
     if (!activeId) setActiveId(id);
     const entry: SavedChat = { id, title: chatTitle(messages), messages, at: Date.now() };
-    RECENTS[walletId] = [entry, ...RECENTS[walletId].filter((c) => c.id !== id)].slice(0, 30);
-    setRecents(RECENTS[walletId]);
+    // Per-wallet map: a wallet with no saved chats yet has NO entry, so seed
+    // the array before .filter — this crashed the app on the first-ever reply.
+    RECENTS[walletId] = [entry, ...(RECENTS[walletId] ?? []).filter((c) => c.id !== id)].slice(0, 30);
+    setRecents(RECENTS[walletId] ?? []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, busy]);
 
