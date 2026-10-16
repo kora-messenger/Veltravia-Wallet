@@ -81,7 +81,7 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
       target: route.key,
       canPreventDefault: true,
     });
-    if (!event.defaultPrevented) navigation.navigate(route.key);
+    if (!event.defaultPrevented) navigation.navigate(route.name);
   };
 
   const renderSide = (name: string) => {
