@@ -19,7 +19,7 @@
  */
 
 import PrimaryButton from '../components/PrimaryButton';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -39,6 +39,7 @@ import AnimatedScanIcon from '../components/AnimatedScanIcon';
 import Sparkline from '../components/Sparkline';
 import ReceiveSheet from '../components/ReceiveSheet';
 import { showToast } from '../components/Toast';
+import WalletSwitchOverlay from '../components/WalletSwitchOverlay';
 import DonutChart from '../components/DonutChart';
 import {
   EyeIcon,
@@ -121,6 +122,20 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
   const { activeWallet } = useWallets();
+
+  // Switching wallets: blank page + purple spinner (like Trust), then reveal
+  // the new wallet's Home. The first mount (app open) does not trigger it.
+  const [switching, setSwitching] = useState(false);
+  const lastWalletId = useRef(activeWallet.id);
+  useEffect(() => {
+    if (lastWalletId.current === activeWallet.id) return;
+    lastWalletId.current = activeWallet.id;
+    setBannerDismissed(false);
+    setHidden(false);
+    setSwitching(true);
+    const t = setTimeout(() => setSwitching(false), 2400);
+    return () => clearTimeout(t);
+  }, [activeWallet.id]);
 
   // Total portfolio + live 7D history. Phase 2 replaces the mock inside
   // the service; these lines do not change.
@@ -455,6 +470,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         </View>
 
       <ReceiveSheet visible={receiveOpen} onClose={() => setReceiveOpen(false)} walletId={activeWallet.id} />
+
+      {/* Wallet-switch loading page: covers header + content, tab bar stays. */}
+      {switching && <WalletSwitchOverlay />}
     </View>
   );
 }
