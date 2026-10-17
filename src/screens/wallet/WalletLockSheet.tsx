@@ -27,6 +27,35 @@ const GREEN = '#12915E';
 const RED = '#E5484D';
 const MIN_LEN = 6;
 
+
+/** Module-level on purpose: defining this inside the sheet creates a new
+ *  component type every render, which remounts the field and drops focus
+ *  (the keyboard would open and instantly close). */
+function Input(props: {
+  value: string;
+  onChange: (t: string) => void;
+  placeholder: string;
+  err?: boolean;
+  fieldBg: string;
+  ink: string;
+  muted: string;
+  brand: string;
+}) {
+  return (
+    <TextInput
+      value={props.value}
+      onChangeText={props.onChange}
+      secureTextEntry
+      autoCorrect={false}
+      autoCapitalize="none"
+      placeholder={props.placeholder}
+      placeholderTextColor={props.muted}
+      selectionColor={props.brand}
+      style={[styles.input, { backgroundColor: props.fieldBg, color: props.ink, borderColor: props.err ? RED : 'transparent' }]}
+    />
+  );
+}
+
 export default function WalletLockSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { theme } = useTheme();
   const { activeWallet } = useWallets();
@@ -121,20 +150,8 @@ export default function WalletLockSheet({ visible, onClose }: { visible: boolean
 
   const panel = dark ? 'rgba(255,255,255,0.07)' : '#F1F1F5';
   const fieldBg = dark ? 'rgba(255,255,255,0.10)' : '#FFFFFF';
+  const fieldProps = { fieldBg, ink: theme.ink, muted: theme.inkMuted, brand: theme.brand };
 
-  const Input = (props: { value: string; onChange: (t: string) => void; placeholder: string; err?: boolean }) => (
-    <TextInput
-      value={props.value}
-      onChangeText={props.onChange}
-      secureTextEntry
-      autoCorrect={false}
-      autoCapitalize="none"
-      placeholder={props.placeholder}
-      placeholderTextColor={theme.inkMuted}
-      selectionColor={theme.brand}
-      style={[styles.input, { backgroundColor: fieldBg, color: theme.ink, borderColor: props.err ? RED : 'transparent' }]}
-    />
-  );
 
   return (
     <>
@@ -161,7 +178,6 @@ export default function WalletLockSheet({ visible, onClose }: { visible: boolean
             <ScrollView
               contentContainerStyle={{ paddingBottom: 10 }}
               keyboardShouldPersistTaps="handled"
-              automaticallyAdjustKeyboardInsets
             >
               <View style={[styles.statusCard, { backgroundColor: panel }]}>
                 <Text style={[styles.statusKicker, { color: theme.inkMuted }]}>STATUS</Text>
@@ -182,8 +198,8 @@ export default function WalletLockSheet({ visible, onClose }: { visible: boolean
                     Use it to lock and unlock this wallet. Keep it private — it's separate from your passcode and
                     biometrics.
                   </Text>
-                  <Input value={pw1} onChange={setPw1} placeholder={`Password (min ${MIN_LEN} characters)`} err={!!createErr} />
-                  <Input value={pw2} onChange={setPw2} placeholder="Confirm password" err={!!createErr} />
+                  <Input value={pw1} onChange={setPw1} placeholder={`Password (min ${MIN_LEN} characters)`} err={!!createErr} {...fieldProps} />
+                  <Input value={pw2} onChange={setPw2} placeholder="Confirm password" err={!!createErr} {...fieldProps} />
                   {!!createErr && <Text style={styles.errText}>{createErr}</Text>}
                   <Pressable
                     onPress={createPassword}
@@ -203,7 +219,7 @@ export default function WalletLockSheet({ visible, onClose }: { visible: boolean
                     Enter your security password to continue, then confirm with biometrics or your passcode.
                   </Text>
                   <Animated.View style={{ transform: [{ translateX: shakeX }] }}>
-                    <Input value={pw} onChange={setPw} placeholder="Security password" err={!!verifyErr} />
+                    <Input value={pw} onChange={setPw} placeholder="Security password" err={!!verifyErr} {...fieldProps} />
                   </Animated.View>
                   {!!verifyErr && <Text style={styles.errText}>{verifyErr}</Text>}
                   <Pressable
