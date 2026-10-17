@@ -13,9 +13,20 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, ScrollView, StyleSheet,
-  Platform, StatusBar, Animated, Easing, Modal, Image, Keyboard,
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Platform,
+  StatusBar,
+  Animated,
+  Easing,
+  Image,
+  Keyboard,
 } from 'react-native';
+import AppModal from '../../components/AppModal';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -663,7 +674,7 @@ export default function AiChatScreen() {
       </View>
 
       {/* menu: Trust-style drawer */}
-      <Modal visible={menuOpen} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setMenuOpen(false)}>
+      <AppModal visible={menuOpen} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setMenuOpen(false)}>
         <Pressable style={styles.scrim} onPress={() => setMenuOpen(false)}>
           <Pressable
             style={[
@@ -704,7 +715,7 @@ export default function AiChatScreen() {
             </Pressable>
           </Pressable>
         </Pressable>
-      </Modal>
+      </AppModal>
 
       <PasscodeConfirmSheet
         visible={!!passcodeFor}

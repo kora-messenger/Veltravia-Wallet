@@ -7,7 +7,8 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
+import AppModal from './AppModal';
 import { useTheme } from '../theme/ThemeProvider';
 import { GearIcon, CloudIcon, SupportIcon } from './icons';
 
@@ -44,7 +45,7 @@ export default function WalletActionMenu({
   if (!anchor) return null;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+    <AppModal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <Pressable style={[styles.dim, { backgroundColor: dark ? 'rgba(0,0,0,0.45)' : 'rgba(30,32,48,0.12)' }]} onPress={onClose}>
         <View
           style={[
@@ -77,7 +78,7 @@ export default function WalletActionMenu({
           </Pressable>
         </View>
       </Pressable>
-    </Modal>
+    </AppModal>
   );
 }
 

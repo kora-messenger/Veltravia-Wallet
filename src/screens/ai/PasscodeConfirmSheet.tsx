@@ -6,7 +6,8 @@
  * on a wrong code, 5 wrong attempts => 30s lockout.
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, View, Text, Pressable, StyleSheet, Animated, Vibration } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Animated, Vibration } from 'react-native';
+import AppModal from '../../components/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import { BackspaceIcon, CloseIcon } from '../../components/icons';
@@ -86,7 +87,7 @@ export default function PasscodeConfirmSheet({
   const boxColor = ok ? BLUE : bad ? RED : theme.ink;
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onCancel} statusBarTranslucent>
+    <AppModal visible transparent animationType="slide" onRequestClose={onCancel} statusBarTranslucent>
       <View style={styles.scrim}>
         <View style={[styles.sheet, { backgroundColor: dark ? '#0B1220' : '#FFFFFF', paddingBottom: Math.max(insets.bottom, 16) }]}>
           <View style={styles.top}>
@@ -121,7 +122,7 @@ export default function PasscodeConfirmSheet({
           </View>
         </View>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

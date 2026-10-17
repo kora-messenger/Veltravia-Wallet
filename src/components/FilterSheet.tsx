@@ -34,7 +34,6 @@
 import PrimaryButton from './PrimaryButton';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Modal,
   View,
   Text,
   StyleSheet,
@@ -46,6 +45,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import AppModal from './AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
 import { FONT, T, SP, RADIUS, TOUCH } from '../theme/typography';
@@ -189,7 +189,7 @@ export default function FilterSheet({
   const hairline = theme.border;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose} statusBarTranslucent>
+    <AppModal visible={visible} animationType="slide" transparent onRequestClose={onClose} statusBarTranslucent>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {/* dim scrim (Trust: page dims ~20%) */}
         <Pressable style={[fs.root, { backgroundColor: dark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.21)' }]} onPress={onClose} />
@@ -304,7 +304,7 @@ export default function FilterSheet({
           )}
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </AppModal>
   );
 }
 

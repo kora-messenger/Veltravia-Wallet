@@ -15,7 +15,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Modal,
   Pressable,
   Animated,
   PanResponder,
@@ -23,6 +22,7 @@ import {
   Image,
   useWindowDimensions,
 } from 'react-native';
+import AppModal from './AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
 import { CloseIcon, CheckIcon, InfoCircleIcon } from './icons';
@@ -117,7 +117,7 @@ export default function SecretPhraseGateSheet({
   const brand = theme.brandGradient[0];
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={dismiss} statusBarTranslucent>
+    <AppModal visible={visible} transparent animationType="none" onRequestClose={dismiss} statusBarTranslucent>
       <View style={styles.flex}>
         <Animated.View style={[styles.backdrop, { opacity: backdrop }]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={dismiss} />
@@ -186,7 +186,7 @@ export default function SecretPhraseGateSheet({
           </Pressable>
         </Animated.View>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

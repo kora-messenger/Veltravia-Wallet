@@ -5,7 +5,8 @@
  * that qualify for the current amount; the current one is checked.
  */
 import React, { useEffect, useRef } from 'react';
-import { Animated, Dimensions, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Dimensions, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import AppModal from '../../components/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import { ChevronDownIcon } from '../../components/icons';
@@ -55,7 +56,7 @@ export default function PayWithSheet({
   const chipBg = theme.mode === 'dark' ? 'rgba(255,255,255,0.10)' : '#EFEFF3';
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={close} statusBarTranslucent>
+    <AppModal visible={visible} transparent animationType="none" onRequestClose={close} statusBarTranslucent>
       <Animated.View style={[styles.scrim, { opacity: dim }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={close} />
       </Animated.View>
@@ -88,7 +89,7 @@ export default function PayWithSheet({
           </Pressable>
         ))}
       </Animated.View>
-    </Modal>
+    </AppModal>
   );
 }
 

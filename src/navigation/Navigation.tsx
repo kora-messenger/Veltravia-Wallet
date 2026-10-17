@@ -31,6 +31,7 @@ import BuyScreen from '../features/buy/BuyScreen';
 import SelectCurrencyScreen from '../features/buy/SelectCurrencyScreen';
 import NotificationSheet from '../components/NotificationSheet';
 import LockScreen from '../screens/LockScreen';
+import { setAppLocked } from '../core/security/appLockState';
 import { setPasscode, hasPasscode } from '../core/storage/passcode';
 import { setBiometricUnlockEnabled } from '../core/security/biometrics';
 import { AppState, StyleSheet } from 'react-native';
@@ -132,7 +133,7 @@ export default function Navigation() {
 
   React.useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'background') {
+      if (state === 'background' || state === 'inactive') {
         // Lock IMMEDIATELY from the cached state so the lock screen is the
         // frame the system shows on resume; the async re-read only reconciles
         // the stack (a wallet created this session).
@@ -152,6 +153,13 @@ export default function Navigation() {
   const unlock = React.useCallback(() => {
     setLocked(false);
   }, []);
+
+  // Publish to every <AppModal> so open sheets (Receive QR, filters, menus...)
+  // vanish the moment the app locks. Native Modals sit above this overlay, so
+  // this is the only way the lock screen is the ONE thing on screen.
+  React.useEffect(() => {
+    setAppLocked(locked);
+  }, [locked]);
 
   // Until we know the state, show a solid screen; while locked, show ONLY
   // the lock screen. The welcome/app stack is not mounted underneath, so
@@ -233,7 +241,9 @@ export default function Navigation() {
       </React.Fragment>
     </NavigationContainer>
     {locked && (
-      <View style={StyleSheet.absoluteFill}>
+      // Opaque, topmost layer. Sheets are AppModals and unmount while locked,
+      // so this is the only passcode / fingerprint surface on screen.
+      <View style={[StyleSheet.absoluteFill, { zIndex: 9999, elevation: 9999, backgroundColor: theme.background }]}>
         <LockScreen onUnlock={unlock} />
       </View>
     )}

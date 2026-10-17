@@ -9,7 +9,8 @@
  * secure account access."
  */
 import React from 'react';
-import { Modal, View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import AppModal from './AppModal';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import { useTheme } from '../theme/ThemeProvider';
@@ -29,7 +30,7 @@ export default function BiometricLoginSheet({
   if (!visible) return null;
 
   return (
-    <Modal transparent animationType="fade" statusBarTranslucent onRequestClose={onDeny}>
+    <AppModal transparent animationType="fade" statusBarTranslucent onRequestClose={onDeny}>
       <View style={styles.scrim}>
         <View style={[styles.card, { backgroundColor: theme.surface }]}>
           <View style={styles.art}>
@@ -52,7 +53,7 @@ export default function BiometricLoginSheet({
           </View>
         </View>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

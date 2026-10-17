@@ -14,11 +14,11 @@ import {
   View,
   Text,
   StyleSheet,
-  Modal,
   Pressable,
   Image,
   useWindowDimensions,
 } from 'react-native';
+import AppModal from './AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
 import { CloseIcon, PlusIcon, ImportIcon } from './icons';
@@ -43,7 +43,7 @@ export default function AddWalletSheet({
   const importBg = dark ? 'rgba(108,99,255,0.16)' : '#EFEDFF';
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose} statusBarTranslucent>
+    <AppModal visible={visible} animationType="slide" transparent onRequestClose={onClose} statusBarTranslucent>
       <View style={styles.flex}>
         <Pressable style={styles.backdrop} onPress={onClose} />
 
@@ -100,7 +100,7 @@ export default function AddWalletSheet({
           </Pressable>
         </View>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

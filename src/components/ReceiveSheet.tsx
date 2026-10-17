@@ -25,7 +25,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Modal,
   Pressable,
   Animated,
   PanResponder,
@@ -36,6 +35,7 @@ import {
   Image,
   useWindowDimensions,
 } from 'react-native';
+import AppModal from './AppModal';
 import Svg, { G, Rect as SvgRect, Path as SvgPath, Circle as SvgCircle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
@@ -180,7 +180,7 @@ export default function ReceiveSheet({
     view === 'receive' ? 'Receive' : view === 'network' ? 'Select network' : view === 'share' ? 'Share Via' : 'Deposit from Binance';
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={dismiss} statusBarTranslucent>
+    <AppModal visible={visible} transparent animationType="none" onRequestClose={dismiss} statusBarTranslucent>
       <View style={styles.flex}>
         <Animated.View style={[styles.backdrop, { opacity: backdrop }]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={dismiss} />
@@ -262,7 +262,7 @@ export default function ReceiveSheet({
           {view === 'binance' && <BinanceDeposit query={query} setQuery={setQuery} tile={tile} />}
         </Animated.View>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

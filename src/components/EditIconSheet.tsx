@@ -7,7 +7,8 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, Modal, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import AppModal from './AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
 import { CloseIcon } from './icons';
@@ -34,7 +35,7 @@ export default function EditIconSheet({
   const idle = dark ? 'rgba(255,255,255,0.55)' : '#7B7F96';
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+    <AppModal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <View style={styles.flex}>
         <Pressable style={styles.backdrop} onPress={onClose} />
         <View style={[styles.sheet, { backgroundColor: sheet, paddingBottom: insets.bottom + 16 }]}>
@@ -60,7 +61,7 @@ export default function EditIconSheet({
           </View>
         </View>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

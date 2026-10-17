@@ -11,7 +11,8 @@
  * until it is unlocked again.
  */
 import React, { useEffect, useState } from 'react';
-import { Modal, View, Text, Pressable, StyleSheet, TextInput, Animated, Easing, ScrollView, Platform, Keyboard } from 'react-native';
+import { View, Text, Pressable, StyleSheet, TextInput, Animated, Easing, ScrollView, Platform, Keyboard } from 'react-native';
+import AppModal from '../../components/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import { CloseIcon, ShieldLockIcon, CheckIcon } from '../../components/icons';
@@ -137,7 +138,7 @@ export default function WalletLockSheet({ visible, onClose }: { visible: boolean
 
   return (
     <>
-      <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <AppModal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
         <View style={[styles.scrim, { backgroundColor: 'rgba(0,0,0,0.45)', paddingBottom: kb }]}>
           <View style={[styles.sheet, { backgroundColor: theme.background, paddingBottom: Math.max(insets.bottom, 20) }]}>
             <View style={styles.grabWrap}>
@@ -221,7 +222,7 @@ export default function WalletLockSheet({ visible, onClose }: { visible: boolean
             </ScrollView>
           </View>
         </View>
-      </Modal>
+      </AppModal>
 
       <PasscodeConfirmSheet
         visible={passcodeStep}
