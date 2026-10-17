@@ -139,6 +139,8 @@ export interface ChatContext {
   holdings: { symbol: string; amount: number; price: number; change24h: number }[];
   currency: 'USD';
   locale: string;
+  /** Most recent other conversation with this wallet (cross-chat recall). */
+  previousChat?: { title: string; at: number; messages: ChatMessage[] } | null;
 }
 
 /** Every brain (local engine, hosted gateway) implements this. */

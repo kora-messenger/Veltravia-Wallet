@@ -34,6 +34,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { useTheme } from '../../theme/ThemeProvider';
 import { CloseIcon, PlusIcon } from '../../components/icons';
 import { useAiChat } from '../../ai/useAiChat';
+import { loadLastChat, saveLastChat } from '../../ai/memory';
 import { localBrain } from '../../ai/engine';
 import { openRouterBrain } from '../../ai/openrouterBrain';
 import { APP_CONFIG } from '../../config/env';
@@ -225,23 +226,27 @@ export default function AiChatScreen() {
   const [noSecurityPw, setNoSecurityPw] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
 
-  // Wallet context handed to the brain. Addresses come from the wallet layer;
-  // until derivation is bundled we pass the active wallet's known addresses.
-  const ctx: ChatContext = useMemo(
-    () => ({
-      walletId,
-      walletName,
-      addresses: {
-        '1': '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-        '56': '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-        '137': '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-      },
-      holdings: MOCK_HOLDINGS.map((h) => ({ symbol: h.symbol, amount: h.amount, price: h.price, change24h: h.change24h })),
-      currency: 'USD',
-      locale: 'en',
-    }),
-    []
-  );
+  // Wallet context handed to the brain. Rebuilt each render so cross-chat
+  // recall is always current: the newest OTHER conversation on record.
+  const previousChat = useMemo(() => {
+    const saved = RECENTS[walletId] ?? [];
+    const other = activeId ? saved.find((c) => c.id !== activeId) : saved[0];
+    if (!other || !other.messages?.length) return null;
+    return { title: other.title, at: other.at, messages: other.messages };
+  }, [walletId, activeId, recents]);
+  const ctx: ChatContext = {
+    walletId,
+    walletName,
+    addresses: {
+      '1': '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+      '56': '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+      '137': '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+    },
+    holdings: MOCK_HOLDINGS.map((h) => ({ symbol: h.symbol, amount: h.amount, price: h.price, change24h: h.change24h })),
+    currency: 'USD',
+    locale: 'en',
+    previousChat,
+  };
 
   // Keep the cached wallet-lock flag fresh for the transfer guard, and know
   // whether the security password exists (the lock card needs it).
@@ -266,8 +271,26 @@ export default function AiChatScreen() {
     // the array before .filter — this crashed the app on the first-ever reply.
     RECENTS[walletId] = [entry, ...(RECENTS[walletId] ?? []).filter((c) => c.id !== id)].slice(0, 30);
     setRecents(RECENTS[walletId] ?? []);
+    // Persist the newest chat (encrypted) so recall survives app restarts.
+    const newest = RECENTS[walletId][0];
+    if (newest) {
+      saveLastChat(walletId, { id: newest.id, title: newest.title, at: newest.at, messages: newest.messages }).catch(() => {});
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, busy]);
+
+  // Cold start: seed this wallet's memory from the persisted last chat so
+  // Recents and cross-chat recall work after an app restart.
+  useEffect(() => {
+    (async () => {
+      if ((RECENTS[walletId] ?? []).length > 0) return;
+      const saved = await loadLastChat(walletId).catch(() => null);
+      if (saved && Array.isArray(saved.messages) && saved.messages.length > 0) {
+        RECENTS[walletId] = [saved as SavedChat];
+        setRecents(RECENTS[walletId]);
+      }
+    })();
+  }, [walletId]);
 
   const newChat = () => { chat.reset(); setActiveId(null); setMode('fresh'); setMenuOpen(false); };
   const openChat = (c: SavedChat) => { chat.load(c.messages); setActiveId(c.id); setMenuOpen(false); };
