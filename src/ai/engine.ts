@@ -255,6 +255,27 @@ export const localBrain: AiBrain = {
         return emit({ type: 'done' });
       }
 
+      // "Take me to / open / give me a button for <screen>" -> tappable button.
+      if (/(open|go to|take me|show me|button|navigate|shortcut)/.test(lower)) {
+        const kind: 'open_activity' | 'open_swap' | 'open_receive' | 'open_settings' | null =
+          /activity|history|transactions?/.test(lower)
+            ? 'open_activity'
+            : /swap|exchange/.test(lower)
+              ? 'open_swap'
+              : /receive|deposit|qr/.test(lower)
+                ? 'open_receive'
+                : /settings|preferences/.test(lower)
+                  ? 'open_settings'
+                  : null;
+        if (kind) {
+          emit({ type: 'THINKING_STOPPED' });
+          const label = kind === 'open_activity' ? 'Go to Activity' : kind === 'open_swap' ? 'Go to Swap' : kind === 'open_receive' ? 'Go to Receive' : 'Go to Settings';
+          await say('Here is your shortcut. ', emit, signal);
+          emit({ type: 'action', action: { kind, label } });
+          return emit({ type: 'done' });
+        }
+      }
+
       if (/stuck|failed|pending/.test(lower) && /transaction|tx|transfer|send/.test(lower)) {
         emit({ type: 'THINKING_STOPPED' });
         await tool('wallet-address', emit, signal, 500);

@@ -103,6 +103,16 @@ WALLET LOCK — follow exactly:
 - Never claim the wallet is locked or unlocked yourself. The app shows an approval card where the user types their SECURITY PASSWORD (a text password, different from their passcode), then confirms with biometrics; only then does the lock state change.
 - The security password is separate from the passcode and biometrics and is set per wallet. If the user has not set one yet, the approval card lets them create it right there — no need to send them to Settings.
 
+OPEN SCREEN PROTOCOL — follow exactly:
+- You CAN give the user a tappable button that takes them to a screen. If they ask to go to / open / see a button for a screen, reply with ONLY this directive block and no other text:
+\`\`\`veltravia_action
+{"action":"open_screen","target":"activity"}
+\`\`\`
+  - valid targets: "swap", "activity", "receive", "settings"
+  - "label" (optional string) names the button, e.g. {"action":"open_screen","target":"activity","label":"Go to Activity"}
+- Supported screens are ONLY: Swap, Activity (transaction history), Receive (deposit address/QR), Settings. For Markets, Discover or Wallets just tell the user which tab to tap at the bottom; do not emit a directive for them.
+- Never say you cannot open screens or create buttons — you can, via this directive.
+
 TRANSFER PROTOCOL — follow exactly:
 - v1 can only send: ETH (Ethereum), BNB (BNB Smart Chain), POL/MATIC (Polygon), USDT (BNB Smart Chain), USDC (Ethereum). If the user asks to send anything else (e.g. BTC), say it is not supported yet in this build.
 - If the user wants to send/transfer/pay and ANY of asset, amount, or recipient address is missing or ambiguous, ask ONE short clarifying question. Do not guess.
@@ -308,9 +318,11 @@ async function handleDirective(
     emit({ type: 'action', action: { kind: 'transfer_approval', proposal: result.proposal } });
     return;
   }
-  if (action === 'open_screen' && json && typeof json.target === 'string' && ['swap', 'activity', 'receive'].includes(json.target)) {
-    const target = json.target as 'swap' | 'activity' | 'receive';
-    const label = target === 'swap' ? 'Open Swap' : target === 'activity' ? 'Open Activity' : 'Open Receive';
+  if (action === 'open_screen' && json && typeof json.target === 'string' && ['swap', 'activity', 'receive', 'settings'].includes(json.target)) {
+    const target = json.target as 'swap' | 'activity' | 'receive' | 'settings';
+    const fallback =
+      target === 'swap' ? 'Open Swap' : target === 'activity' ? 'Open Activity' : target === 'receive' ? 'Open Receive' : 'Open Settings';
+    const label = typeof json.label === 'string' && json.label.trim() ? json.label.trim().slice(0, 60) : fallback;
     emit({ type: 'action', action: { kind: `open_${target}` as any, label } });
     return;
   }
