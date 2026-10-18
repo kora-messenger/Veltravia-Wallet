@@ -251,9 +251,18 @@ export default function AiChatScreen() {
   // Keep the cached wallet-lock flag fresh for the transfer guard, and know
   // whether the security password exists (the lock card needs it).
   useEffect(() => {
-    refreshWalletLock(walletId).catch(() => {});
-    hasSecurityPassword(walletId).then(setNoSecurityPw).catch(() => setNoSecurityPw(false));
-  }, [walletId]);
+    const check = () => {
+      refreshWalletLock(walletId).catch(() => {});
+      hasSecurityPassword(walletId).then(setNoSecurityPw).catch(() => setNoSecurityPw(false));
+    };
+    check();
+    // The user can set the security password in Settings while this screen
+    // sits behind it in the stack — re-check whenever the chat regains focus
+    // so the lock card never claims "no password set" after they did.
+    const unsub = navigation.addListener('focus', check);
+    // v7 returns an EmitterSubscription, not a plain function.
+    return () => { unsub.remove?.(); };
+  }, [walletId, navigation]);
 
   // Hosted brain when the build has a key, otherwise the offline engine.
   const brain = APP_CONFIG.OPENROUTER_API_KEY ? openRouterBrain : localBrain;
