@@ -95,7 +95,11 @@ WALLET LOCK — follow exactly:
 \`\`\`veltravia_action
 {"action":"wallet_lock"}
 \`\`\`
-- If they ask to unlock it: {"action":"wallet_unlock"} in the same directive form.
+- If they ask to unlock it, reply with ONLY this directive block and no other text:
+\`\`\`veltravia_action
+{"action":"wallet_unlock"}
+\`\`\`
+- Directives are ALWAYS inside a \`\`\`veltravia_action code fence, never as plain text in the message.
 - Never claim the wallet is locked or unlocked yourself. The app shows an approval card where the user types their SECURITY PASSWORD (a text password, different from their passcode), then confirms with biometrics; only then does the lock state change.
 - The security password is separate from the passcode and biometrics and is set per wallet. If the user has not set one yet, the approval card lets them create it right there — no need to send them to Settings.
 
@@ -129,13 +133,15 @@ ${lines.join('\n')}`;
 export const MARKER = '```veltravia_action';
 
 export interface SplitterState {
-  mode: 'text' | 'directive';
+  mode: 'text' | 'directive' | 'discard';
+  /** true = bare JSON directive (no code fence) — closes on '}', rest discarded. */
+  bare: boolean;
   hold: string; // suffix that might become a marker
   directive: string; // accumulated directive content
 }
 
 export function newSplitter(): SplitterState {
-  return { mode: 'text', hold: '', directive: '' };
+  return { mode: 'text', bare: false, hold: '', directive: '' };
 }
 
 /** Longest suffix of s that is a proper prefix of MARKER. */
@@ -147,28 +153,72 @@ function markerSuffix(s: string): number {
 }
 
 /**
+ * Models sometimes skip the code fence and emit the directive as bare JSON
+ * ({"action":"wallet_unlock"}). Longest suffix of s that is a proper prefix
+ * of that opener — held back mid-stream so a split delta still resolves.
+ */
+const BARE_START = '{"action"';
+
+function bareSuffix(s: string): number {
+  for (let n = Math.min(s.length, BARE_START.length - 1); n > 0; n--) {
+    if (BARE_START.startsWith(s.slice(-n))) return n;
+  }
+  return 0;
+}
+
+/** Bare directive ended at its first '}' — flat JSON, no nested braces. */
+function closeBare(state: SplitterState): void {
+  const close = state.directive.indexOf('}');
+  if (close !== -1) {
+    state.directive = state.directive.slice(0, close + 1);
+    state.mode = 'discard'; // rest of the reply is junk ("...", stray words)
+  }
+}
+
+/**
  * Feed a stream delta; returns the text that is safe to show now.
  * When a directive completes, `state.directive` holds its raw content
  * (JSON between the marker line and the closing fence).
  */
 export function feedSplitter(state: SplitterState, delta: string): string {
+  if (state.mode === 'discard') return '';
   if (state.mode === 'directive') {
     state.directive += delta;
+    if (state.bare) closeBare(state);
     return '';
   }
   state.hold += delta;
+  // Fenced form first...
   const at = state.hold.indexOf(MARKER);
   if (at !== -1) {
     const before = state.hold.slice(0, at);
     state.directive = state.hold.slice(at + MARKER.length);
     state.hold = '';
     state.mode = 'directive';
+    state.bare = false;
+    if (splitterDirectiveDone(state)) state.mode = 'discard';
     return before;
   }
-  const keep = markerSuffix(state.hold);
+  // ...then the bare-JSON form a model may emit without fences.
+  const bare = state.hold.indexOf(BARE_START);
+  if (bare !== -1) {
+    const before = state.hold.slice(0, bare);
+    state.directive = state.hold.slice(bare);
+    state.hold = '';
+    state.mode = 'directive';
+    state.bare = true;
+    closeBare(state);
+    return before;
+  }
+  const keep = Math.max(markerSuffix(state.hold), bareSuffix(state.hold));
   const emit = state.hold.slice(0, state.hold.length - keep);
   state.hold = keep ? state.hold.slice(-keep) : '';
   return emit;
+}
+
+/** True once the accumulated directive content shows a closing fence. */
+function splitterDirectiveDone(state: SplitterState): boolean {
+  return !state.bare && state.directive.includes('```');
 }
 
 /** Call at end of stream. Returns any final held text. */
@@ -176,6 +226,11 @@ export function flushSplitter(state: SplitterState): string {
   const out = state.hold;
   state.hold = '';
   return state.mode === 'text' ? out : '';
+}
+
+/** True if the splitter captured a directive (fenced or bare). */
+export function hasDirective(state: SplitterState): boolean {
+  return state.mode === 'directive' || state.mode === 'discard';
 }
 
 /** Extract the JSON payload from a completed directive. */
@@ -299,11 +354,8 @@ export const openRouterBrain: AiBrain = {
           emit({ type: 'text_delta', text: visible });
         }
       }
-      if (splitter.mode === 'directive') {
-        // Directive: complete once the closing fence arrives.
-        if (splitter.directive.includes('```')) {
-          directiveComplete = true;
-        }
+      if (splitter.mode === 'discard' || splitterDirectiveDone(splitter)) {
+        directiveComplete = true;
       }
     };
 
@@ -326,7 +378,7 @@ export const openRouterBrain: AiBrain = {
         }
       }
       await thinkingDone; // flushes any held text
-      if (splitter.mode === 'directive' && !signal.aborted) {
+      if (hasDirective(splitter) && !signal.aborted) {
         await handleDirective(parseDirective(splitter.directive), ctx, emit, signal);
       }
       emit({ type: 'THINKING_STOPPED' });
