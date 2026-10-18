@@ -32,9 +32,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import NetInfo from '@react-native-community/netinfo';
 import { useTheme } from '../../theme/ThemeProvider';
-import { CloseIcon, PlusIcon } from '../../components/icons';
+import { CloseIcon, PlusIcon, TrashIcon } from '../../components/icons';
 import { useAiChat } from '../../ai/useAiChat';
-import { loadLastChat, saveLastChat } from '../../ai/memory';
+import { loadLastChat, saveLastChat, forgetChat } from '../../ai/memory';
+import { copyToClipboard } from '../../core/clipboard';
 import { localBrain } from '../../ai/engine';
 import { openRouterBrain } from '../../ai/openrouterBrain';
 import { APP_CONFIG } from '../../config/env';
@@ -301,6 +302,29 @@ export default function AiChatScreen() {
     })();
   }, [walletId]);
 
+  // Long-press a Recents row => Delete pill (Trust parity).
+  const [deleteFor, setDeleteFor] = useState<string | null>(null);
+  const deleteChat = (id: string) => {
+    const remaining = (RECENTS[walletId] ?? []).filter((c) => c.id !== id);
+    RECENTS[walletId] = remaining;
+    setRecents(remaining);
+    setDeleteFor(null);
+    const next = remaining[0];
+    forgetChat(
+      walletId,
+      id,
+      next ? { id: next.id, title: next.title, at: next.at, messages: next.messages } : null,
+    ).catch(() => {});
+    // Deleting the chat you're in resets to a fresh chat.
+    if (id === activeId) { chat.reset(); setActiveId(null); setMode('fresh'); }
+  };
+  // Long-press a message => copy its text (Trust: selects + 'Copied to clipboard').
+  const copyMessage = (text?: string) => {
+    if (!text?.trim()) return;
+    copyToClipboard(text);
+    showToast('Copied to clipboard', { kind: 'success' });
+  };
+
   const newChat = () => { chat.reset(); setActiveId(null); setMode('fresh'); setMenuOpen(false); };
   const openChat = (c: SavedChat) => { chat.load(c.messages); setActiveId(c.id); setMenuOpen(false); };
   const firstUser = messages.find((m) => m.role === 'user')?.text;
@@ -507,7 +531,11 @@ export default function AiChatScreen() {
         <Thinking label="AI is thinking..." color={muted} ink={ink} />
       )}
       {!!m.toolLabel && <Thinking label={m.toolLabel} color={muted} ink={ink} />}
-      {!!m.text && <Text style={[styles.aiText, { color: ink }]}>{m.text}</Text>}
+      {!!m.text && (
+        <Pressable onLongPress={() => copyMessage(m.text)} delayLongPress={350}>
+          <Text style={[styles.aiText, { color: ink }]}>{m.text}</Text>
+        </Pressable>
+      )}
 
       {m.consent && (
         <ConsentCard
@@ -615,9 +643,9 @@ export default function AiChatScreen() {
 
         {messages.map((m) =>
           m.role === 'user' ? (
-            <View key={m.id} style={[styles.userBubble, { backgroundColor: bubbleBg }]}>
+            <Pressable key={m.id} onLongPress={() => copyMessage(m.text)} delayLongPress={350} style={[styles.userBubble, { backgroundColor: bubbleBg }]}>
               <Text style={[styles.userText, { color: ink }]}>{m.text}</Text>
-            </View>
+            </Pressable>
           ) : (
             renderAssistant(m)
           )
@@ -730,9 +758,26 @@ export default function AiChatScreen() {
                 <Text style={[styles.menuEmpty, { color: muted }]}>Your recent chats will appear here.</Text>
               ) : (
                 recents.map((c) => (
-                  <Pressable key={c.id} style={styles.recentRow} onPress={() => openChat(c)}>
-                    <Text numberOfLines={1} style={[styles.recentText, { color: ink }]}>{c.title}</Text>
-                  </Pressable>
+                  <View key={c.id}>
+                    <Pressable
+                      style={styles.recentRow}
+                      onPress={() => (deleteFor ? setDeleteFor(null) : openChat(c))}
+                      onLongPress={() => setDeleteFor(c.id)}
+                      delayLongPress={350}
+                    >
+                      <Text numberOfLines={1} style={[styles.recentText, { color: ink }]}>{c.title}</Text>
+                    </Pressable>
+                    {deleteFor === c.id && (
+                      <Pressable
+                        onPress={() => deleteChat(c.id)}
+                        accessibilityLabel="Delete chat"
+                        style={[styles.deletePill, { backgroundColor: dark ? '#2A2B33' : '#FFFFFF' }]}
+                      >
+                        <TrashIcon size={20} color="#E5484D" />
+                        <Text style={styles.deleteText}>Delete</Text>
+                      </Pressable>
+                    )}
+                  </View>
                 ))
               )}
             </ScrollView>
@@ -811,6 +856,12 @@ const styles = StyleSheet.create({
   menuLabel: { fontSize: 13, fontFamily: 'Inter-600', fontWeight: '600', marginBottom: 10 },
   menuEmpty: { fontSize: 12, marginTop: 4, fontFamily: 'Inter-500', fontWeight: '500' },
   recentRow: { paddingVertical: 12 },
+  deletePill: {
+    position: 'absolute', top: 2, left: 0, flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 14, paddingHorizontal: 20, borderRadius: 28,
+    shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 8,
+  },
+  deleteText: { color: '#E5484D', fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
   recentText: { fontSize: 14, fontFamily: 'Inter-500', fontWeight: '500' },
   menuNew: { height: 52, borderRadius: 26, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12 },
   menuNewText: { fontSize: 14, fontFamily: 'Inter-700', fontWeight: '700' },

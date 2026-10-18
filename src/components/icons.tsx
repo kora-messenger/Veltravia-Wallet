@@ -519,6 +519,14 @@ export const ChevronDownIcon = ({ size = 16, color = '#000', strokeWidth = 2 }: 
 );
 
 
+/** Trash can (delete). */
+export const TrashIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M4 7h16M9.5 7V5.2A1.2 1.2 0 0110.7 4h2.6a1.2 1.2 0 011.2 1.2V7" {...stroke(color, strokeWidth)} />
+    <Path d="M6.2 7l.8 11.2A2 2 0 009 20h6a2 2 0 002-1.8L17.8 7M10 11v5M14 11v5" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
 /** Copy (two overlapping rounded squares). */
 export const CopyIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
   <Svg {...base(size)}>

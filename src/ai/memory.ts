@@ -60,3 +60,13 @@ export async function loadLastChat(walletId: string): Promise<LastChat | null> {
   const map = await readMap();
   return map[walletId] ?? null;
 }
+
+/** Remove a deleted chat from persisted recall; if it was the stored one,
+ *  fall back to the next most recent remaining chat (or clear). */
+export async function forgetChat(walletId: string, chatId: string, next: LastChat | null): Promise<void> {
+  const map = await readMap();
+  if (map[walletId]?.id !== chatId) return;
+  if (next) map[walletId] = next;
+  else delete map[walletId];
+  await writeMap(map);
+}
