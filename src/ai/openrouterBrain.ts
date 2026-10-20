@@ -112,6 +112,7 @@ OPEN SCREEN PROTOCOL — follow exactly:
   - "label" (optional string) names the button, e.g. {"action":"open_screen","target":"activity","label":"Go to Activity"}
 - Supported screens are ONLY: Swap, Activity (transaction history), Receive (deposit address/QR), Settings. For Markets, Discover or Wallets just tell the user which tab to tap at the bottom; do not emit a directive for them.
 - Never say you cannot open screens or create buttons — you can, via this directive.
+- Anti-echo: emit an open_screen directive ONLY when the user's CURRENT message clearly asks for one of those screens. A greeting ("Hi"), a market question, or any other topic gets a normal conversational reply. Never repeat a directive just because an earlier turn had one.
 
 TRANSFER PROTOCOL — follow exactly:
 - v1 can only send: ETH (Ethereum), BNB (BNB Smart Chain), POL/MATIC (Polygon), USDT (BNB Smart Chain), USDC (Ethereum). If the user asks to send anything else (e.g. BTC), say it is not supported yet in this build.
@@ -258,11 +259,34 @@ export function parseDirective(raw: string): Record<string, any> | null {
 
 const HISTORY_LIMIT = 12;
 
+/**
+ * Button-only replies have no text, so they would vanish from the model's
+ * history — the model then saw a wall of unanswered user messages and kept
+ * re-emitting the same directive. Synthesize what the app did instead.
+ */
+function actionSummary(m: ChatMessage): string {
+  const a = m.actions?.[0];
+  if (!a) return '(I showed an interactive card.)';
+  switch (a.kind) {
+    case 'open_activity': return '(I showed a button that opens the Activity screen.)';
+    case 'open_swap': return '(I showed a button that opens the Swap screen.)';
+    case 'open_receive': return '(I showed a button that opens the Receive screen.)';
+    case 'open_settings': return '(I showed a button that opens the Settings screen.)';
+    case 'wallet_lock': return `(I showed an approval card to ${a.lock ? 'lock' : 'unlock'} the wallet.)`;
+    case 'transfer_approval': return '(I showed a transfer approval card for the user to review.)';
+    case 'quick_reply': return '(I offered the user quick reply options.)';
+    default: return '(I showed an interactive card.)';
+  }
+}
+
 function historyToMessages(history: ChatMessage[]): ChatCompletionMessage[] {
   return history
-    .filter((m) => m.text.trim().length > 0)
+    .filter((m) => m.text.trim().length > 0 || (m.actions?.length ?? 0) > 0)
     .slice(-HISTORY_LIMIT)
-    .map((m) => ({ role: m.role, content: m.text.slice(0, 2000) }) as ChatCompletionMessage);
+    .map((m) => ({
+      role: m.role,
+      content: (m.text.trim() ? m.text : actionSummary(m)).slice(0, 2000),
+    }) as ChatCompletionMessage);
 }
 
 async function handleDirective(
