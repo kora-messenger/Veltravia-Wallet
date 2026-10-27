@@ -2,10 +2,14 @@
  * Veltravia Wallet — "How perps work?" instructions carousel (Trust parity).
  *
  * Opened from Settings > Perps > "How perps work?". Six swipeable steps with
- * a segmented progress bar (check = done, ring = current, empty = ahead),
- * a title + body per step, an illustration slot, and Next / Skip buttons.
- * The last step's primary button reads "Got it" and closes the flow. Skip and
- * the Android back gesture both close it.
+ * a segmented progress bar (check = done, ring = current, empty = ahead), a
+ * title + body per step, and an illustration slot.
+ *
+ * Buttons (Trust parity): the primary advances the flow — "Learn more" on
+ * step 1 (scrolls to step 2), "Next" on steps 2-5, "Start now" on step 6.
+ * The secondary is "Skip" on steps 1-5 and "Learn more" on step 6. Every
+ * exit (Start now, Learn more, Skip) returns to the Perps menu screen
+ * (PerpsMenu); the Android back gesture pops back to it as well.
  *
  * All six illustrations live in src/assets/perps-guide/. To replace one, swap
  * the file and keep the same name.
@@ -146,8 +150,14 @@ export default function PerpsAboutScreen() {
   const [index, setIndex] = useState(0);
   const last = index === GUIDE_STEPS.length - 1;
 
-  const close = useCallback(() => {
+  /**
+   * Every exit lands on the Perps menu screen. The guide is always pushed on
+   * top of PerpsMenu, so goBack returns to it; if that ever stops being true,
+   * open PerpsMenu outright.
+   */
+  const exitToMenu = useCallback(() => {
     if (navigation.canGoBack?.()) navigation.goBack();
+    else navigation.navigate('PerpsMenu');
   }, [navigation]);
 
   const goTo = useCallback((i: number) => {
@@ -155,7 +165,7 @@ export default function PerpsAboutScreen() {
     setIndex(i);
   }, []);
 
-  const onNext = () => (last ? close() : goTo(index + 1));
+  const onNext = () => (last ? exitToMenu() : goTo(index + 1));
 
   const onScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const i = Math.round(e.nativeEvent.contentOffset.x / width);
@@ -163,6 +173,8 @@ export default function PerpsAboutScreen() {
   };
 
   const skipBg = dark ? '#1D2133' : '#F2F2F4';
+  const primaryLabel = index === 0 ? 'Learn more' : last ? 'Start now' : 'Next';
+  const secondaryLabel = last ? 'Learn more' : 'Skip';
 
   return (
     <View style={[styles.root, { backgroundColor: theme.background, paddingTop: insets.top + 8 }]}>
@@ -202,19 +214,19 @@ export default function PerpsAboutScreen() {
       <View style={[styles.actions, { paddingBottom: insets.bottom + 16 }]}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={last ? 'Got it' : 'Next'}
+          accessibilityLabel={primaryLabel}
           onPress={onNext}
           style={({ pressed }) => [styles.primary, { backgroundColor: VIOLET_DEEP, opacity: pressed ? 0.88 : 1 }]}
         >
-          <Text style={styles.primaryText}>{last ? 'Got it' : 'Next'}</Text>
+          <Text style={styles.primaryText}>{primaryLabel}</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Skip"
-          onPress={close}
+          accessibilityLabel={secondaryLabel}
+          onPress={exitToMenu}
           style={({ pressed }) => [styles.secondary, { backgroundColor: skipBg, opacity: pressed ? 0.8 : 1 }]}
         >
-          <Text style={[styles.secondaryText, { color: theme.ink }]}>Skip</Text>
+          <Text style={[styles.secondaryText, { color: theme.ink }]}>{secondaryLabel}</Text>
         </Pressable>
       </View>
     </View>

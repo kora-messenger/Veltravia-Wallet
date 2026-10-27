@@ -152,6 +152,10 @@ The official token now has a contract and logo, ready to deploy:
 - `src/assets/vwt-logo.png` + `vwt-logo-small.png` — VWT coin logo: gold infinity on deep navy with the violet→cyan glow, plus a 256px in-app copy.
 - Deploying to a live chain is a manual step (needs a funded wallet); once the address exists it goes into the app's token metadata so VWT displays natively.
 
+### Guide navigation (Trust parity)
+
+The "How perps work?" flow now ends like Trust's: step 1's primary button is "Learn more" (scrolls to step 2), steps 2-5 keep "Next", and step 6 shows "Start now" with a "Learn more" link at the bottom. Start now, the bottom Learn more, and Skip all return to the Settings > Perps menu screen (the guide is always opened from it, so back returns there).
+
 ## Build status
 
 Android builds via GitHub Actions (`android.yml`). Market, portfolio and Discover data are local datasets pending `api.veltraviawallet.com`; transaction signing awaits the Wallet Core native bridge.
