@@ -57,7 +57,7 @@ const DESKTOP_VIEWPORT_JS = `
 true;`;
 
 const HEADER_H = 44;
-const CIRCLE = 40;
+const CIRCLE = 46; // Trust: circle is ~11% of screen width
 
 export default function BrowserScreen() {
   const { theme } = useTheme();
@@ -170,8 +170,8 @@ export default function BrowserScreen() {
     setFullscreen(true);
   };
 
-  const circleBg = dark ? '#1D2133' : '#EFEFF1';
-  const ink = theme.ink;
+  const circleBg = dark ? '#1D2133' : '#EEEEF0'; // measured: #EEEEF0
+  const ink = dark ? theme.ink : '#0F111A'; // near-black like Trust
   const muted = theme.inkMuted;
   const host = hostOf(url);
   const progressW = progress.interpolate({ inputRange: [0, 1], outputRange: [0, width] });
@@ -243,7 +243,7 @@ export default function BrowserScreen() {
           </View>
           <View style={styles.header}>
             <Pressable onPress={close} accessibilityLabel="Close browser" style={[styles.circle, { backgroundColor: circleBg }]}>
-              <CloseIcon size={22} color={ink} />
+              <CloseIcon size={25} color={ink} />
             </Pressable>
             <Pressable
               style={styles.domain}
@@ -252,11 +252,11 @@ export default function BrowserScreen() {
                 showToast('Link copied', { kind: 'success' });
               }}
             >
-              <LockSmallIcon size={15} color={ink} />
+              <LockSmallIcon size={16} color={ink} />
               <Text numberOfLines={1} style={[styles.domainText, { color: ink }]}>{host}</Text>
             </Pressable>
             <Pressable onPress={() => setMenuOpen(true)} accessibilityLabel="Browser menu" style={[styles.circle, { backgroundColor: circleBg }]}>
-              <MoreIcon size={22} color={ink} />
+              <MoreIcon size={25} color={ink} />
             </Pressable>
           </View>
           <View style={styles.progressTrack}>
@@ -279,24 +279,24 @@ export default function BrowserScreen() {
 
           <View style={[styles.navPill, { backgroundColor: circleBg }]}>
             <Pressable disabled={!canBack} onPress={() => webRef.current?.goBack()} hitSlop={8} style={styles.navBtn}>
-              <ChevronLeftIcon size={22} color={canBack ? ink : muted} />
+              <ChevronLeftIcon size={25} color={canBack ? ink : muted} />
             </Pressable>
             <Pressable disabled={!canForward} onPress={() => webRef.current?.goForward()} hitSlop={8} style={styles.navBtn}>
-              <ChevronRightIcon size={22} color={canForward ? ink : muted} />
+              <ChevronRightIcon size={25} color={canForward ? ink : muted} />
             </Pressable>
           </View>
 
           <View style={{ flex: 1 }} />
 
           <Pressable onPress={onHeart} accessibilityLabel="Favorite" style={[styles.circle, { backgroundColor: circleBg }]}>
-            <HeartIcon size={22} color={ink} filled={fav} />
+            <HeartIcon size={25} color={ink} filled={fav} />
           </Pressable>
           <Pressable
             onPress={() => { setLoadFailed(false); setTimeout(() => webRef.current?.reload(), 30); }}
             accessibilityLabel="Reload"
             style={[styles.circle, { backgroundColor: circleBg }]}
           >
-            <ReloadIcon size={22} color={ink} />
+            <ReloadIcon size={25} color={ink} />
           </Pressable>
         </Animated.View>
       )}
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
   failedTitle: { fontSize: 18, fontFamily: 'Inter-700', fontWeight: '700', marginBottom: 6 },
   failedSub: { fontSize: 14, fontFamily: 'Inter-500', fontWeight: '500', textAlign: 'center' },
   bottom: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingTop: 10 },
-  tabBox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  tabBox: { width: 24, height: 24, borderRadius: 7, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   tabNum: { fontSize: 12, fontFamily: 'Inter-700', fontWeight: '700' },
   navPill: { height: CIRCLE, borderRadius: CIRCLE / 2, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6 },
   navBtn: { width: 40, height: CIRCLE, alignItems: 'center', justifyContent: 'center' },
