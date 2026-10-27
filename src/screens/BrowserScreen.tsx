@@ -26,6 +26,7 @@ import { copyToClipboard } from '../core/clipboard';
 import { showToast } from '../components/Toast';
 import {
   useBrowserState, updateTab, hostOf, isFavorite, toggleFavorite, normalizeUrl, isAllowedNavigation, siteModeLabel,
+  nextBarsVisible, parseScrollMessage, SCROLL_REPORTER_JS,
 } from '../services/browserState';
 
 // A real desktop Chrome UA. Mobile mode passes `undefined` so the WebView uses
@@ -83,6 +84,27 @@ export default function BrowserScreen() {
   const [fav, setFav] = useState(isFavorite(startUrl));
   const [loadFailed, setLoadFailed] = useState(false);
 
+  // Auto-hiding bars (Trust): 0 = shown, 1 = hidden. Drives both slide-outs.
+  const barsHidden = useRef(new Animated.Value(0)).current;
+  const barsLayout = useRef(new Animated.Value(0)).current; // JS-driven twin for layout margins
+  const barsVisibleRef = useRef(true);
+  const lastY = useRef(0);
+  const setBarsVisible = useCallback((visible: boolean) => {
+    if (barsVisibleRef.current === visible) return;
+    barsVisibleRef.current = visible;
+    const cfg = { toValue: visible ? 0 : 1, duration: 220, easing: Easing.out(Easing.cubic) };
+    Animated.timing(barsHidden, { ...cfg, useNativeDriver: true }).start();
+    Animated.timing(barsLayout, { ...cfg, useNativeDriver: false }).start();
+  }, [barsHidden, barsLayout]);
+
+  const onWebMessage = useCallback((e: { nativeEvent: { data: string } }) => {
+    const sample = parseScrollMessage(e.nativeEvent.data);
+    if (!sample) return;
+    const visible = nextBarsVisible(lastY.current, sample, barsVisibleRef.current);
+    lastY.current = sample.y;
+    setBarsVisible(visible);
+  }, [setBarsVisible]);
+
   // progress line
   const progress = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(0)).current;
@@ -103,6 +125,7 @@ export default function BrowserScreen() {
     setCanBack(n.canGoBack);
     setCanForward(n.canGoForward);
     if (n.url && /^https?:/i.test(n.url)) {
+      if (n.url !== url) { lastY.current = 0; setBarsVisible(true); }
       setUrl(n.url);
       if (tabId) updateTab(tabId, { url: n.url, title: n.title || hostOf(n.url) });
     }
@@ -137,6 +160,8 @@ export default function BrowserScreen() {
     setCanForward(false);
     setLoadFailed(false);
     setWebKey((k) => k + 1); // remount => fresh load with the new UA/viewport
+    lastY.current = 0;
+    setBarsVisible(true);
     showToast(next ? 'Desktop site' : 'Mobile site', { kind: 'info' });
   };
 
@@ -150,41 +175,21 @@ export default function BrowserScreen() {
   const muted = theme.inkMuted;
   const host = hostOf(url);
   const progressW = progress.interpolate({ inputRange: [0, 1], outputRange: [0, width] });
+  const TOP_H = insets.top + 6 + 4 + 6 + HEADER_H + 6; // grab handle + header + progress
+  const BOTTOM_H = CIRCLE + 10 + Math.max(insets.bottom, 12);
+  // The page reclaims the space the bars give up. Margins are layout props, so they
+  // follow a JS-driven twin of the same 0..1 value (two numbers over ~220ms).
+  const webTop = barsLayout.interpolate({ inputRange: [0, 1], outputRange: [TOP_H, insets.top + 22] });
+  const webBottom = barsLayout.interpolate({ inputRange: [0, 1], outputRange: [BOTTOM_H, 0] });
+  const headerY = barsHidden.interpolate({ inputRange: [0, 1], outputRange: [0, -(TOP_H - insets.top - 22)] });
+  const footerY = barsHidden.interpolate({ inputRange: [0, 1], outputRange: [0, BOTTOM_H + 8] });
 
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
       <StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />
 
-      {!fullscreen && (
-        <View style={{ paddingTop: insets.top }}>
-          <View style={styles.grabWrap}>
-            <View style={[styles.grab, { backgroundColor: dark ? 'rgba(255,255,255,0.25)' : 'rgba(6,14,44,0.18)' }]} />
-          </View>
-          <View style={styles.header}>
-            <Pressable onPress={close} accessibilityLabel="Close browser" style={[styles.circle, { backgroundColor: circleBg }]}>
-              <CloseIcon size={22} color={ink} />
-            </Pressable>
-            <Pressable
-              style={styles.domain}
-              onPress={() => {
-                copyToClipboard(url);
-                showToast('Link copied', { kind: 'success' });
-              }}
-            >
-              <LockSmallIcon size={15} color={ink} />
-              <Text numberOfLines={1} style={[styles.domainText, { color: ink }]}>{host}</Text>
-            </Pressable>
-            <Pressable onPress={() => setMenuOpen(true)} accessibilityLabel="Browser menu" style={[styles.circle, { backgroundColor: circleBg }]}>
-              <MoreIcon size={22} color={ink} />
-            </Pressable>
-          </View>
-          <View style={styles.progressTrack}>
-            <Animated.View style={[styles.progressBar, { width: progressW, opacity: fade, backgroundColor: theme.brand }]} />
-          </View>
-        </View>
-      )}
-
-      <View style={styles.web}>
+      {/* WebView first (full-bleed); bars float above it and slide away on scroll. */}
+      <Animated.View style={[styles.web, fullscreen ? null : { marginTop: webTop, marginBottom: webBottom }]}>
         {loadFailed ? (
           <View style={styles.failed}>
             <Text style={[styles.failedTitle, { color: ink }]}>Can’t load this page</Text>
@@ -196,7 +201,8 @@ export default function BrowserScreen() {
             ref={webRef}
             source={{ uri: sourceUrl }}
             userAgent={desktop ? DESKTOP_UA : undefined}
-            injectedJavaScriptBeforeContentLoaded={desktop ? DESKTOP_VIEWPORT_JS : undefined}
+            injectedJavaScriptBeforeContentLoaded={(desktop ? DESKTOP_VIEWPORT_JS : '') + SCROLL_REPORTER_JS}
+            onMessage={onWebMessage}
             scalesPageToFit={desktop}
             setBuiltInZoomControls={desktop}
             setDisplayZoomControls={false}
@@ -225,10 +231,46 @@ export default function BrowserScreen() {
             style={{ backgroundColor: theme.background }}
           />
         )}
-      </View>
+      </Animated.View>
 
       {!fullscreen && (
-        <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <Animated.View
+          pointerEvents="box-none"
+          style={[styles.topBar, { paddingTop: insets.top, backgroundColor: theme.background, transform: [{ translateY: headerY }] }]}
+        >
+          <View style={styles.grabWrap}>
+            <View style={[styles.grab, { backgroundColor: dark ? 'rgba(255,255,255,0.25)' : 'rgba(6,14,44,0.18)' }]} />
+          </View>
+          <View style={styles.header}>
+            <Pressable onPress={close} accessibilityLabel="Close browser" style={[styles.circle, { backgroundColor: circleBg }]}>
+              <CloseIcon size={22} color={ink} />
+            </Pressable>
+            <Pressable
+              style={styles.domain}
+              onPress={() => {
+                copyToClipboard(url);
+                showToast('Link copied', { kind: 'success' });
+              }}
+            >
+              <LockSmallIcon size={15} color={ink} />
+              <Text numberOfLines={1} style={[styles.domainText, { color: ink }]}>{host}</Text>
+            </Pressable>
+            <Pressable onPress={() => setMenuOpen(true)} accessibilityLabel="Browser menu" style={[styles.circle, { backgroundColor: circleBg }]}>
+              <MoreIcon size={22} color={ink} />
+            </Pressable>
+          </View>
+          <View style={styles.progressTrack}>
+            <Animated.View style={[styles.progressBar, { width: progressW, opacity: fade, backgroundColor: theme.brand }]} />
+          </View>
+        </Animated.View>
+      )}
+
+
+      {!fullscreen && (
+        <Animated.View
+          pointerEvents="box-none"
+          style={[styles.bottom, styles.bottomAbs, { paddingBottom: Math.max(insets.bottom, 12), backgroundColor: theme.background, transform: [{ translateY: footerY }] }]}
+        >
           <View style={[styles.circle, { backgroundColor: circleBg }]}>
             <View style={[styles.tabBox, { borderColor: ink }]}>
               <Text style={[styles.tabNum, { color: ink }]}>{Math.max(tabs.length, 1)}</Text>
@@ -256,7 +298,7 @@ export default function BrowserScreen() {
           >
             <ReloadIcon size={22} color={ink} />
           </Pressable>
-        </View>
+        </Animated.View>
       )}
 
       {fullscreen && (
@@ -312,6 +354,8 @@ const styles = StyleSheet.create({
   progressTrack: { height: 2, marginTop: 4 },
   progressBar: { height: 2 },
   web: { flex: 1 },
+  topBar: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 5 },
+  bottomAbs: { position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 5 },
   failed: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   failedTitle: { fontSize: 18, fontFamily: 'Inter-700', fontWeight: '700', marginBottom: 6 },
   failedSub: { fontSize: 14, fontFamily: 'Inter-500', fontWeight: '500', textAlign: 'center' },

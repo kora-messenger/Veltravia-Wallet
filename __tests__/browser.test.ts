@@ -1,6 +1,7 @@
 import {
   hostOf, normalizeUrl, openTab, closeTab, toggleFavorite, isFavorite,
   openInBrowser, registerBrowserNavigator, isAllowedNavigation, siteModeLabel,
+  nextBarsVisible, parseScrollMessage, BAR_SCROLL_THRESHOLD, BAR_EDGE_ZONE,
 } from '../src/services/browserState';
 
 describe('in-app browser state', () => {
@@ -61,5 +62,47 @@ describe('navigation gate', () => {
     for (const u of ['javascript:alert(1)', 'intent://x#Intent;end', 'file:///etc/passwd', 'data:text/html,hi', 'blob:https://x/1', 'about:config']) {
       expect(isAllowedNavigation(u)).toBe(false);
     }
+  });
+});
+
+describe('auto-hiding bars (Trust scroll behaviour)', () => {
+  const page = { height: 5000, viewport: 800 };
+  const at = (y: number) => ({ y, ...page });
+
+  it('hides while scrolling down', () => {
+    expect(nextBarsVisible(400, at(460), true)).toBe(false);
+  });
+  it('shows again while scrolling up', () => {
+    expect(nextBarsVisible(460, at(400), false)).toBe(true);
+  });
+  it('ignores tiny jitter', () => {
+    expect(nextBarsVisible(400, at(400 + BAR_SCROLL_THRESHOLD - 1), true)).toBe(true);
+    expect(nextBarsVisible(400, at(400 + BAR_SCROLL_THRESHOLD - 1), false)).toBe(false);
+  });
+  it('is always shown at the very top', () => {
+    expect(nextBarsVisible(100, at(BAR_EDGE_ZONE - 1), false)).toBe(true);
+  });
+  it('comes back at the very end of the page even while scrolling down', () => {
+    const bottomY = page.height - page.viewport; // fully scrolled
+    expect(nextBarsVisible(bottomY - 80, at(bottomY), false)).toBe(true);
+    expect(nextBarsVisible(bottomY - 80, at(bottomY - BAR_EDGE_ZONE + 2), false)).toBe(true);
+  });
+  it('stays hidden mid-page when scrolling down', () => {
+    expect(nextBarsVisible(2000, at(2200), false)).toBe(false);
+  });
+  it('a short page (no scroll room) always shows the bars', () => {
+    expect(nextBarsVisible(0, { y: 0, height: 600, viewport: 800 }, false)).toBe(true);
+  });
+});
+
+describe('scroll message parsing', () => {
+  it('accepts our scroll message', () => {
+    expect(parseScrollMessage(JSON.stringify({ t: 'scroll', y: 120, h: 3000, v: 800 }))).toEqual({ y: 120, height: 3000, viewport: 800 });
+  });
+  it('ignores anything else', () => {
+    expect(parseScrollMessage('hello')).toBeNull();
+    expect(parseScrollMessage(JSON.stringify({ t: 'other', y: 1, h: 2, v: 3 }))).toBeNull();
+    expect(parseScrollMessage(JSON.stringify({ t: 'scroll', y: 'x', h: 2, v: 3 }))).toBeNull();
+    expect(parseScrollMessage(JSON.stringify({ t: 'scroll', y: NaN, h: 2, v: 3 }))).toBeNull();
   });
 });

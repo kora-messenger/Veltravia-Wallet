@@ -119,3 +119,73 @@ export function isAllowedNavigation(url: string): boolean {
 export function siteModeLabel(desktop: boolean): string {
   return desktop ? 'Request Mobile Website' : 'Request Desktop Website';
 }
+
+/* ---- auto-hiding browser bars (scroll behaviour, unit-tested) ------------- */
+
+export interface ScrollSample {
+  /** Current scroll offset of the page (px). */
+  y: number;
+  /** Total scrollable height of the page (px). */
+  height: number;
+  /** Visible viewport height (px). */
+  viewport: number;
+}
+
+/** Distance scrolled in one direction before the bars react (ignores jitter). */
+export const BAR_SCROLL_THRESHOLD = 12;
+/** Within this many px of the very top or bottom the bars are always shown. */
+export const BAR_EDGE_ZONE = 24;
+
+/**
+ * Trust-style bars: they slide away while scrolling DOWN, come back while
+ * scrolling UP, and are always visible at the top and at the very end of the
+ * page (so back/forward/reload stay reachable). Returns the next visibility.
+ */
+export function nextBarsVisible(prevY: number, s: ScrollSample, currentlyVisible: boolean): boolean {
+  const atTop = s.y <= BAR_EDGE_ZONE;
+  const atBottom = s.y + s.viewport >= s.height - BAR_EDGE_ZONE;
+  if (atTop || atBottom) return true;
+  const dy = s.y - prevY;
+  if (dy > BAR_SCROLL_THRESHOLD) return false; // scrolling down
+  if (dy < -BAR_SCROLL_THRESHOLD) return true; // scrolling up
+  return currentlyVisible; // jitter: keep as is
+}
+
+/**
+ * Injected into every page: reports scroll offset, page height and viewport
+ * to the app (throttled to one message per animation frame). No page data is
+ * read or sent: only three numbers.
+ */
+export const SCROLL_REPORTER_JS = `
+(function () {
+  if (window.__vwScroll) return;
+  window.__vwScroll = true;
+  var ticking = false;
+  function send() {
+    ticking = false;
+    var d = document.documentElement, b = document.body || d;
+    var y = window.pageYOffset || d.scrollTop || b.scrollTop || 0;
+    var h = Math.max(d.scrollHeight || 0, b.scrollHeight || 0);
+    var v = window.innerHeight || d.clientHeight || 0;
+    window.ReactNativeWebView.postMessage(JSON.stringify({ t: 'scroll', y: y, h: h, v: v }));
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(send); }
+  }, { passive: true });
+  window.addEventListener('load', send);
+  window.addEventListener('resize', send);
+})();
+true;`;
+
+/** Parse a WebView message into a ScrollSample (null if it isn't ours). */
+export function parseScrollMessage(raw: string): ScrollSample | null {
+  try {
+    const m = JSON.parse(raw);
+    if (m && m.t === 'scroll' && [m.y, m.h, m.v].every((n: unknown) => typeof n === 'number' && isFinite(n as number))) {
+      return { y: m.y, height: m.h, viewport: m.v };
+    }
+  } catch {
+    /* not our message */
+  }
+  return null;
+}
