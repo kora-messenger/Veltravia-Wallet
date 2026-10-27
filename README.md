@@ -104,6 +104,10 @@ The Perps tab is the real Perps home (Trust parity), no longer the educational p
 
 Settings > Perps opens a plain list (Trust parity): **Hyperliquid** and **Aster** (venue rows; both open the Perps tab for now, live trading waits on the Wallet Core signing bridge), **How perps work?** (the educational screen) and **Contact support**. Contact support hands `https://help.veltraviawallet.com` to the **system browser** via `Linking.openURL`; it deliberately does not use the in-app browser (`openInBrowser`). The help site itself is a separate future build, modeled on Trust's help center: "How can we help you" with FAQ search, a Get Support card with "Ask our Chatbot", Trending topics, topic cards, and a floating chat widget (Home / Help / Messages).
 
+### Floating tab bar (Trust-parity polish)
+
+The pill now uses Trust's exact treatment: a milk interior (`#FAFAFB`) wrapped in a tiny dark-gray hairline (`#D1D1D4`) in light mode (deep navy `#07101E` with a faint hairline in dark). The active-tab indicator is a compact fully-rounded pill (48x32, `#F0F0F2` light / `#1D2133` dark) and the icon groups sit inside the capsule's straight section, so the rounded ends curve around empty space instead of the indicator rectangle poking past the capsule edge on narrow screens. The raised Swap button uses the same milk surface and hairline.
+
 ## Build status
 
 Android builds via GitHub Actions (`android.yml`). Market, portfolio and Discover data are local datasets pending `api.veltraviawallet.com`; transaction signing awaits the Wallet Core native bridge.

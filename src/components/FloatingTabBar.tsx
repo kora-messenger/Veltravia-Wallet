@@ -102,7 +102,7 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
               backgroundColor: focused
                 ? theme.mode === 'dark'
                   ? '#1D2133' // Trust dark-mode indicator
-                  : '#EFEFF1' // Trust light-mode indicator
+                  : '#F0F0F2' // Trust light-mode indicator
                 : 'transparent',
             },
           ]}
@@ -118,8 +118,11 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
   };
 
   const swapFocused = focusedName === 'Swap';
+  // Trust parity: milk interior with a tiny dark-gray hairline around it
+  // (light), deep navy surface with a faint light hairline (dark).
+  const pillBg = theme.mode === 'dark' ? '#07101E' : '#FAFAFB';
   const borderColor =
-    theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(6,14,44,0.07)';
+    theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : '#D1D1D4';
 
   return (
     <View pointerEvents="box-none" style={styles.overlay}>
@@ -138,16 +141,16 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
           <Svg width={pillW} height={PILL_H} style={StyleSheet.absoluteFill}>
             <Path
               d={pillPath(pillW)}
-              fill={theme.surface}
+              fill={pillBg}
               stroke={borderColor}
               strokeWidth={1}
             />
           </Svg>
         )}
         <View style={styles.row} pointerEvents="box-none">
-          {SIDE_TABS.slice(0, 2).map(renderSide)}
+          <View style={styles.group}>{SIDE_TABS.slice(0, 2).map(renderSide)}</View>
           <View style={{ width: NOTCH_R * 2 + 16 }} />
-          {SIDE_TABS.slice(2).map(renderSide)}
+          <View style={styles.group}>{SIDE_TABS.slice(2).map(renderSide)}</View>
         </View>
       </View>
 
@@ -158,7 +161,7 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
           styles.swapBtn,
           {
             bottom: SWAP_BOTTOM + insets.bottom,
-            backgroundColor: theme.surface,
+            backgroundColor: pillBg,
             borderColor,
             shadowOpacity: (theme.mode === 'dark' ? 0.4 : 0.14) * (pressed ? 0.6 : 1),
           },
@@ -197,7 +200,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-evenly',
+    paddingHorizontal: 10,
   },
   swapBtn: {
     position: 'absolute',
@@ -218,10 +221,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconWrap: {
-    width: 64,
-    height: 38,
-    borderRadius: 19,
+    width: 48,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Left/right icon groups stay inside the capsule's straight section so the
+  // rounded ends curve around empty space, like Trust (no indicator poking out).
+  group: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
   },
 });
