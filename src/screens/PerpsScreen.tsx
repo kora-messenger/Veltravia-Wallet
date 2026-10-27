@@ -9,7 +9,7 @@
  * sparkline per row, and the floating Long / Short pills above the tab bar.
  */
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeProvider';
@@ -17,7 +17,7 @@ import { useWallets } from '../wallets/WalletsProvider';
 import Sparkline from '../components/Sparkline';
 import {
   HistoryIcon, GearIcon, SearchIcon, ChevronRight, COIN_ICONS,
-  InfinityIcon, ArrowUpRightTx, ArrowDownRightIcon,
+  ArrowUpRightTx, ArrowDownRightIcon,
 } from '../components/icons';
 import { usePerpsAccount, accountValue, isFunded } from '../services/perpsAccount';
 import {
@@ -121,9 +121,12 @@ export default function PerpsScreen() {
           <View style={styles.hero}>
             <View style={styles.heroTop}>
               <Text style={[styles.heroTitle, { color: theme.ink }]}>Deposit to fund{'\n'}your first position</Text>
-              <View style={styles.heroArt}>
-                <InfinityIcon size={84} color={theme.brand} strokeWidth={3.2} />
-              </View>
+              <Image
+                source={require('../assets/perps-infinity-gold.png')}
+                style={styles.heroArtImg}
+                resizeMode="contain"
+                accessibilityLabel="Perps"
+              />
             </View>
             <Pressable style={({ pressed }) => [styles.depositBtn, { backgroundColor: theme.brand, opacity: pressed ? 0.85 : 1 }]} onPress={openDeposit}>
               <Text style={styles.depositText}>Deposit</Text>
@@ -190,6 +193,7 @@ const styles = StyleSheet.create({
   heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   heroTitle: { fontSize: 24, lineHeight: 30, fontFamily: 'Inter-700', fontWeight: '700', flexShrink: 1 },
   heroArt: { width: 120, alignItems: 'center', justifyContent: 'center' },
+  heroArtImg: { width: 132, height: 79 },
   depositBtn: { height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', marginTop: 18 },
   depositText: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
 
