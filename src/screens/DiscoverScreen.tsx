@@ -18,6 +18,7 @@ import {
   Keyboard, Linking, useWindowDimensions, type NativeSyntheticEvent, type NativeScrollEvent,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { useTheme } from '../theme/ThemeProvider';
 import { SkeletonBlock } from '../components/Skeleton';
@@ -33,7 +34,6 @@ import { addRecent, clearRecents, useRecents, type RecentItem } from '../service
 type Page = 'tokens' | 'dapps';
 type Filter = 'all' | 'tokens' | 'predictions' | 'dapps';
 
-const TAB_CLEARANCE = 96; // floating tab bar height + breathing room
 
 /* ---- small visuals -------------------------------------------------------- */
 
@@ -150,7 +150,7 @@ function RecentsStrip({ recents, onTap }: { recents: RecentItem[]; onTap: (r: Re
           <Text style={[styles.clearAll, { color: theme.inkMuted }]}>Clear all</Text>
         </Pressable>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recentsRow}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.recentsScroll} contentContainerStyle={styles.recentsRow}>
         {recents.map((r) => (
           <Pressable
             key={r.kind + r.id}
@@ -178,6 +178,7 @@ export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const recents = useRecents();
+  const navigation = useNavigation<any>();
 
   const [page, setPage] = useState<Page>('tokens');
   const pagerRef = useRef<{ scrollTo: (o: { x: number; animated?: boolean }) => void } | null>(null);
@@ -257,11 +258,14 @@ export default function DiscoverScreen() {
     }
   }, [openDapp, openToken]);
 
-  const closeSearch = () => {
+  // X leaves Discover and returns to Home (full-screen screen, Trust parity).
+  const closeDiscover = () => {
+    Keyboard.dismiss();
     setQuery('');
     setSearchOpen(false);
     setFilter('all');
-    Keyboard.dismiss();
+    if (navigation.canGoBack()) navigation.goBack();
+    else navigation.navigate('MainTabs', { screen: 'Home' });
   };
 
   const onPaste = async () => {
@@ -275,7 +279,8 @@ export default function DiscoverScreen() {
   };
 
   const searching = searchOpen && query.trim().length > 0;
-  const bottomInset = kb > 0 ? kb : insets.bottom + TAB_CLEARANCE;
+  const barBottom = kb > 0 ? kb + 8 : Math.max(insets.bottom, 12) + 8;
+  const listBottom = barBottom + 52 + 16; // clear the docked search bar
 
   /* search results body */
   const renderResults = () => {
@@ -325,11 +330,12 @@ export default function DiscoverScreen() {
   ];
 
   return (
-    <SafeAreaView edges={['left', 'right']} style={[styles.root, { backgroundColor: theme.background }]}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.root, { backgroundColor: theme.background }]}>
       {searching ? (
         /* ---- search mode ---- */
         <View style={styles.flex}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+          <View style={styles.filterBar}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterRow}>
             {filters.map((f) => {
               const on = filter === f.key;
               return (
@@ -343,10 +349,11 @@ export default function DiscoverScreen() {
               );
             })}
           </ScrollView>
+          </View>
           <ScrollView
             style={styles.flex}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: bottomInset + 80 }}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: listBottom }}
           >
             {renderResults()}
           </ScrollView>
@@ -384,10 +391,10 @@ export default function DiscoverScreen() {
             onMomentumScrollEnd={onPagerEnd}
             style={styles.flex}
           >
-            <ScrollView style={{ width }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: bottomInset + 80 }}>
+            <ScrollView style={{ width }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: listBottom }}>
               {TRENDING_TOKENS.map((t) => <TokenRow key={t.id} t={t} onPress={() => openToken(t)} />)}
             </ScrollView>
-            <ScrollView style={{ width }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: bottomInset + 80 }}>
+            <ScrollView style={{ width }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: listBottom }}>
               {DAPPS.map((d) => <DappRow key={d.id} d={d} onPress={() => openDapp(d)} />)}
             </ScrollView>
           </ScrollView>
@@ -395,7 +402,7 @@ export default function DiscoverScreen() {
       )}
 
       {/* ---- bottom search bar ---- */}
-      <View style={[styles.barWrap, { bottom: kb > 0 ? kb + 8 : insets.bottom + 84 }]} pointerEvents="box-none">
+      <View style={[styles.barWrap, { bottom: barBottom }]} pointerEvents="box-none">
         <View style={[styles.counter, { backgroundColor: theme.surfaceAlt }]}>
           <View style={[styles.counterBox, { borderColor: theme.ink }]}>
             <Text style={[styles.counterText, { color: theme.ink }]}>0</Text>
@@ -426,7 +433,7 @@ export default function DiscoverScreen() {
             </Pressable>
           )}
         </View>
-        <Pressable onPress={closeSearch} style={[styles.closeBtn, { backgroundColor: theme.surfaceAlt }]} accessibilityLabel="Close search">
+        <Pressable onPress={closeDiscover} style={[styles.closeBtn, { backgroundColor: theme.surfaceAlt }]} accessibilityLabel="Close search">
           <CloseIcon size={22} color={theme.ink} />
         </Pressable>
       </View>
@@ -445,6 +452,7 @@ const styles = StyleSheet.create({
   recentsWrap: { paddingTop: 20 },
   recentsHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 12 },
   clearAll: { fontSize: 16, fontFamily: 'Inter-500', fontWeight: '500' },
+  recentsScroll: { flexGrow: 0 }, // never stretch to fill the column
   recentsRow: { paddingHorizontal: 20, gap: 12, paddingBottom: 4 },
   recentPill: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 18, minWidth: 148 },
   recentDot: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
@@ -473,8 +481,12 @@ const styles = StyleSheet.create({
   predBox: { width: 52, height: 52, borderRadius: 10 },
 
   /* search filters + states */
-  filterRow: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 6, gap: 8 },
-  filterPill: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 20 },
+  // Fixed-height strip: without this the horizontal ScrollView stretches to fill the
+  // column and every pill becomes a tall lavender block (seen in the recording).
+  filterBar: { height: 60 },
+  filterScroll: { flexGrow: 0, height: 60 },
+  filterRow: { paddingHorizontal: 20, alignItems: 'center', gap: 8 },
+  filterPill: { height: 40, paddingHorizontal: 18, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   filterText: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
   skelWrap: { paddingTop: 22, gap: 68 },
   skelRow: { height: 101, borderRadius: 18 },

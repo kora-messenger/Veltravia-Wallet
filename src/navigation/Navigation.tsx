@@ -57,6 +57,7 @@ export type RootStackParamList = {
   SelectRecoveryMethod: undefined;
   ManageAccount: { walletId: string };
   Activity: undefined;
+  Discover: undefined;
   BalanceDetails: undefined;
   AiChat: { mode?: 'support' | 'fresh' } | undefined;
   Buy: { pickedCurrency?: string } | undefined;
@@ -67,7 +68,6 @@ export type MainTabParamList = {
   Home: undefined;
   Markets: undefined;
   Swap: undefined;
-  Discover: undefined;
   Settings: undefined;
 };
 
@@ -84,7 +84,6 @@ function MainTabs() {
       <Tabs.Screen name="Home" component={HomeScreen} />
       <Tabs.Screen name="Markets" component={MarketsScreen} />
       <Tabs.Screen name="Swap" component={SwapScreen} />
-      <Tabs.Screen name="Discover" component={DiscoverScreen} />
       <Tabs.Screen name="Settings" component={SettingsScreen} />
     </Tabs.Navigator>
   );
@@ -232,6 +231,7 @@ export default function Navigation() {
         <Stack.Screen name="ImportWallet" component={ImportWalletScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="ManageAccount" component={ManageAccountScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="Activity" component={ActivityScreen} options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="Discover" component={DiscoverScreen} options={{ animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="BalanceDetails" component={BalanceDetailsScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="Buy" component={BuyScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="SelectCurrency" component={SelectCurrencyScreen} options={{ animation: 'slide_from_right' }} />

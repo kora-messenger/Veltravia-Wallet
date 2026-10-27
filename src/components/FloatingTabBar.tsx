@@ -74,6 +74,12 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
   const go = (name: string) => {
     // Every bottom icon pulses on tap, even when already focused.
     tabRefs.current[name]?.pulse();
+    // Discover is a full-screen screen above the tabs (Trust parity): no tab
+    // bar is mounted over it, and its X pops back to the tab the user left.
+    if (name === 'Discover') {
+      (navigation as any).getParent()?.navigate('Discover');
+      return;
+    }
     const route = state.routes.find((r) => r.name === name);
     if (!route) return;
     const event = navigation.emit({

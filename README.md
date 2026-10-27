@@ -70,7 +70,7 @@ npm run ios       # requires macOS + CocoaPods
 - **Home / Markets / Settings / Activity:** balance card, portfolio, market list, filters with shimmer skeletons.
 - **Receive & Share:** 33x33 QR with centered logo, in-sheet "Share Via" grid, QR attached to the system share sheet.
 - **Veltravia AI:** hosted assistant (OpenRouter, streaming) with a Trust-style persona, per-wallet encrypted conversation memory and cross-chat recall, copy/delete of messages and chats, tappable screen-shortcut buttons, wallet lock/unlock and transfer proposals. Money safety is deterministic: the model only proposes; every transfer is validated locally and needs biometrics or passcode.
-- **Discover (new):** one screen with a Trending header and a Tokens / dApps capsule that pages horizontally. A Recents strip sits above the pager (hidden until a coin or dApp is tapped, survives page switches, "Clear all"). Bottom search bar with Paste (explicit-tap clipboard read), clear and close; searching shows a 3-row shimmer loading state, then All / Tokens / Predictions / dApps results. Data comes from `src/services/discoverData.ts`, the single swap point for the live API.
+- **Discover (new):** a full-screen route above the tabs (the floating tab bar is not shown; the X in the search bar returns to Home), one screen with a Trending header and a Tokens / dApps capsule that pages horizontally. A Recents strip sits above the pager (hidden until a coin or dApp is tapped, survives page switches, "Clear all"). Bottom search bar with Paste (explicit-tap clipboard read), clear and close; searching shows a 3-row shimmer loading state, then All / Tokens / Predictions / dApps results. Data comes from `src/services/discoverData.ts`, the single swap point for the live API.
 
 ## Build status
 
