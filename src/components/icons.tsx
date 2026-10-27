@@ -607,3 +607,43 @@ export const TrendIcon = ({ size = 24, color = '#000', strokeWidth = 2.2 }: Icon
     <Path d="M15 8h5v5" {...stroke(color, strokeWidth)} />
   </Svg>
 );
+
+
+/** Padlock (secure connection in the browser header). */
+export const LockSmallIcon = ({ size = 16, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Rect x="5" y="10.5" width="14" height="10" rx="2.6" {...stroke(color, strokeWidth)} />
+    <Path d="M8 10.5V8a4 4 0 018 0v2.5" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/** Heart; `filled` for a favorited page. */
+export const HeartIcon = ({ size = 24, color = '#000', strokeWidth = 2, filled = false }: IconProps & { filled?: boolean }) => (
+  <Svg {...base(size)}>
+    <Path
+      d="M12 20.2S4 15.1 4 9.6A4.1 4.1 0 018 5.5c1.6 0 3 .9 4 2.3 1-1.4 2.4-2.3 4-2.3a4.1 4.1 0 014 4.1c0 5.5-8 10.6-8 10.6z"
+      {...stroke(color, strokeWidth)}
+      fill={filled ? color : 'none'}
+    />
+  </Svg>
+);
+
+/** Reload (circular arrow). */
+export const ReloadIcon = ({ size = 24, color = '#000', strokeWidth = 2.2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M19.5 12a7.5 7.5 0 11-2.4-5.5" {...stroke(color, strokeWidth)} />
+    <Path d="M19.8 4.6v4.2h-4.2" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/** Chevron left / right for the back-forward pill. */
+export const ChevronLeftIcon = ({ size = 22, color = '#000', strokeWidth = 2.2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M14.5 6l-6 6 6 6" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+export const ChevronRightIcon = ({ size = 22, color = '#000', strokeWidth = 2.2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M9.5 6l6 6-6 6" {...stroke(color, strokeWidth)} />
+  </Svg>
+);

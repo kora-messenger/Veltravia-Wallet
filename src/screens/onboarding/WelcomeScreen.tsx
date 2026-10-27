@@ -19,8 +19,8 @@ import {
   NativeScrollEvent,
   Image,
   StatusBar,
-  Linking,
 } from 'react-native';
+import { openInBrowser } from '../../services/browserState';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import PrimaryButton from '../../components/PrimaryButton';
@@ -33,7 +33,7 @@ const LEGAL = {
   terms: 'https://veltravia.app/terms',
   privacy: 'https://veltravia.app/privacy',
 };
-const openLegal = (url: string) => Linking.openURL(url).catch(() => {});
+const openLegal = (url: string) => { openInBrowser(url); };
 
 interface Slide {
   image: number; // require() asset id (light theme)

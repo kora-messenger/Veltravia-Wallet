@@ -15,7 +15,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, TextInput, Animated, Easing, Platform,
-  Keyboard, Linking, useWindowDimensions, type NativeSyntheticEvent, type NativeScrollEvent,
+  Keyboard, useWindowDimensions, type NativeSyntheticEvent, type NativeScrollEvent,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -25,6 +25,7 @@ import { SkeletonBlock } from '../components/Skeleton';
 import { CloseIcon, SearchIcon } from '../components/icons';
 import { pasteFromClipboard } from '../core/clipboard';
 import { showToast } from '../components/Toast';
+import { openInBrowser } from '../services/browserState';
 import {
   TRENDING_TOKENS, DAPPS, CHAIN_LABEL, CHAIN_COLOR, searchDiscover, fmtPrice, fmtVol, fmtChange,
   type TrendingToken, type Dapp, type Prediction, type DiscoverSearchResult,
@@ -245,7 +246,7 @@ export default function DiscoverScreen() {
 
   const openDapp = useCallback((d: Dapp) => {
     addRecent({ id: d.id, kind: 'dapp', label: d.name, caption: 'dApp', color: d.color });
-    Linking.openURL(d.url).catch(() => showToast("Couldn't open that dApp. Try again later.", { kind: 'error' }));
+    if (!openInBrowser(d.url)) showToast("Couldn't open that dApp. Try again later.", { kind: 'error' });
   }, []);
 
   const onRecentTap = useCallback((r: RecentItem) => {

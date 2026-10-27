@@ -17,7 +17,8 @@
  *  - Continue hands off to the provider's checkout in the browser.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Linking, Pressable, StyleSheet, Text, Vibration, View, useWindowDimensions } from 'react-native';
+import { Animated, Easing, Pressable, StyleSheet, Text, Vibration, View, useWindowDimensions } from 'react-native';
+import { openInBrowser } from '../../services/browserState';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import { SkeletonBlock } from '../../components/Skeleton';
@@ -163,7 +164,7 @@ export default function BuyScreen({ navigation, route }: { navigation: any; rout
   const ctaLabel = status === 'below_min' || status === 'over_max' ? 'Correct amount' : 'Continue';
 
   const onContinue = () => {
-    Linking.openURL(provider.url).catch(() => showToast("Couldn't open the checkout. Try again later.", { kind: 'error' }));
+    if (!openInBrowser(provider.url)) showToast("Couldn't open the checkout. Try again later.", { kind: 'error' });
   };
 
   return (

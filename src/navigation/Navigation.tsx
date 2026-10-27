@@ -32,11 +32,17 @@ import SelectCurrencyScreen from '../features/buy/SelectCurrencyScreen';
 import NotificationSheet from '../components/NotificationSheet';
 import LockScreen from '../screens/LockScreen';
 import { setAppLocked } from '../core/security/appLockState';
+import { registerBrowserNavigator } from '../services/browserState';
+import BrowserScreen from '../screens/BrowserScreen';
 import { setPasscode, hasPasscode } from '../core/storage/passcode';
 import { setBiometricUnlockEnabled } from '../core/security/biometrics';
 import { AppState, StyleSheet } from 'react-native';
 
 const navigationRef = React.createRef<NavigationContainerRef<RootStackParamList>>();
+// Any code can open a link in the in-app browser via openInBrowser(url).
+registerBrowserNavigator({
+  navigate: (name: string, params?: any) => (navigationRef.current as any)?.navigate(name, params),
+});
 
 // Placeholder until screen files land in Phase 2 — typed to force wiring.
 const HomeScreen = require('../screens/HomeScreen').default;
@@ -58,6 +64,7 @@ export type RootStackParamList = {
   ManageAccount: { walletId: string };
   Activity: undefined;
   Discover: undefined;
+  Browser: { tabId: string; url: string };
   BalanceDetails: undefined;
   AiChat: { mode?: 'support' | 'fresh' } | undefined;
   Buy: { pickedCurrency?: string } | undefined;
@@ -232,6 +239,7 @@ export default function Navigation() {
         <Stack.Screen name="ManageAccount" component={ManageAccountScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="Activity" component={ActivityScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="Discover" component={DiscoverScreen} options={{ animation: 'fade', gestureEnabled: false }} />
+        <Stack.Screen name="Browser" component={BrowserScreen} options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
         <Stack.Screen name="BalanceDetails" component={BalanceDetailsScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="Buy" component={BuyScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="SelectCurrency" component={SelectCurrencyScreen} options={{ animation: 'slide_from_right' }} />
