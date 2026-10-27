@@ -1,6 +1,7 @@
 /**
  * Clipboard bridge (native VeltraviaClipboard module, see ClipboardModule.kt).
- * Copy-only: the app never reads the clipboard.
+ * Copy everywhere; read ONLY via pasteFromClipboard(), which the Discover
+ * search "Paste" pill calls on an explicit tap (never in the background).
  */
 import { NativeModules, Vibration } from 'react-native';
 
@@ -14,5 +15,15 @@ export function copyToClipboard(text: string, opts: { sensitive?: boolean; hapti
     return !!Native;
   } catch {
     return false;
+  }
+}
+
+/** Explicit user-tap paste (Discover search). Resolves '' if unavailable. */
+export async function pasteFromClipboard(): Promise<string> {
+  try {
+    const t = await Native?.getString?.();
+    return typeof t === 'string' ? t : '';
+  } catch {
+    return '';
   }
 }

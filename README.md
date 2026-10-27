@@ -63,9 +63,23 @@ npm run android   # requires Android SDK
 npm run ios       # requires macOS + CocoaPods
 ```
 
+## Features (current build)
+
+- **Onboarding & security:** create/import wallet, passcode with biometric unlock (system BiometricPrompt), single top-level lock screen that also hides every open sheet (`AppModal` + `appLockState`), recents-preview blanking.
+- **Wallets:** multiple wallet instances, each with its own AI chat history, security password and wallet lock.
+- **Home / Markets / Settings / Activity:** balance card, portfolio, market list, filters with shimmer skeletons.
+- **Receive & Share:** 33x33 QR with centered logo, in-sheet "Share Via" grid, QR attached to the system share sheet.
+- **Veltravia AI:** hosted assistant (OpenRouter, streaming) with a Trust-style persona, per-wallet encrypted conversation memory and cross-chat recall, copy/delete of messages and chats, tappable screen-shortcut buttons, wallet lock/unlock and transfer proposals. Money safety is deterministic: the model only proposes; every transfer is validated locally and needs biometrics or passcode.
+- **Discover (new):** one screen with a Trending header and a Tokens / dApps capsule that pages horizontally. A Recents strip sits above the pager (hidden until a coin or dApp is tapped, survives page switches, "Clear all"). Bottom search bar with Paste (explicit-tap clipboard read), clear and close; searching shows a 3-row shimmer loading state, then All / Tokens / Predictions / dApps results. Data comes from `src/services/discoverData.ts`, the single swap point for the live API.
+
+## Build status
+
+Android builds via GitHub Actions (`android.yml`). Market, portfolio and Discover data are local datasets pending `api.veltraviawallet.com`; transaction signing awaits the Wallet Core native bridge.
+
 ## Roadmap
 
 - **Phase 1 (done):** scaffold — architecture, theme, navigation, security layer, CI
 - **Phase 2:** onboarding flow (create/import wallet, seed confirm, PIN), live balances, send/receive, history
 - **Phase 3:** hosted AI assistant, Buy flow, Bitcoin (UTXO wave)
-- **v2:** Swap (DEX routing), Discover (DApp browser + WalletConnect), NFTs
+- **Next:** live API (prices, balances, Discover trending/search), Wallet Core signing bridge, real token logos
+- **v2:** Swap (DEX routing), in-app dApp browser + WalletConnect, NFTs
