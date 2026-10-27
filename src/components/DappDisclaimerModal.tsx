@@ -47,7 +47,14 @@ export default function DappDisclaimerModal({ visible, onCancel, onConfirm }: Pr
           <Text style={[styles.title, { color: theme.ink }]}>Disclaimer</Text>
           <Text style={[styles.body, { color: theme.ink }]}>{DISCLAIMER_TEXT}</Text>
 
-          <Pressable style={styles.checkRow} onPress={() => setAccepted((v) => !v)} hitSlop={8}>
+          <Pressable
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: accepted }}
+            accessibilityLabel="I accept the Terms of Use"
+            style={styles.checkRow}
+            onPress={() => setAccepted((v) => !v)}
+            hitSlop={8}
+          >
             <View style={[styles.check, { borderColor: accepted ? theme.brand : '#B9BCC9', backgroundColor: accepted ? theme.brand : 'transparent' }]}>
               {accepted && <View style={styles.checkTick} />}
             </View>
@@ -59,16 +66,20 @@ export default function DappDisclaimerModal({ visible, onCancel, onConfirm }: Pr
 
           <View style={styles.btnRow}>
             <Pressable
-              style={({ pressed }) => [styles.btnCancel, { backgroundColor: dark ? 'rgba(255,255,255,0.08)' : '#F0F0F7', opacity: pressed ? 0.8 : 1 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel"
+              style={({ pressed }) => [styles.btnCancel, { backgroundColor: dark ? 'rgba(255,255,255,0.08)' : '#F0F0F0', opacity: pressed ? 0.8 : 1 }]}
               onPress={onCancel}
             >
               <Text style={[styles.btnCancelText, { color: theme.brand }]}>Cancel</Text>
             </Pressable>
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Confirm"
               disabled={!accepted}
               style={({ pressed }) => [
                 styles.btnConfirm,
-                { backgroundColor: theme.brand, opacity: !accepted ? 0.45 : pressed ? 0.85 : 1 },
+                { backgroundColor: theme.brand, opacity: !accepted ? 0.5 : pressed ? 0.85 : 1 },
               ]}
               onPress={accepted ? onConfirm : undefined}
             >

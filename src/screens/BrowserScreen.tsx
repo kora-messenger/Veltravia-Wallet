@@ -79,6 +79,9 @@ export default function BrowserScreen() {
   const webRef = useRef<any>(null);
   const [url, setUrl] = useState(startUrl);
   const [disclaimerOpen, setDisclaimerOpen] = useState(isDapp);
+  // Trust parity: a dApp must NOT load until the user passes the disclaimer.
+  // Until then the WebView stays unmounted (no requests leave the device).
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(!isDapp);
   const [canBack, setCanBack] = useState(false);
   const [canForward, setCanForward] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -224,6 +227,9 @@ export default function BrowserScreen() {
             <Text style={[styles.failedTitle, { color: ink }]}>Can’t load this page</Text>
             <Text style={[styles.failedSub, { color: muted }]}>Check your connection and try reloading.</Text>
           </View>
+        ) : isDapp && !disclaimerAccepted ? (
+          // Disclaimer gate: blank surface, nothing fetched yet.
+          <View style={{ flex: 1, backgroundColor: theme.background }} />
         ) : (
           <WebView
             key={webKey}
@@ -420,7 +426,10 @@ export default function BrowserScreen() {
           closeTab(tabId);
           navigation.goBack();
         }}
-        onConfirm={() => setDisclaimerOpen(false)}
+        onConfirm={() => {
+          setDisclaimerAccepted(true);
+          setDisclaimerOpen(false);
+        }}
       />
     </View>
   );
