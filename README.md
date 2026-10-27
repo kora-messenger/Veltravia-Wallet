@@ -143,6 +143,15 @@ Settings > Perps > **How perps work?** opens a six-step swipeable guide (Trust p
 - Step 6 uses Veltravia's own token names (USDT, BNB, VWT).
 - The Perps home gear icon now opens the Perps settings menu; the history icon is inert until real trade history exists.
 
+## VWT token (new)
+
+The official token now has a contract and logo, ready to deploy:
+
+- `contracts/VeltraviaWalletToken.sol` — ERC-20, `Veltravia Wallet Token` / `VWT`, 18 decimals, fixed supply of 1,000,000,000 minted once to the deployer. No mint/pause/owner powers: immutable after deploy. Compiles clean on solc 0.8.24 (ABI in `contracts/VWT.abi.json`).
+- `contracts/README.md` — deploy guide (Remix, testnet first) and the pre-mainnet decision list (chain, supply, verification).
+- `src/assets/vwt-logo.png` + `vwt-logo-small.png` — VWT coin logo: gold infinity on deep navy with the violet→cyan glow, plus a 256px in-app copy.
+- Deploying to a live chain is a manual step (needs a funded wallet); once the address exists it goes into the app's token metadata so VWT displays natively.
+
 ## Build status
 
 Android builds via GitHub Actions (`android.yml`). Market, portfolio and Discover data are local datasets pending `api.veltraviawallet.com`; transaction signing awaits the Wallet Core native bridge.
