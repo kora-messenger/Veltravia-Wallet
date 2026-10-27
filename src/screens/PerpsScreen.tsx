@@ -108,10 +108,10 @@ export default function PerpsScreen() {
       {/* header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.headerSide}>
-          <Pressable accessibilityLabel="Perps history" style={[styles.circle, { backgroundColor: chipBg }]} onPress={() => navigation.navigate('PerpsAbout')}>
+          <Pressable accessibilityLabel="Perps history" style={[styles.circle, { backgroundColor: headerChipBg }]}>
             <HistoryIcon size={22} color={headerIconColor} />
           </Pressable>
-          <Pressable accessibilityLabel="Perps settings" style={[styles.circle, { backgroundColor: headerChipBg }]} onPress={() => navigation.navigate('PerpsAbout')}>
+          <Pressable accessibilityLabel="Perps settings" style={[styles.circle, { backgroundColor: headerChipBg }]} onPress={() => navigation.navigate('PerpsMenu')}>
             <GearIcon size={22} color={headerIconColor} />
           </Pressable>
         </View>

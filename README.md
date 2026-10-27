@@ -76,7 +76,7 @@ npm run ios       # requires macOS + CocoaPods
 
 ## Testing
 
-`npx jest`: 14 suites / 72 tests, including an App smoke test mounting the full navigator, search-feed and clear-button behavior, custom token/network validation, the disclaimer wording, scan-result delivery, and the browser web/dApp chrome split. `jest.setup.js` mocks native modules (NetInfo, Keychain, Config, LinearGradient, WebView, vision-camera, image-picker); `jest.config.js` transforms React Navigation's ESM.
+`npx jest`: 15 suites / 75 tests, including an App smoke test mounting the full navigator, search-feed and clear-button behavior, custom token/network validation, the disclaimer wording, scan-result delivery, and the browser web/dApp chrome split. `jest.setup.js` mocks native modules (NetInfo, Keychain, Config, LinearGradient, WebView, vision-camera, image-picker); `jest.config.js` transforms React Navigation's ESM.
 
 ## Tokens, Manage & Import (new)
 
@@ -130,6 +130,18 @@ Tapping **Hyperliquid** or **Aster** in Settings > Perps now opens the venue's o
 - **Aster only: "Asset mode"** with the current mode as subtitle ("Single-asset mode" default); tapping opens a bottom-sheet chooser between Single-asset and Multi-asset mode (persisted).
 - **Fees / Trading rules:** open the venue's documentation in the in-app browser (Web mode).
 - Preferences survive restarts (`services/perpsVenues`, loaded at app start alongside the perps accounts).
+
+### How perps work? (instructions carousel)
+
+Settings > Perps > **How perps work?** opens a six-step swipeable guide (Trust parity), replacing the old text list:
+
+1. Introducing Perps, 2. What are Perps?, 3. Use leverage wisely, 4. Go long or short, 5. Protect your position, 6. Start trading in minutes.
+
+- Segmented progress bar at the top: check = done, ring = current, empty = ahead, linked by a line that fills as you advance.
+- **Next** (deep violet `#5147E6`) advances; on the last step it reads **Got it** and closes. **Skip** closes from any step. Swiping sideways also moves between steps.
+- Each step has an illustration slot. Generated art goes in `src/assets/perps-guide/` (filenames and wiring steps are in that folder's README); until it lands, a branded placeholder tile keeps the flow usable.
+- Step 6 uses Veltravia's own token names (USDT, BNB, VTW).
+- The Perps home gear icon now opens the Perps settings menu; the history icon is inert until real trade history exists.
 
 ## Build status
 
