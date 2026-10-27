@@ -43,8 +43,8 @@ function initials(name: string): string {
 }
 
 /** Avatar disc + chain badge (logo art arrives with the live feed). */
-function TokenAvatar({ t, size = 52 }: { t: Pick<TrendingToken, 'name' | 'color' | 'chain'>; size?: number }) {
-  const badge = Math.round(size * 0.42);
+function TokenAvatar({ t, size = 40 }: { t: Pick<TrendingToken, 'name' | 'color' | 'chain'>; size?: number }) {
+  const badge = Math.round(size * 0.4);
   return (
     <View style={{ width: size, height: size }}>
       <View style={[styles.disc, { width: size, height: size, borderRadius: size / 2, backgroundColor: t.color }]}>
@@ -55,7 +55,7 @@ function TokenAvatar({ t, size = 52 }: { t: Pick<TrendingToken, 'name' | 'color'
   );
 }
 
-function DappAvatar({ d, size = 52 }: { d: Pick<Dapp, 'name' | 'color'>; size?: number }) {
+function DappAvatar({ d, size = 40 }: { d: Pick<Dapp, 'name' | 'color'>; size?: number }) {
   return (
     <View style={[styles.disc, { width: size, height: size, borderRadius: size * 0.26, backgroundColor: d.color }]}>
       <Text style={[styles.discText, { fontSize: size * 0.34 }]}>{initials(d.name)}</Text>
@@ -64,7 +64,7 @@ function DappAvatar({ d, size = 52 }: { d: Pick<Dapp, 'name' | 'color'>; size?: 
 }
 
 const OpenArrow = ({ color }: { color: string }) => (
-  <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
     <Path d="M7 17L17 7M9 7h8v8" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
@@ -280,7 +280,7 @@ export default function DiscoverScreen() {
 
   const searching = searchOpen && query.trim().length > 0;
   const barBottom = kb > 0 ? kb + 8 : Math.max(insets.bottom, 12) + 8;
-  const listBottom = barBottom + 52 + 16; // clear the docked search bar
+  const listBottom = barBottom + 44 + 16; // clear the docked search bar
 
   /* search results body */
   const renderResults = () => {
@@ -445,63 +445,63 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   flex: { flex: 1 },
 
-  sectionTitle: { fontSize: 20, fontFamily: 'Inter-700', fontWeight: '700' },
-  groupTitle: { fontSize: 20, fontFamily: 'Inter-700', fontWeight: '700', marginTop: 18, marginBottom: 6 },
+  sectionTitle: { fontSize: 18, fontFamily: 'Inter-700', fontWeight: '700' },
+  groupTitle: { fontSize: 18, fontFamily: 'Inter-700', fontWeight: '700', marginTop: 18, marginBottom: 6 },
 
   /* recents */
   recentsWrap: { paddingTop: 20 },
   recentsHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 12 },
-  clearAll: { fontSize: 16, fontFamily: 'Inter-500', fontWeight: '500' },
+  clearAll: { fontSize: 14, fontFamily: 'Inter-500', fontWeight: '500' },
   recentsScroll: { flexGrow: 0 }, // never stretch to fill the column
   recentsRow: { paddingHorizontal: 20, gap: 12, paddingBottom: 4 },
-  recentPill: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 18, minWidth: 148 },
-  recentDot: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  recentDotText: { color: '#fff', fontSize: 13, fontFamily: 'Inter-700', fontWeight: '700' },
-  recentName: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600', maxWidth: 96 },
-  recentCap: { fontSize: 15, fontFamily: 'Inter-500', fontWeight: '500' },
+  recentPill: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 16, minWidth: 124 },
+  recentDot: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  recentDotText: { color: '#fff', fontSize: 11, fontFamily: 'Inter-700', fontWeight: '700' },
+  recentName: { fontSize: 14, fontFamily: 'Inter-600', fontWeight: '600', maxWidth: 84 },
+  recentCap: { fontSize: 12, fontFamily: 'Inter-500', fontWeight: '500' },
 
   /* trending header + capsule */
-  trendHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 22, paddingBottom: 6 },
-  capsule: { flexDirection: 'row', borderRadius: 22, padding: 3 },
-  capsuleBtn: { paddingVertical: 9, paddingHorizontal: 18, borderRadius: 19 },
-  capsuleText: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
+  trendHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 18, paddingBottom: 4 },
+  capsule: { flexDirection: 'row', borderRadius: 20, padding: 3 },
+  capsuleBtn: { paddingVertical: 7, paddingHorizontal: 14, borderRadius: 17 },
+  capsuleText: { fontSize: 14, fontFamily: 'Inter-600', fontWeight: '600' },
 
   /* rows */
-  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 11 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   rowMid: { flex: 1 },
-  rowTitle: { fontSize: 18, fontFamily: 'Inter-600', fontWeight: '600' },
-  rowSub: { fontSize: 15, fontFamily: 'Inter-500', fontWeight: '500', marginTop: 2 },
+  rowTitle: { fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600' },
+  rowSub: { fontSize: 12, fontFamily: 'Inter-500', fontWeight: '500', marginTop: 2 },
   rowRight: { alignItems: 'flex-end' },
-  rowPrice: { fontSize: 18, fontFamily: 'Inter-600', fontWeight: '600' },
-  rowChange: { fontSize: 15, fontFamily: 'Inter-500', fontWeight: '500', marginTop: 2 },
+  rowPrice: { fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600' },
+  rowChange: { fontSize: 12, fontFamily: 'Inter-500', fontWeight: '500', marginTop: 2 },
 
   disc: { alignItems: 'center', justifyContent: 'center' },
   discText: { color: '#fff', fontFamily: 'Inter-700', fontWeight: '700' },
   badge: { position: 'absolute', right: -2, bottom: -2, borderWidth: 2, borderColor: '#fff' },
-  predBox: { width: 52, height: 52, borderRadius: 10 },
+  predBox: { width: 40, height: 40, borderRadius: 8 },
 
   /* search filters + states */
   // Fixed-height strip: without this the horizontal ScrollView stretches to fill the
   // column and every pill becomes a tall lavender block (seen in the recording).
-  filterBar: { height: 60 },
-  filterScroll: { flexGrow: 0, height: 60 },
+  filterBar: { height: 52 },
+  filterScroll: { flexGrow: 0, height: 52 },
   filterRow: { paddingHorizontal: 20, alignItems: 'center', gap: 8 },
-  filterPill: { height: 40, paddingHorizontal: 18, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  filterText: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
-  skelWrap: { paddingTop: 22, gap: 68 },
-  skelRow: { height: 101, borderRadius: 18 },
+  filterPill: { height: 34, paddingHorizontal: 14, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  filterText: { fontSize: 14, fontFamily: 'Inter-600', fontWeight: '600' },
+  skelWrap: { paddingTop: 16, gap: 12 },
+  skelRow: { height: 64, borderRadius: 14 },
   empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 24 },
-  emptyTitle: { fontSize: 20, fontFamily: 'Inter-700', fontWeight: '700', marginBottom: 6 },
-  emptySub: { fontSize: 15, fontFamily: 'Inter-500', fontWeight: '500', textAlign: 'center' },
+  emptyTitle: { fontSize: 18, fontFamily: 'Inter-700', fontWeight: '700', marginBottom: 6 },
+  emptySub: { fontSize: 14, fontFamily: 'Inter-500', fontWeight: '500', textAlign: 'center' },
 
   /* bottom search bar */
   barWrap: { position: 'absolute', left: 14, right: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  counter: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
-  counterBox: { width: 26, height: 26, borderRadius: 7, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  counterText: { fontSize: 14, fontFamily: 'Inter-700', fontWeight: '700' },
-  field: { flex: 1, height: 52, borderRadius: 26, flexDirection: 'row', alignItems: 'center', paddingLeft: 16, paddingRight: 8, gap: 8 },
-  input: { flex: 1, fontSize: 17, fontFamily: 'Inter-500', paddingVertical: 0 },
-  pasteBtn: { height: 38, paddingHorizontal: 16, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
-  pasteText: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
-  closeBtn: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  counter: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  counterBox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  counterText: { fontSize: 12, fontFamily: 'Inter-700', fontWeight: '700' },
+  field: { flex: 1, height: 44, borderRadius: 22, flexDirection: 'row', alignItems: 'center', paddingLeft: 16, paddingRight: 8, gap: 8 },
+  input: { flex: 1, fontSize: 15, fontFamily: 'Inter-500', paddingVertical: 0 },
+  pasteBtn: { height: 32, paddingHorizontal: 14, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  pasteText: { fontSize: 14, fontFamily: 'Inter-600', fontWeight: '600' },
+  closeBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
 });
