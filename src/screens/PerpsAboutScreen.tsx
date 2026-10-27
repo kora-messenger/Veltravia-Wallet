@@ -35,7 +35,7 @@ const VIOLET_DEEP = '#5147E6';
  *   6  start        perps-guide/step6-start.png
  */
 export const STEP_ART: Array<ImageSourcePropType | null> = [
-  null, // require('../assets/perps-guide/step1-intro.png'),
+  require('../assets/perps-guide/step1-intro.png'),
   null, // require('../assets/perps-guide/step2-what.png'),
   null, // require('../assets/perps-guide/step3-leverage.png'),
   null, // require('../assets/perps-guide/step4-long-short.png'),
