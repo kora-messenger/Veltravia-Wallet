@@ -38,7 +38,7 @@ export const STEP_ART: Array<ImageSourcePropType | null> = [
   require('../assets/perps-guide/step1-intro.png'),
   require('../assets/perps-guide/step2-what.png'),
   require('../assets/perps-guide/step3-leverage.png'),
-  null, // require('../assets/perps-guide/step4-long-short.png'),
+  require('../assets/perps-guide/step4-long-short.png'),
   null, // require('../assets/perps-guide/step5-liquidation.png'),
   null, // require('../assets/perps-guide/step6-start.png'),
 ];
