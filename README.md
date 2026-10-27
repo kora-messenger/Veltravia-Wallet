@@ -76,7 +76,7 @@ npm run ios       # requires macOS + CocoaPods
 
 ## Testing
 
-`npx jest`: 13 suites / 69 tests, including an App smoke test mounting the full navigator, search-feed and clear-button behavior, custom token/network validation, the disclaimer wording, scan-result delivery, and the browser web/dApp chrome split. `jest.setup.js` mocks native modules (NetInfo, Keychain, Config, LinearGradient, WebView, vision-camera, image-picker); `jest.config.js` transforms React Navigation's ESM.
+`npx jest`: 14 suites / 72 tests, including an App smoke test mounting the full navigator, search-feed and clear-button behavior, custom token/network validation, the disclaimer wording, scan-result delivery, and the browser web/dApp chrome split. `jest.setup.js` mocks native modules (NetInfo, Keychain, Config, LinearGradient, WebView, vision-camera, image-picker); `jest.config.js` transforms React Navigation's ESM.
 
 ## Tokens, Manage & Import (new)
 
@@ -120,6 +120,16 @@ The funded layout now matches Trust's design exactly:
 - While loading, the same pill renders with skeleton blocks where the numbers will be.
 - Long / Short floating pills stay above the tab bar; market lists appear once loading finishes.
 - **Action colors (Trust depth):** Deposit (and the deposit/withdraw sheet CTA) use the app violet darkened to Trust's button depth (`#5147E6`, from the lighter `#6C63FF`); Long is deep green `#158444` and Short deep red `#D63232`, matching Trust's measured tones.
+
+### Perps venue screens (Hyperliquid / Aster)
+
+Tapping **Hyperliquid** or **Aster** in Settings > Perps now opens the venue's own screen (Trust parity):
+
+- **Header:** the venue's brand mark sits next to the centered name (shared marks in `components/PerpsVenueMarks`).
+- **"Show in markets" toggle** (deep-violet `#5147E6` track): persisted per venue in encrypted settings and live-wired to the Perps home lists — turning a venue off filters its markets out of Popular / New / Crypto / Stocks / Forex / Meme, and fully-emptied sections hide.
+- **Aster only: "Asset mode"** with the current mode as subtitle ("Single-asset mode" default); tapping opens a bottom-sheet chooser between Single-asset and Multi-asset mode (persisted).
+- **Fees / Trading rules:** open the venue's documentation in the in-app browser (Web mode).
+- Preferences survive restarts (`services/perpsVenues`, loaded at app start alongside the perps accounts).
 
 ## Build status
 

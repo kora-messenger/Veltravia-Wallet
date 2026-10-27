@@ -35,6 +35,8 @@ import { loadPerpsAccounts } from '../services/perpsAccount';
 import PerpsAboutScreen from '../screens/PerpsAboutScreen';
 import PerpsMenuScreen from '../screens/PerpsMenuScreen';
 import PerpsDepositScreen from '../screens/PerpsDepositScreen';
+import PerpsVenueScreen from '../screens/PerpsVenueScreen';
+import { loadVenuePrefs } from '../services/perpsVenues';
 import TokensScreen from '../screens/TokensScreen';
 import SelectNetworkScreen from '../screens/SelectNetworkScreen';
 import ManageCryptoScreen from '../screens/ManageCryptoScreen';
@@ -90,6 +92,7 @@ export type RootStackParamList = {
   PerpsMenu: undefined;
   PerpsAbout: undefined;
   PerpsDeposit: { mode: 'deposit' | 'withdraw' };
+  PerpsVenue: { venue: 'hyperliquid' | 'aster' };
 };
 
 export type MainTabParamList = {
@@ -137,7 +140,7 @@ export default function Navigation() {
   const hasPassRef = React.useRef(false);
 
   // Perps account balances (separate from the main wallet) load once at startup.
-  React.useEffect(() => { loadPerpsAccounts(); }, []);
+  React.useEffect(() => { loadPerpsAccounts(); loadVenuePrefs(); }, []);
 
   React.useEffect(() => {
     let alive = true;
@@ -278,6 +281,7 @@ export default function Navigation() {
       <Stack.Screen name="PerpsMenu" component={PerpsMenuScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PerpsAbout" component={PerpsAboutScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PerpsDeposit" component={PerpsDepositScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="PerpsVenue" component={PerpsVenueScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="AiChat" component={AiChatScreen} options={{ animation: 'slide_from_bottom' }} />
       </Stack.Navigator>
       <NotificationSheet visible={notifPrompt} onClose={() => setNotifPrompt(false)} />

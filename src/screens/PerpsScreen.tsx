@@ -25,6 +25,7 @@ import {
   usePerpsAccount, accountValue, isFunded,
   perpsSessionLoaded, ensurePerpsSessionLoad,
 } from '../services/perpsAccount';
+import { useVenuePrefs } from '../services/perpsVenues';
 import {
   PERP_SECTIONS, formatPerpPrice, formatChange, perpSpark, type PerpMarket,
 } from '../services/perpsMarkets';
@@ -63,6 +64,8 @@ export default function PerpsScreen() {
   const funded = isFunded(account);
   const [hideBalance, setHideBalance] = useState(false);
   const [availOpen, setAvailOpen] = useState(false);
+  const hlPrefs = useVenuePrefs('hyperliquid');
+  const asterPrefs = useVenuePrefs('aster');
 
   // Balance fetch runs once per fresh app open; later visits render instantly.
   const [loading, setLoading] = useState(!perpsSessionLoaded());
@@ -82,12 +85,16 @@ export default function PerpsScreen() {
   const pillCircleBg = dark ? '#1D2133' : '#FFFFFF';
   const leverageBg = dark ? 'rgba(255,255,255,0.10)' : '#EEEEF3';
 
+  // "Show in markets" (Settings > Perps > venue): hidden venues drop out of
+  // the lists; sections left empty hide completely.
   const sections = useMemo(
     () => PERP_SECTIONS.map((s) => ({
       ...s,
-      rows: s.markets.map((m) => ({ m, spark: perpSpark(`${s.key}:${m.symbol}`, m.change24h) })),
-    })),
-    [],
+      rows: s.markets
+        .filter((m) => (m.venue ?? 'hyperliquid') === 'aster' ? asterPrefs.showInMarkets : hlPrefs.showInMarkets)
+        .map((m) => ({ m, spark: perpSpark(`${s.key}:${m.symbol}`, m.change24h) })),
+    })).filter((s) => s.rows.length > 0),
+    [hlPrefs.showInMarkets, asterPrefs.showInMarkets],
   );
 
   const openDeposit = () => navigation.navigate('PerpsDeposit', { mode: 'deposit' });
