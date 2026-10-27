@@ -1,8 +1,8 @@
 # Perps guide illustrations
 
-Drop the six generated images here, then uncomment the matching `require()`
-line in `STEP_ART` (src/screens/PerpsAboutScreen.tsx). Until then each step
-shows a branded placeholder tile, so the flow works without them.
+All six illustrations are wired into the guide (STEP_ART in
+src/screens/PerpsAboutScreen.tsx). To replace one, swap the file and keep the
+same name.
 
 | Step | Screen title              | Filename                |
 |------|---------------------------|-------------------------|

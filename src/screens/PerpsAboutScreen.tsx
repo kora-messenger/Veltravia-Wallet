@@ -7,9 +7,8 @@
  * The last step's primary button reads "Got it" and closes the flow. Skip and
  * the Android back gesture both close it.
  *
- * Illustrations: drop the generated PNGs into src/assets/perps-guide/ using the
- * filenames in STEP_ART below. Until a file exists the slot renders a branded
- * placeholder tile, so the flow is fully usable before the art lands.
+ * All six illustrations live in src/assets/perps-guide/. To replace one, swap
+ * the file and keep the same name.
  */
 import React, { useCallback, useRef, useState } from 'react';
 import {
@@ -40,7 +39,7 @@ export const STEP_ART: Array<ImageSourcePropType | null> = [
   require('../assets/perps-guide/step3-leverage.png'),
   require('../assets/perps-guide/step4-long-short.png'),
   require('../assets/perps-guide/step5-liquidation.png'),
-  null, // require('../assets/perps-guide/step6-start.png'),
+  require('../assets/perps-guide/step6-start.png'),
 ];
 
 export interface GuideStep {
