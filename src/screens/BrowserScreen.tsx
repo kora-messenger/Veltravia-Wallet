@@ -166,11 +166,10 @@ export default function BrowserScreen() {
             </Pressable>
             <Pressable
               style={styles.domain}
-              onLongPress={() => {
+              onPress={() => {
                 copyToClipboard(url);
                 showToast('Link copied', { kind: 'success' });
               }}
-              delayLongPress={350}
             >
               <LockSmallIcon size={15} color={ink} />
               <Text numberOfLines={1} style={[styles.domainText, { color: ink }]}>{host}</Text>
