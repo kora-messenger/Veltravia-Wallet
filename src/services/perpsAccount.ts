@@ -90,7 +90,26 @@ export function withdrawFromPerps(walletId: string, amount: number): boolean {
 export function resetPerpsAccounts() {
   accounts = {};
   loaded = false;
+  sessionLoaded = false;
   emit();
+}
+
+// --- fresh-open loading ------------------------------------------------------
+// The balance "fetch" only runs once per fresh app open: the first time the
+// Perps tab mounts, the screen shows Trust's skeleton while the balance is
+// fetched; every later visit renders instantly from the cached account.
+let sessionLoaded = false;
+
+export function perpsSessionLoaded(): boolean {
+  return sessionLoaded;
+}
+
+export async function ensurePerpsSessionLoad(): Promise<void> {
+  if (sessionLoaded) return;
+  await loadPerpsAccounts();
+  // Simulated round-trip until the api.veltraviawallet.com feed is wired.
+  await new Promise<void>((res) => { setTimeout(res, 800); });
+  sessionLoaded = true;
 }
 
 const round = (n: number) => Math.round(n * 100) / 100;

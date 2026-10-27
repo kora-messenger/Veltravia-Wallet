@@ -197,6 +197,13 @@ export const PlusIcon = ({ size = 24, color = '#000', strokeWidth = 2.2 }: IconP
   </Svg>
 );
 
+/** Horizontal bar (Withdraw on the Perps balance pill). */
+export const MinusIcon = ({ size = 24, color = '#000', strokeWidth = 2.2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M5 12h14" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
 export const MoreIcon = ({ size = 24, color = '#000' }: IconProps) => (
   <Svg {...base(size)}>
     <Circle cx="5.5" cy="12" r="1.7" fill={color} />

@@ -76,7 +76,7 @@ npm run ios       # requires macOS + CocoaPods
 
 ## Testing
 
-`npx jest`: 13 suites / 68 tests, including an App smoke test mounting the full navigator, search-feed and clear-button behavior, custom token/network validation, the disclaimer wording, scan-result delivery, and the browser web/dApp chrome split. `jest.setup.js` mocks native modules (NetInfo, Keychain, Config, LinearGradient, WebView, vision-camera, image-picker); `jest.config.js` transforms React Navigation's ESM.
+`npx jest`: 13 suites / 69 tests, including an App smoke test mounting the full navigator, search-feed and clear-button behavior, custom token/network validation, the disclaimer wording, scan-result delivery, and the browser web/dApp chrome split. `jest.setup.js` mocks native modules (NetInfo, Keychain, Config, LinearGradient, WebView, vision-camera, image-picker); `jest.config.js` transforms React Navigation's ESM.
 
 ## Tokens, Manage & Import (new)
 
@@ -107,6 +107,18 @@ Settings > Perps opens a plain list (Trust parity): **Hyperliquid** and **Aster*
 ### Floating tab bar (Trust-parity polish)
 
 The pill now uses Trust's exact treatment: a milk interior (`#FAFAFB`) wrapped in a tiny dark-gray hairline (`#D1D1D4`) in light mode (deep navy `#07101E` with a faint hairline in dark). The active-tab indicator is a compact fully-rounded pill (48x32, `#F0F0F2` light / `#1D2133` dark) and the icon groups sit inside the capsule's straight section, so the rounded ends curve around empty space instead of the indicator rectangle poking past the capsule edge on narrow screens. The raised Swap button uses the same milk surface and hairline.
+
+### Perps: fresh-open loading state and Trust balance layout
+
+The Perps balance fetch runs **once per fresh app open**. The first time the tab mounts, the screen shows Trust's loading state (shimmer skeletons for the balance figures inside the live layout); once the fetch resolves it settles on the real state and every later visit renders instantly from the cached account. No balance → the deposit hero. Balance → the balance header.
+
+The funded layout now matches Trust's design exactly:
+
+- **Header circles:** solid dark-gray circles with white icons (light mode).
+- **Balance area:** "Perps balance" label, large total (tap to hide), unrealized P&L in green/red.
+- **"Available balance" pill** (`#F2F2F2` light / navy dark): label with a chevron that expands the breakdown (margin in positions, unrealized P&L), the available value, and two circular action buttons on the right — plus (Deposit) and minus (Withdraw) in Veltravia violet, opening the deposit/withdraw sheet.
+- While loading, the same pill renders with skeleton blocks where the numbers will be.
+- Long / Short floating pills stay above the tab bar; market lists appear once loading finishes.
 
 ## Build status
 

@@ -8,7 +8,7 @@
  * Below it: Popular / New / Crypto / Stocks / Forex / Meme market lists with a
  * sparkline per row, and the floating Long / Short pills above the tab bar.
  */
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -16,10 +16,15 @@ import { useTheme } from '../theme/ThemeProvider';
 import { useWallets } from '../wallets/WalletsProvider';
 import Sparkline from '../components/Sparkline';
 import {
-  HistoryIcon, GearIcon, SearchIcon, ChevronRight, COIN_ICONS,
+  HistoryIcon, GearIcon, SearchIcon, ChevronRight, ChevronDownIcon,
+  PlusIcon, MinusIcon, COIN_ICONS,
   ArrowUpRightTx, ArrowDownRightIcon,
 } from '../components/icons';
-import { usePerpsAccount, accountValue, isFunded } from '../services/perpsAccount';
+import { SkeletonBlock } from '../components/Skeleton';
+import {
+  usePerpsAccount, accountValue, isFunded,
+  perpsSessionLoaded, ensurePerpsSessionLoad,
+} from '../services/perpsAccount';
 import {
   PERP_SECTIONS, formatPerpPrice, formatChange, perpSpark, type PerpMarket,
 } from '../services/perpsMarkets';
@@ -54,8 +59,24 @@ export default function PerpsScreen() {
   const account = usePerpsAccount(activeWallet.id);
   const funded = isFunded(account);
   const [hideBalance, setHideBalance] = useState(false);
+  const [availOpen, setAvailOpen] = useState(false);
+
+  // Balance fetch runs once per fresh app open; later visits render instantly.
+  const [loading, setLoading] = useState(!perpsSessionLoaded());
+  useEffect(() => {
+    if (!loading) return;
+    let alive = true;
+    ensurePerpsSessionLoad().then(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [loading]);
 
   const chipBg = dark ? '#1D2133' : '#EEEEF0';
+  // Trust: solid dark-gray header circles with white icons (light mode)
+  const headerChipBg = dark ? '#1D2133' : '#2C2C31';
+  const headerIconColor = dark ? theme.ink : '#FFFFFF';
+  // Balance pill: light-gray container (light) / navy tile (dark)
+  const pillBg = dark ? '#0D1626' : '#F2F2F2';
+  const pillCircleBg = dark ? '#1D2133' : '#FFFFFF';
   const leverageBg = dark ? 'rgba(255,255,255,0.10)' : '#EEEEF3';
 
   const sections = useMemo(
@@ -78,23 +99,46 @@ export default function PerpsScreen() {
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.headerSide}>
           <Pressable accessibilityLabel="Perps history" style={[styles.circle, { backgroundColor: chipBg }]} onPress={() => navigation.navigate('PerpsAbout')}>
-            <HistoryIcon size={22} color={theme.ink} />
+            <HistoryIcon size={22} color={headerIconColor} />
           </Pressable>
-          <Pressable accessibilityLabel="Perps settings" style={[styles.circle, { backgroundColor: chipBg }]} onPress={() => navigation.navigate('PerpsAbout')}>
-            <GearIcon size={22} color={theme.ink} />
+          <Pressable accessibilityLabel="Perps settings" style={[styles.circle, { backgroundColor: headerChipBg }]} onPress={() => navigation.navigate('PerpsAbout')}>
+            <GearIcon size={22} color={headerIconColor} />
           </Pressable>
         </View>
         <Text style={[styles.title, { color: theme.ink }]}>Perps</Text>
         <View style={[styles.headerSide, { justifyContent: 'flex-end' }]}>
-          <Pressable accessibilityLabel="Search perps" style={[styles.circle, { backgroundColor: chipBg }]}>
-            <SearchIcon size={22} color={theme.ink} />
+          <Pressable accessibilityLabel="Search perps" style={[styles.circle, { backgroundColor: headerChipBg }]}>
+            <SearchIcon size={22} color={headerIconColor} />
           </Pressable>
         </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: FOOTER_CLEAR + insets.bottom }}>
-        {funded ? (
-          // ---- FUNDED: perps balance replaces the deposit hero -------------
+        {loading ? (
+          // ---- LOADING: balance fetch on fresh app open (Trust skeleton) ---
+          <View style={styles.balanceBlock}>
+            <SkeletonBlock style={styles.skBig} />
+            <SkeletonBlock style={styles.skSmall} />
+            <View style={[styles.availPill, { backgroundColor: pillBg }]}>
+              <View style={styles.availPillLeft}>
+                <View style={styles.availHead}>
+                  <Text style={[styles.availLabel, { color: theme.inkMuted }]}>Available balance</Text>
+                  <ChevronDownIcon size={16} color={theme.inkMuted} />
+                </View>
+                <SkeletonBlock style={styles.skAvail} />
+              </View>
+              <View style={styles.availPillActions}>
+                <Pressable accessibilityLabel="Deposit" style={[styles.pillCircle, { backgroundColor: pillCircleBg }]} onPress={openDeposit}>
+                  <PlusIcon size={22} color={theme.brand} />
+                </Pressable>
+                <Pressable accessibilityLabel="Withdraw" style={[styles.pillCircle, { backgroundColor: pillCircleBg }]} onPress={openWithdraw}>
+                  <MinusIcon size={22} color={theme.brand} />
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        ) : funded ? (
+          // ---- FUNDED: balance header (Trust layout) -----------------------
           <View style={styles.balanceBlock}>
             <Pressable onPress={() => setHideBalance((v) => !v)}>
               <Text style={[styles.balanceLabel, { color: theme.inkMuted }]}>Perps balance</Text>
@@ -103,17 +147,34 @@ export default function PerpsScreen() {
             <Text style={[styles.pnl, { color: pnl >= 0 ? GREEN : RED }]}>
               {hideBalance ? '••••' : `${pnl >= 0 ? '+' : '-'}${usd(Math.abs(pnl))}`}
             </Text>
-            <View style={styles.availRow}>
-              <Text style={[styles.availLabel, { color: theme.inkMuted }]}>Available balance</Text>
-              <Text style={[styles.availValue, { color: theme.ink }]}>{hideBalance ? '••••' : usd(account.available)}</Text>
-            </View>
-            <View style={styles.balanceActions}>
-              <Pressable style={({ pressed }) => [styles.balanceBtn, { backgroundColor: theme.brand, opacity: pressed ? 0.85 : 1 }]} onPress={openDeposit}>
-                <Text style={styles.balanceBtnText}>Deposit</Text>
-              </Pressable>
-              <Pressable style={({ pressed }) => [styles.balanceBtn, { backgroundColor: chipBg, opacity: pressed ? 0.85 : 1 }]} onPress={openWithdraw}>
-                <Text style={[styles.balanceBtnText, { color: theme.ink }]}>Withdraw</Text>
-              </Pressable>
+            <View style={[styles.availPill, { backgroundColor: pillBg }]}>
+              <View style={styles.availPillLeft}>
+                <Pressable style={styles.availHead} onPress={() => setAvailOpen((v) => !v)}>
+                  <Text style={[styles.availLabel, { color: theme.inkMuted }]}>Available balance</Text>
+                  <ChevronDownIcon size={16} color={theme.inkMuted} />
+                </Pressable>
+                <Text style={[styles.availValue, { color: theme.ink }]}>{hideBalance ? '••••' : usd(account.available)}</Text>
+                {availOpen ? (
+                  <View style={styles.availBreakdown}>
+                    <View style={styles.availBreakRow}>
+                      <Text style={[styles.availBreakLabel, { color: theme.inkMuted }]}>Margin in positions</Text>
+                      <Text style={[styles.availBreakValue, { color: theme.ink }]}>{usd(account.inPositions)}</Text>
+                    </View>
+                    <View style={styles.availBreakRow}>
+                      <Text style={[styles.availBreakLabel, { color: theme.inkMuted }]}>Unrealized P&L</Text>
+                      <Text style={[styles.availBreakValue, { color: pnl >= 0 ? GREEN : RED }]}>{`${pnl >= 0 ? '+' : '-'}${usd(Math.abs(pnl))}`}</Text>
+                    </View>
+                  </View>
+                ) : null}
+              </View>
+              <View style={styles.availPillActions}>
+                <Pressable accessibilityLabel="Deposit" style={({ pressed }) => [styles.pillCircle, { backgroundColor: pillCircleBg, opacity: pressed ? 0.7 : 1 }]} onPress={openDeposit}>
+                  <PlusIcon size={22} color={theme.brand} />
+                </Pressable>
+                <Pressable accessibilityLabel="Withdraw" style={({ pressed }) => [styles.pillCircle, { backgroundColor: pillCircleBg, opacity: pressed ? 0.7 : 1 }]} onPress={openWithdraw}>
+                  <MinusIcon size={22} color={theme.brand} />
+                </Pressable>
+              </View>
             </View>
           </View>
         ) : (
@@ -134,7 +195,7 @@ export default function PerpsScreen() {
           </View>
         )}
 
-        {sections.map((s) => (
+        {!loading && sections.map((s) => (
           <View key={s.key} style={styles.section}>
             <Pressable style={styles.sectionHead}>
               <Text style={[styles.sectionTitle, { color: theme.ink }]}>{s.title}</Text>
@@ -201,12 +262,33 @@ const styles = StyleSheet.create({
   balanceLabel: { fontSize: 14, fontFamily: 'Inter-500', fontWeight: '500' },
   balanceValue: { fontSize: 38, lineHeight: 46, fontFamily: 'Inter-700', fontWeight: '700', marginTop: 2 },
   pnl: { fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600', marginTop: 2 },
-  availRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 18 },
+  skBig: { width: 170, height: 36, borderRadius: 8, marginTop: 6 },
+  skSmall: { width: 96, height: 16, borderRadius: 8, marginTop: 10 },
+  skAvail: { width: 110, height: 15, borderRadius: 8, marginTop: 6 },
+  availPill: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    borderRadius: 20,
+    padding: 16,
+    marginTop: 20,
+  },
+  availPillLeft: { flex: 1 },
+  availHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   availLabel: { fontSize: 14, fontFamily: 'Inter-500', fontWeight: '500' },
-  availValue: { fontSize: 14, fontFamily: 'Inter-600', fontWeight: '600' },
-  balanceActions: { flexDirection: 'row', gap: 12, marginTop: 16 },
-  balanceBtn: { flex: 1, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  balanceBtnText: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600' },
+  availValue: { fontSize: 17, fontFamily: 'Inter-700', fontWeight: '700', marginTop: 6 },
+  availPillActions: { flexDirection: 'row', gap: 10 },
+  pillCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  availBreakdown: { marginTop: 12, gap: 8 },
+  availBreakRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  availBreakLabel: { fontSize: 13, fontFamily: 'Inter-500', fontWeight: '500' },
+  availBreakValue: { fontSize: 13, fontFamily: 'Inter-600', fontWeight: '600' },
 
   section: { marginTop: 22 },
   sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 16, paddingBottom: 6 },

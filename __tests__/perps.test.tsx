@@ -15,6 +15,17 @@ jest.mock('../src/core/storage/secureStorage', () => ({
 }));
 jest.mock('../src/components/Toast', () => ({ showToast: jest.fn() }));
 
+// Session loading: default true so existing tests mount past the fetch;
+// the loading test flips it to false to exercise the fresh-open skeleton.
+let mockSessionLoaded = true;
+let resolveLoad: () => void = () => {};
+jest.mock('../src/services/perpsAccount', () => ({
+  ...jest.requireActual('../src/services/perpsAccount'),
+  perpsSessionLoaded: () => mockSessionLoaded,
+  ensurePerpsSessionLoad: () =>
+    new Promise<void>((res) => { resolveLoad = () => { mockSessionLoaded = true; res(); }; }),
+}));
+
 import PerpsScreen from '../src/screens/PerpsScreen';
 import {
   depositToPerps, withdrawFromPerps, getPerpsAccount, isFunded, accountValue, resetPerpsAccounts,
@@ -65,7 +76,24 @@ describe('perps account', () => {
 });
 
 describe('perps home', () => {
-  beforeEach(() => resetPerpsAccounts());
+  beforeEach(() => { resetPerpsAccounts(); mockSessionLoaded = true; });
+
+  it('fresh open: shows the balance skeleton while fetching, then the real state', async () => {
+    mockSessionLoaded = false;
+    const t = await mount();
+    // during the fetch: live label + skeleton pill, no hero and no balance yet
+    expect(texts(t)).toContain('Available balance');
+    expect(texts(t).some((x) => x.includes('Deposit to fund'))).toBe(false);
+    expect(texts(t).some((x) => x.includes('Perps balance'))).toBe(false);
+    // the +/- deposit & withdraw circles are present even while loading
+    const labels = t.root.findAll((n) => typeof n.props.accessibilityLabel === 'string').map((n) => n.props.accessibilityLabel);
+    expect(labels).toContain('Deposit');
+    expect(labels).toContain('Withdraw');
+    // fetch resolves -> the real (unfunded) state renders
+    await act(async () => { resolveLoad(); });
+    expect(texts(t).some((x) => x.includes('Deposit to fund'))).toBe(true);
+    await act(async () => { t.unmount(); });
+  });
 
   it('unfunded: shows the deposit hero, not a balance', async () => {
     const t = await mount();
@@ -82,7 +110,9 @@ describe('perps home', () => {
     expect(all.some((s) => s.includes('Deposit to fund'))).toBe(false);
     expect(all).toContain('Perps balance');
     expect(all).toContain('$250.00');
-    expect(all).toContain('Withdraw');
+    const labels = t.root.findAll((n) => typeof n.props.accessibilityLabel === 'string').map((n) => n.props.accessibilityLabel);
+    expect(labels).toContain('Deposit');    // plus circle
+    expect(labels).toContain('Withdraw');   // minus circle
     await act(async () => { t.unmount(); });
   });
 
