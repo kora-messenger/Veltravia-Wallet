@@ -21,6 +21,9 @@ import {
 
 const usd = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+// App violet (#6C63FF) darkened to Trust's button depth for Perps CTAs.
+const VIOLET_DEEP = '#5147E6';
+
 export default function PerpsDepositScreen() {
   const { theme } = useTheme();
   const dark = theme.mode === 'dark';
@@ -88,7 +91,7 @@ export default function PerpsDepositScreen() {
         <Pressable
           disabled={!valid}
           onPress={submit}
-          style={({ pressed }) => [styles.cta, { backgroundColor: theme.brand, opacity: !valid ? 0.4 : pressed ? 0.85 : 1 }]}
+          style={({ pressed }) => [styles.cta, { backgroundColor: VIOLET_DEEP, opacity: !valid ? 0.4 : pressed ? 0.85 : 1 }]}
         >
           <Text style={styles.ctaText}>{mode === 'deposit' ? 'Deposit' : 'Withdraw'}</Text>
         </Pressable>

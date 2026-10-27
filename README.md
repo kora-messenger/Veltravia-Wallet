@@ -119,6 +119,7 @@ The funded layout now matches Trust's design exactly:
 - **"Available balance" pill** (`#F2F2F2` light / navy dark): label with a chevron that expands the breakdown (margin in positions, unrealized P&L), the available value, and two circular action buttons on the right — plus (Deposit) and minus (Withdraw) in Veltravia violet, opening the deposit/withdraw sheet.
 - While loading, the same pill renders with skeleton blocks where the numbers will be.
 - Long / Short floating pills stay above the tab bar; market lists appear once loading finishes.
+- **Action colors (Trust depth):** Deposit (and the deposit/withdraw sheet CTA) use the app violet darkened to Trust's button depth (`#5147E6`, from the lighter `#6C63FF`); Long is deep green `#158444` and Short deep red `#D63232`, matching Trust's measured tones.
 
 ## Build status
 

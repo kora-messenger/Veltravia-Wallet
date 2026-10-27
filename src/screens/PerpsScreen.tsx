@@ -29,8 +29,11 @@ import {
   PERP_SECTIONS, formatPerpPrice, formatChange, perpSpark, type PerpMarket,
 } from '../services/perpsMarkets';
 
-const GREEN = '#15894B';
-const RED = '#D9342B';
+// Trust-measured action colors: deep green / deep red (Long / Short, P&L, ticks)
+const GREEN = '#158444';
+const RED = '#D63232';
+// App violet (#6C63FF) darkened to Trust's button depth for Perps CTAs.
+const VIOLET_DEEP = '#5147E6';
 const FOOTER_CLEAR = 190; // Long/Short pills + floating tab bar
 
 function usd(n: number) {
@@ -189,7 +192,7 @@ export default function PerpsScreen() {
                 accessibilityLabel="Perps"
               />
             </View>
-            <Pressable style={({ pressed }) => [styles.depositBtn, { backgroundColor: theme.brand, opacity: pressed ? 0.85 : 1 }]} onPress={openDeposit}>
+            <Pressable style={({ pressed }) => [styles.depositBtn, { backgroundColor: VIOLET_DEEP, opacity: pressed ? 0.85 : 1 }]} onPress={openDeposit}>
               <Text style={styles.depositText}>Deposit</Text>
             </Pressable>
           </View>
