@@ -98,7 +98,7 @@ export default function PerpsScreen() {
   );
 
   const openDeposit = () => navigation.navigate('PerpsDeposit', { mode: 'deposit' });
-  const openWithdraw = () => navigation.navigate('PerpsDeposit', { mode: 'withdraw' });
+  const openWithdraw = () => navigation.navigate('PerpsWithdraw');
 
   const value = accountValue(account);
   const pnl = account.unrealizedPnl;

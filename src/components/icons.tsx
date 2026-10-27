@@ -547,6 +547,14 @@ export const NetOptimism = ({ size = 40 }: { size?: number }) => (
   </Svg>
 );
 
+export const NetAvalanche = ({ size = 40 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 40 40">
+    <Rect width="40" height="40" rx="8" fill="#E84142" />
+    <Path d="M14 28h-4.2c-.8 0-1.2-.9-.8-1.6l9.2-16c.4-.7 1.3-.7 1.7 0l2.2 3.8c.2.4.2.8 0 1.2L15.2 27.4c-.3.4-.7.6-1.2.6z" fill="#FFFFFF" />
+    <Path d="M30.3 28h-9.1c-.9 0-1.3-1-.8-1.6l2.2-3.7c.4-.7 1.3-.7 1.7 0l2.2 3.7.3.5c.3.4.2.6-.5 1.1z" fill="#FFFFFF" />
+  </Svg>
+);
+
 export const COIN_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   BTC: CoinBtc,
   ETH: CoinEth,

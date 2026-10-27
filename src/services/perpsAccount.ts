@@ -9,12 +9,27 @@
  * One account per wallet (multi-instance rule), persisted in encrypted
  * storage. v1 holds the USDC balance only; deposits/withdrawals settle through
  * api.veltraviawallet.com once the Wallet Core signing bridge ships.
+ *
+ * The balance is held PER PROVIDER (Hyperliquid, Aster), like Trust: money
+ * lives at one provider, so a withdrawal must be taken from the provider that
+ * actually holds it. `available` stays the total across providers so the
+ * Perps home keeps working unchanged.
  */
 import { useSyncExternalStore } from 'react';
 import { readSettings, writeSettings } from '../core/storage/secureStorage';
 
+export type PerpsProviderId = 'hyperliquid' | 'aster';
+export const PERPS_PROVIDERS: ReadonlyArray<{ id: PerpsProviderId; name: string }> = [
+  { id: 'hyperliquid', name: 'Hyperliquid' },
+  { id: 'aster', name: 'Aster' },
+];
+/** Deposits go to Hyperliquid unless a provider is chosen. */
+export const DEFAULT_PROVIDER: PerpsProviderId = 'hyperliquid';
+
 export interface PerpsAccount {
-  /** Free collateral (USDC), available to open positions or withdraw. */
+  /** Free collateral (USDC) per provider. */
+  byProvider: Record<PerpsProviderId, number>;
+  /** Total free collateral across providers (kept in sync; read by the Perps home). */
   available: number;
   /** Margin currently locked in open positions. */
   inPositions: number;
@@ -22,7 +37,7 @@ export interface PerpsAccount {
   unrealizedPnl: number;
 }
 
-const EMPTY: PerpsAccount = { available: 0, inPositions: 0, unrealizedPnl: 0 };
+const EMPTY: PerpsAccount = { byProvider: { hyperliquid: 0, aster: 0 }, available: 0, inPositions: 0, unrealizedPnl: 0 };
 const KEY = 'perpsAccounts';
 
 let accounts: Record<string, PerpsAccount> = {};
@@ -45,7 +60,9 @@ export async function loadPerpsAccounts(): Promise<void> {
   try {
     const s = await readSettings();
     if (s[KEY] && typeof s[KEY] === 'object') {
-      accounts = s[KEY];
+      accounts = Object.fromEntries(
+        Object.entries(s[KEY] as Record<string, PerpsAccount>).map(([id, a]) => [id, normalize(a)]),
+      );
       emit();
     }
   } catch {
@@ -67,22 +84,43 @@ export function isFunded(a: PerpsAccount): boolean {
   return a.available > 0 || a.inPositions > 0;
 }
 
-/** Move USDC from the main wallet into the perps account. */
-export function depositToPerps(walletId: string, amount: number) {
-  if (!(amount > 0)) return;
+/** Older saves had one pooled `available`; treat it as sitting at Hyperliquid. */
+function normalize(a: PerpsAccount): PerpsAccount {
+  if (a.byProvider) return { ...a, available: sumProviders(a.byProvider) };
+  const pooled = Number((a as { available?: number }).available) || 0;
+  return { ...a, byProvider: { hyperliquid: pooled, aster: 0 }, available: pooled };
+}
+
+const sumProviders = (b: Record<PerpsProviderId, number>) => round(b.hyperliquid + b.aster);
+
+/** Free balance held at one provider. */
+export function providerBalance(walletId: string, provider: PerpsProviderId): number {
+  return getPerpsAccount(walletId).byProvider[provider];
+}
+
+function setProviderBalance(walletId: string, provider: PerpsProviderId, value: number) {
   const a = getPerpsAccount(walletId);
-  accounts = { ...accounts, [walletId]: { ...a, available: round(a.available + amount) } };
+  const byProvider = { ...a.byProvider, [provider]: round(value) };
+  accounts = { ...accounts, [walletId]: { ...a, byProvider, available: sumProviders(byProvider) } };
   emit();
   persist();
 }
 
-/** Move free USDC back to the main wallet. Returns false if over the free balance. */
-export function withdrawFromPerps(walletId: string, amount: number): boolean {
-  const a = getPerpsAccount(walletId);
-  if (!(amount > 0) || amount > a.available) return false;
-  accounts = { ...accounts, [walletId]: { ...a, available: round(a.available - amount) } };
-  emit();
-  persist();
+/** Move USDC from the main wallet into a provider's perps balance. */
+export function depositToPerps(walletId: string, amount: number, provider: PerpsProviderId = DEFAULT_PROVIDER) {
+  if (!(amount > 0)) return;
+  setProviderBalance(walletId, provider, providerBalance(walletId, provider) + amount);
+}
+
+/**
+ * Move free USDC from ONE provider back to the main wallet. Returns false if
+ * the amount exceeds what that provider holds (money at another provider does
+ * not count: the user must withdraw from the provider that has it).
+ */
+export function withdrawFromPerps(walletId: string, amount: number, provider: PerpsProviderId = DEFAULT_PROVIDER): boolean {
+  const held = providerBalance(walletId, provider);
+  if (!(amount > 0) || amount > held) return false;
+  setProviderBalance(walletId, provider, held - amount);
   return true;
 }
 

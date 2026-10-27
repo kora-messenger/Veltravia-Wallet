@@ -1,23 +1,21 @@
 /**
  * Veltravia Wallet — Perps Deposit / Withdraw.
  *
- * Moves USDC between the main wallet and the separate Perps account. Deposit
- * is bounded by the main wallet's USDC; Withdraw by the free perps balance.
- * Settlement via api.veltraviawallet.com arrives with the Wallet Core signing
- * bridge; until then the transfer updates the local perps account.
+ * Moves USDC from the main wallet into the separate Perps account (credited to
+ * Hyperliquid by default). Withdrawals live in PerpsWithdrawScreen (Trust's
+ * sheet). Settlement via api.veltraviawallet.com arrives with the Wallet Core
+ * signing bridge; until then the transfer updates the local perps account.
  */
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeProvider';
 import { useWallets } from '../wallets/WalletsProvider';
 import { BackIcon } from '../components/icons';
 import { showToast } from '../components/Toast';
 import { MOCK_HOLDINGS } from '../services/portfolio';
-import {
-  usePerpsAccount, depositToPerps, withdrawFromPerps,
-} from '../services/perpsAccount';
+import { depositToPerps } from '../services/perpsAccount';
 
 const usd = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -29,24 +27,20 @@ export default function PerpsDepositScreen() {
   const dark = theme.mode === 'dark';
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const route = useRoute<any>();
-  const mode: 'deposit' | 'withdraw' = route.params?.mode === 'withdraw' ? 'withdraw' : 'deposit';
   const { activeWallet } = useWallets();
-  const account = usePerpsAccount(activeWallet.id);
   const [text, setText] = useState('');
 
   // Main-wallet stablecoin (USDT, $1) available to move into perps.
   const walletUsdc = MOCK_HOLDINGS.find((h) => h.symbol === 'USDT')?.amount ?? 0;
-  const max = mode === 'deposit' ? walletUsdc : account.available;
+  const max = walletUsdc;
   const amount = parseFloat(text.replace(/,/g, ''));
   const valid = Number.isFinite(amount) && amount > 0 && amount <= max;
   const over = Number.isFinite(amount) && amount > max;
 
   const submit = () => {
     if (!valid) return;
-    if (mode === 'deposit') depositToPerps(activeWallet.id, amount);
-    else withdrawFromPerps(activeWallet.id, amount);
-    showToast(mode === 'deposit' ? `Deposited ${usd(amount)} to Perps` : `Withdrew ${usd(amount)} to wallet`, { kind: 'success' });
+    depositToPerps(activeWallet.id, amount);
+    showToast(`Deposited ${usd(amount)} to Perps`, { kind: 'success' });
     navigation.goBack();
   };
 
@@ -57,15 +51,13 @@ export default function PerpsDepositScreen() {
         <Pressable hitSlop={12} onPress={() => navigation.goBack()} style={[styles.circle, { backgroundColor: chipBg }]}>
           <BackIcon size={22} color={theme.ink} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.ink }]}>{mode === 'deposit' ? 'Deposit to Perps' : 'Withdraw from Perps'}</Text>
+        <Text style={[styles.title, { color: theme.ink }]}>Deposit to Perps</Text>
         <View style={{ width: 44 }} />
       </View>
 
       <View style={styles.body}>
         <Text style={[styles.note, { color: theme.inkMuted }]}>
-          {mode === 'deposit'
-            ? 'Perps uses its own balance, separate from your wallet. Move stablecoin in to start trading.'
-            : 'Move free balance from Perps back to your wallet.'}
+          Perps uses its own balance, separate from your wallet. Move stablecoin in to start trading.
         </Text>
         <View style={[styles.field, { backgroundColor: chipBg }]}>
           <Text style={[styles.dollar, { color: theme.ink }]}>$</Text>
@@ -83,7 +75,7 @@ export default function PerpsDepositScreen() {
           </Pressable>
         </View>
         <Text style={[styles.avail, { color: over ? '#D9342B' : theme.inkMuted }]}>
-          {over ? 'Amount exceeds available balance' : `${mode === 'deposit' ? 'Wallet balance' : 'Perps available'}: ${usd(max)}`}
+          {over ? 'Amount exceeds available balance' : `Wallet balance: ${usd(max)}`}
         </Text>
       </View>
 
@@ -93,7 +85,7 @@ export default function PerpsDepositScreen() {
           onPress={submit}
           style={({ pressed }) => [styles.cta, { backgroundColor: VIOLET_DEEP, opacity: !valid ? 0.4 : pressed ? 0.85 : 1 }]}
         >
-          <Text style={styles.ctaText}>{mode === 'deposit' ? 'Deposit' : 'Withdraw'}</Text>
+          <Text style={styles.ctaText}>Deposit</Text>
         </Pressable>
       </View>
     </View>
