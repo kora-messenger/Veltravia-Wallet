@@ -1,6 +1,6 @@
 import {
   hostOf, normalizeUrl, openTab, closeTab, toggleFavorite, isFavorite,
-  openInBrowser, registerBrowserNavigator,
+  openInBrowser, registerBrowserNavigator, isAllowedNavigation, siteModeLabel,
 } from '../src/services/browserState';
 
 describe('in-app browser state', () => {
@@ -40,5 +40,26 @@ describe('openInBrowser safety', () => {
     }
     // normalizeUrl prefixes bare strings, so scheme-less junk is still only ever https://...
     expect(nav.navigate).not.toHaveBeenCalledWith('Browser', expect.objectContaining({ url: expect.stringMatching(/^(javascript|file|intent|data):/) }));
+  });
+});
+
+describe('desktop / mobile site switch', () => {
+  it('menu label flips with the mode', () => {
+    expect(siteModeLabel(false)).toBe('Request Desktop Website');
+    expect(siteModeLabel(true)).toBe('Request Mobile Website');
+  });
+});
+
+describe('navigation gate', () => {
+  it('allows web pages and in-page frames', () => {
+    expect(isAllowedNavigation('https://pendle.finance/app')).toBe(true);
+    expect(isAllowedNavigation('http://example.com')).toBe(true);
+    expect(isAllowedNavigation('about:blank')).toBe(true);
+    expect(isAllowedNavigation('about:srcdoc')).toBe(true);
+  });
+  it('refuses everything else', () => {
+    for (const u of ['javascript:alert(1)', 'intent://x#Intent;end', 'file:///etc/passwd', 'data:text/html,hi', 'blob:https://x/1', 'about:config']) {
+      expect(isAllowedNavigation(u)).toBe(false);
+    }
   });
 });

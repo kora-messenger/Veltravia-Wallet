@@ -106,3 +106,16 @@ export function openInBrowser(url: string): boolean {
   navRef?.navigate('Browser', { tabId: tab.id, url: tab.url });
   return !!navRef;
 }
+
+
+/* ---- pure helpers used by the browser screen (unit-tested) ---------------- */
+
+/** Only http(s) pages (and in-page about:blank/srcdoc frames) may load in the web view. */
+export function isAllowedNavigation(url: string): boolean {
+  return /^https?:\/\//i.test(url) || /^about:(blank|srcdoc)$/i.test(url);
+}
+
+/** Label for the menu row that switches between desktop and mobile layouts. */
+export function siteModeLabel(desktop: boolean): string {
+  return desktop ? 'Request Mobile Website' : 'Request Desktop Website';
+}

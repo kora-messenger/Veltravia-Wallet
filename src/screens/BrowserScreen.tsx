@@ -22,13 +22,38 @@ import {
   CloseIcon, MoreIcon, LockSmallIcon, HeartIcon, ReloadIcon, ChevronLeftIcon, ChevronRightIcon,
 } from '../components/icons';
 import AppModal from '../components/AppModal';
+import { copyToClipboard } from '../core/clipboard';
 import { showToast } from '../components/Toast';
 import {
-  useBrowserState, updateTab, hostOf, isFavorite, toggleFavorite, normalizeUrl,
+  useBrowserState, updateTab, hostOf, isFavorite, toggleFavorite, normalizeUrl, isAllowedNavigation, siteModeLabel,
 } from '../services/browserState';
 
+// A real desktop Chrome UA. Mobile mode passes `undefined` so the WebView uses
+// the device's own mobile UA.
 const DESKTOP_UA =
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+/**
+ * Sites pick mobile vs desktop from the UA *and* the viewport. Changing only
+ * the UA leaves a phone-width viewport (the page still looks mobile), so in
+ * desktop mode we also force a 1280px layout viewport before any page script
+ * runs, and mark the page so media queries see a desktop width.
+ */
+const DESKTOP_VIEWPORT_JS = `
+(function () {
+  try {
+    var apply = function () {
+      var head = document.head || document.documentElement;
+      var m = document.querySelector('meta[name=viewport]');
+      if (!m) { m = document.createElement('meta'); m.name = 'viewport'; head.appendChild(m); }
+      m.setAttribute('content', 'width=1280, initial-scale=0.3, minimum-scale=0.1, maximum-scale=5, user-scalable=yes');
+    };
+    apply();
+    document.addEventListener('DOMContentLoaded', apply);
+    new MutationObserver(apply).observe(document.documentElement, { childList: true, subtree: true });
+  } catch (e) {}
+})();
+true;`;
 
 const HEADER_H = 44;
 const CIRCLE = 40;
@@ -51,6 +76,9 @@ export default function BrowserScreen() {
   const [canForward, setCanForward] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [desktop, setDesktop] = useState(false);
+  // Bumped on every mode switch: remounts the WebView so the new UA + viewport apply cleanly.
+  const [webKey, setWebKey] = useState(0);
+  const [sourceUrl, setSourceUrl] = useState(startUrl);
   const [fullscreen, setFullscreen] = useState(false);
   const [fav, setFav] = useState(isFavorite(startUrl));
   const [loadFailed, setLoadFailed] = useState(false);
@@ -80,8 +108,10 @@ export default function BrowserScreen() {
     }
   };
 
-  // Only http(s) may load inside the web view.
-  const shouldLoad = (req: { url: string }) => /^https?:\/\//i.test(req.url) || req.url === 'about:blank';
+  // Only http(s) may load inside the web view. about:blank / about:srcdoc are
+  // in-page (iframes, wallet-connect shims) and harmless. Everything else —
+  // javascript:, intent:, file:, data: top-level navigations — is refused.
+  const shouldLoad = (req: { url: string }) => isAllowedNavigation(req.url);
 
   const onHeart = () => {
     const on = toggleFavorite(url);
@@ -100,9 +130,14 @@ export default function BrowserScreen() {
 
   const toggleDesktop = () => {
     setMenuOpen(false);
-    setDesktop((d) => !d);
-    // userAgent change takes effect on the next load
-    setTimeout(() => webRef.current?.reload(), 50);
+    const next = !desktop;
+    setDesktop(next);
+    setSourceUrl(url); // stay on the page the user is looking at
+    setCanBack(false);
+    setCanForward(false);
+    setLoadFailed(false);
+    setWebKey((k) => k + 1); // remount => fresh load with the new UA/viewport
+    showToast(next ? 'Desktop site' : 'Mobile site', { kind: 'info' });
   };
 
   const enterFullscreen = () => {
@@ -129,10 +164,17 @@ export default function BrowserScreen() {
             <Pressable onPress={close} accessibilityLabel="Close browser" style={[styles.circle, { backgroundColor: circleBg }]}>
               <CloseIcon size={22} color={ink} />
             </Pressable>
-            <View style={styles.domain}>
+            <Pressable
+              style={styles.domain}
+              onLongPress={() => {
+                copyToClipboard(url);
+                showToast('Link copied', { kind: 'success' });
+              }}
+              delayLongPress={350}
+            >
               <LockSmallIcon size={15} color={ink} />
               <Text numberOfLines={1} style={[styles.domainText, { color: ink }]}>{host}</Text>
-            </View>
+            </Pressable>
             <Pressable onPress={() => setMenuOpen(true)} accessibilityLabel="Browser menu" style={[styles.circle, { backgroundColor: circleBg }]}>
               <MoreIcon size={22} color={ink} />
             </Pressable>
@@ -151,14 +193,24 @@ export default function BrowserScreen() {
           </View>
         ) : (
           <WebView
+            key={webKey}
             ref={webRef}
-            source={{ uri: startUrl }}
+            source={{ uri: sourceUrl }}
             userAgent={desktop ? DESKTOP_UA : undefined}
+            injectedJavaScriptBeforeContentLoaded={desktop ? DESKTOP_VIEWPORT_JS : undefined}
+            scalesPageToFit={desktop}
+            setBuiltInZoomControls={desktop}
+            setDisplayZoomControls={false}
             onNavigationStateChange={onNavChange}
             onShouldStartLoadWithRequest={shouldLoad}
             onLoadProgress={(e) => onProgress(e.nativeEvent.progress)}
             onLoadStart={() => setLoadFailed(false)}
-            onError={() => setLoadFailed(true)}
+            onError={(e) => {
+              // Only a failed top-level page load may replace the view; a
+              // blocked analytics request or aborted redirect must not.
+              const ev: any = e.nativeEvent;
+              if (ev?.url && ev.url === sourceUrl) setLoadFailed(true);
+            }}
             onHttpError={() => {}}
             setSupportMultipleWindows={false}
             javaScriptCanOpenWindowsAutomatically={false}
@@ -235,9 +287,7 @@ export default function BrowserScreen() {
               <Text style={[styles.menuSub, { color: muted }]}>Ethereum</Text>
             </View>
             <Pressable style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.6 }]} onPress={toggleDesktop}>
-              <Text style={[styles.menuLabel, { color: ink }]}>
-                {desktop ? 'Request Mobile Website' : 'Request Desktop Website'}
-              </Text>
+              <Text style={[styles.menuLabel, { color: ink }]}>{siteModeLabel(desktop)}</Text>
             </Pressable>
             <Pressable style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.6 }]} onPress={onShare}>
               <Text style={[styles.menuLabel, { color: ink }]}>Share</Text>
