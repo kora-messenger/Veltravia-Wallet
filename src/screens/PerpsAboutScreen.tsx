@@ -80,7 +80,7 @@ export const GUIDE_STEPS: GuideStep[] = [
     key: 'start',
     title: 'Start trading in minutes',
     lines: [
-      '1. Deposit stablecoins or supported tokens (like USDT, BNB, or VTW).',
+      '1. Deposit stablecoins or supported tokens (like USDT, BNB, or VWV).',
       '2. Choose a market: BTC, ETH, or any of 100+ pairs.',
       '3. Set your leverage and open your position.',
     ],
