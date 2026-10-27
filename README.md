@@ -140,7 +140,7 @@ Settings > Perps > **How perps work?** opens a six-step swipeable guide (Trust p
 - Segmented progress bar at the top: check = done, ring = current, empty = ahead, linked by a line that fills as you advance.
 - **Next** (deep violet `#5147E6`) advances; on the last step it reads **Got it** and closes. **Skip** closes from any step. Swiping sideways also moves between steps.
 - Each step has an illustration slot. Generated art goes in `src/assets/perps-guide/` (filenames and wiring steps are in that folder's README); until it lands, a branded placeholder tile keeps the flow usable.
-- Step 6 uses Veltravia's own token names (USDT, BNB, VWV).
+- Step 6 uses Veltravia's own token names (USDT, BNB, VWT).
 - The Perps home gear icon now opens the Perps settings menu; the history icon is inert until real trade history exists.
 
 ## Build status
