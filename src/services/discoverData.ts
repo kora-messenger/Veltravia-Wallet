@@ -24,6 +24,8 @@ export interface Dapp {
   id: string;
   name: string;
   category: string;
+  /** One-liner shown under the name, like Trust's dApp feed. */
+  description: string;
   color: string;
   url: string;
 }
@@ -56,18 +58,18 @@ export const TRENDING_TOKENS: TrendingToken[] = [
 ];
 
 export const DAPPS: Dapp[] = [
-  { id: 'uniswap', name: 'Uniswap', category: 'DEX', color: '#FF007A', url: 'https://app.uniswap.org' },
-  { id: 'pancake', name: 'PancakeSwap', category: 'DEX', color: '#1FC7D4', url: 'https://pancakeswap.finance' },
-  { id: 'aave', name: 'Aave', category: 'Lending', color: '#B6509E', url: 'https://app.aave.com' },
-  { id: 'opensea', name: 'OpenSea', category: 'NFT Marketplace', color: '#2081E2', url: 'https://opensea.io' },
-  { id: 'lido', name: 'Lido', category: 'Staking', color: '#00A3FF', url: 'https://stake.lido.fi' },
-  { id: 'curve', name: 'Curve', category: 'DEX', color: '#3B5BDB', url: 'https://curve.fi' },
-  { id: 'jupiter', name: 'Jupiter', category: 'DEX Aggregator', color: '#19B87A', url: 'https://jup.ag' },
-  { id: 'compound', name: 'Compound', category: 'Lending', color: '#00D395', url: 'https://app.compound.finance' },
-  { id: 'echelon-market', name: 'Echelon Market', category: 'Lending', color: '#7ED6E6', url: 'https://echelon.market' },
-  { id: 'echelon-bridge', name: 'Echelon Initia Bridge', category: 'Bridge', color: '#9AA0B5', url: 'https://echelon.market/bridge' },
-  { id: 'echelon-prime', name: 'Echelon Prime', category: 'Games', color: '#111111', url: 'https://echelonprime.com' },
-  { id: 'stargate', name: 'Stargate', category: 'Bridge', color: '#6B6F85', url: 'https://stargate.finance' },
+  { id: 'uniswap', name: 'Uniswap', category: 'DEX', color: '#FF007A', url: 'https://app.uniswap.org', description: 'The leading decentralized exchange on Ethereum. Swap tokens and provide liquidity.' },
+  { id: 'pancake', name: 'PancakeSwap', category: 'DEX', color: '#1FC7D4', url: 'https://pancakeswap.finance', description: 'Trade, earn and win crypto on BNB Chain. Low-fee swaps and syrup farms.' },
+  { id: 'aave', name: 'Aave', category: 'Lending', color: '#B6509E', url: 'https://app.aave.com', description: 'Deposit and borrow across 30+ assets with algorithmic money markets.' },
+  { id: 'opensea', name: 'OpenSea', category: 'NFT Marketplace', color: '#2081E2', url: 'https://opensea.io', description: 'Discover, collect and sell NFTs across 200+ collections.' },
+  { id: 'lido', name: 'Lido', category: 'Staking', color: '#00A3FF', url: 'https://stake.lido.fi', description: 'Liquid staking for Ethereum and Polygon. Daily rewards without lock-ups.' },
+  { id: 'curve', name: 'Curve', category: 'DEX', color: '#3B5BDB', url: 'https://curve.fi', description: 'Deep-liquidity stablecoin exchange with low slippage and yield.' },
+  { id: 'jupiter', name: 'Jupiter', category: 'DEX Aggregator', color: '#19B87A', url: 'https://jup.ag', description: 'The best price for Solana swaps, aggregated across all routes.' },
+  { id: 'compound', name: 'Compound', category: 'Lending', color: '#00D395', url: 'https://app.compound.finance', description: 'Supply assets to earn interest or borrow against your balance.' },
+  { id: 'echelon-market', name: 'Echelon Market', category: 'Lending', color: '#7ED6E6', url: 'https://echelon.market', description: 'A lending market for stables and RWAs with looping strategies.' },
+  { id: 'echelon-bridge', name: 'Echelon Initia Bridge', category: 'Bridge', color: '#9AA0B5', url: 'https://echelon.market/bridge', description: 'Bridge assets between Initia and other chains in one click.' },
+  { id: 'echelon-prime', name: 'Echelon Prime', category: 'Games', color: '#111111', url: 'https://echelonprime.com', description: 'A play-to-earn gaming ecosystem with tradable rewards.' },
+  { id: 'stargate', name: 'Stargate', category: 'Bridge', color: '#6B6F85', url: 'https://stargate.finance', description: 'Move assets across chains with unified liquidity and instant finality.' },
 ];
 
 const PREDICTIONS: Prediction[] = [

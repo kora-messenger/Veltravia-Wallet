@@ -60,10 +60,12 @@ import {
   SwapArrowsTx,
   ShieldLockIcon,
   TrendIcon,
+  InfinityIcon,
 } from '../components/icons';
 
 // Portfolio value over time comes from the portfolio engine
 // (services/portfolio) — total of ALL holdings, not one coin's price.
+import { MOCK_HOLDINGS } from '../services/portfolio';
 import { portfolioSeries, totalValue, change24h as change24hAll, type PortfolioPoint } from '../services/portfolio';
 
 interface Market {
@@ -81,6 +83,16 @@ const MOCK_MARKETS: Market[] = [
 
 // Portfolio split. Segment colours stay inside the Veltravia violet-to-blue
 // family, with green/amber as the two accent categories from the mockup.
+const TOKEN_NAMES: Record<string, string> = {
+  BTC: 'Bitcoin', ETH: 'Ethereum', BNB: 'BNB', USDT: 'Tether', MATIC: 'Polygon', SOL: 'Solana',
+};
+const PERP_CARDS = [
+  { symbol: 'BTC', leverage: '40x', vol: '$1.8B Vol' },
+  { symbol: 'ETH', leverage: '25x', vol: '$776.84M Vol' },
+  { symbol: 'SOL', leverage: '20x', vol: '$310.12M Vol' },
+  { symbol: 'BNB', leverage: '25x', vol: '$95.44M Vol' },
+];
+
 const MOCK_PORTFOLIO = [
   { label: 'Ethereum', ticker: 'ETH', pct: 48, color: '#2F6BF0' },
   { label: 'Bitcoin', ticker: 'BTC', pct: 24, color: '#8B5CF6' },
@@ -343,6 +355,90 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           </View>
         </Pressable>
 
+        {/* ---------- Tokens (Trust home layout) ---------- */}
+        <View style={styles.homeSection}>
+          <Pressable style={styles.tokensHeader} onPress={() => navigation.navigate('Tokens')}>
+            <Text style={[styles.sectionTitle, { color: theme.ink, fontSize: 20 }]}>Tokens</Text>
+            <ChevronRight size={20} color={theme.ink} />
+          </Pressable>
+
+          {MOCK_HOLDINGS.slice(0, 2).map((h) => {
+            const Coin = COIN_ICONS[h.symbol] ?? COIN_ICONS.ETH;
+            const value = h.amount * h.price;
+            return (
+              <Pressable
+                key={h.symbol}
+                style={({ pressed }) => [styles.tokenRow, { opacity: pressed ? 0.6 : 1 }]}
+                onPress={() => navigation.navigate('Tokens')}
+              >
+                <Coin size={44} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.tokenName, { color: theme.ink }]}>{TOKEN_NAMES[h.symbol] ?? h.symbol}</Text>
+                  <Text style={[styles.tokenAmount, { color: theme.inkMuted }]}>
+                    {h.amount < 1 ? h.amount.toFixed(4) : h.amount.toLocaleString('en-US', { maximumFractionDigits: 2 })} {h.symbol}
+                  </Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={[styles.tokenName, { color: theme.ink }]}>${fmt(value)}</Text>
+                  <Text style={[styles.tokenAmount, { color: h.change24h >= 0 ? '#16A34A' : '#DC2626' }]}>
+                    {h.change24h >= 0 ? '+' : ''}{h.change24h.toFixed(1)}%
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          })}
+
+          <Pressable
+            style={({ pressed }) => [styles.viewAllPill, { borderColor: theme.border, opacity: pressed ? 0.6 : 1 }]}
+            onPress={() => navigation.navigate('Tokens')}
+          >
+            <Text style={[styles.viewAllText, { color: theme.ink }]}>View all</Text>
+            <ChevronRight size={14} color={theme.ink} />
+          </Pressable>
+        </View>
+
+        {/* ---------- Perps carousel (Trust home layout) ---------- */}
+        <View style={styles.homeSection}>
+          <Pressable style={styles.tokensHeader} onPress={() => navigation.navigate('Perps')}>
+            <Text style={[styles.sectionTitle, { color: theme.ink, fontSize: 20 }]}>Perps</Text>
+            <ChevronRight size={20} color={theme.ink} />
+          </Pressable>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.perpsCarousel}
+          >
+            {PERP_CARDS.map((c) => {
+              const Coin = COIN_ICONS[c.symbol] ?? COIN_ICONS.ETH;
+              return (
+                <Pressable
+                  key={c.symbol}
+                  style={({ pressed }) => [
+                    styles.perpCard,
+                    { backgroundColor: theme.mode === 'dark' ? '#1D2133' : '#F5F5F7', opacity: pressed ? 0.7 : 1 },
+                  ]}
+                  onPress={() => navigation.navigate('Perps')}
+                >
+                  <View style={styles.perpLogoWrap}>
+                    <Coin size={40} />
+                    <View style={styles.perpInfinityBadge}>
+                      <InfinityIcon size={10} color="#FFFFFF" strokeWidth={2.6} />
+                    </View>
+                  </View>
+                  <View style={styles.perpMeta}>
+                    <Text style={[styles.perpTicker, { color: theme.ink }]}>{c.symbol}</Text>
+                    <View style={[styles.perpLeveragePill, { backgroundColor: theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+                      <Text style={[styles.perpLeverageText, { color: theme.inkMuted }]}>{c.leverage}</Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.perpVol, { color: theme.inkMuted }]}>{c.vol}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+
         {/* ---------- Recent Transactions ---------- */}
         <View style={[styles.panel, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <View style={styles.panelHeader}>
@@ -461,7 +557,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             </Pressable>
             <Pressable
               hitSlop={8}
-              onPress={() => {}}
+              onPress={() => navigation.navigate('ScanQr')}
               style={[styles.scanBtn, { backgroundColor: chipBg }]}
             >
               <AnimatedScanIcon size={22} color={theme.ink} strokeWidth={2.2} />
@@ -578,6 +674,22 @@ const styles = StyleSheet.create({
   },
   actionLabel: { fontSize: 12, fontFamily: 'Inter-600', fontWeight: '600' },
 
+  homeSection: { marginTop: 24 },
+  tokensHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+  tokenRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12 },
+  tokenName: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
+  tokenAmount: { fontSize: 13, fontFamily: 'Inter-400', marginTop: 2 },
+  viewAllPill: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8, gap: 6, marginTop: 4 },
+  viewAllText: { fontSize: 13, fontFamily: 'Inter-600', fontWeight: '600' },
+  perpsCarousel: { gap: 10, paddingRight: 16, paddingTop: 4 },
+  perpCard: { borderRadius: 16, padding: 14, width: 132 },
+  perpLogoWrap: { position: 'relative', width: 40, height: 40 },
+  perpInfinityBadge: { position: 'absolute', right: -4, bottom: -4, width: 18, height: 18, borderRadius: 9, backgroundColor: '#0F1B2D', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#FFFFFF' },
+  perpMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, marginBottom: 4 },
+  perpTicker: { fontSize: 15, fontFamily: 'Inter-700', fontWeight: '700' },
+  perpLeveragePill: { borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  perpLeverageText: { fontSize: 10, fontFamily: 'Inter-600', fontWeight: '600' },
+  perpVol: { fontSize: 12, fontFamily: 'Inter-400' },
   panel: {
     borderRadius: 18,
     borderWidth: 1,

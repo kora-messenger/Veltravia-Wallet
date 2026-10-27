@@ -32,6 +32,29 @@ export async function storeSeed(seedPhrase: string): Promise<void> {
   });
 }
 
+/* ---- app preferences (currency, notifications) ------------------------- */
+
+/** Read the app preferences blob (empty object on first run). */
+export async function readSettings(): Promise<Record<string, any>> {
+  try {
+    const r = await Keychain.getGenericPassword({ service: `${SERVICE}.${KEY_SETTINGS}` });
+    if (r && typeof r.password === 'string') return JSON.parse(r.password);
+  } catch {
+    /* corrupt or absent: start fresh */
+  }
+  return {};
+}
+
+/** Merge-patch the preferences blob and return the new state. */
+export async function writeSettings(patch: Record<string, any>): Promise<Record<string, any>> {
+  const next = { ...(await readSettings()), ...patch };
+  await Keychain.setGenericPassword(KEY_SETTINGS, JSON.stringify(next), {
+    service: `${SERVICE}.${KEY_SETTINGS}`,
+    accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+  });
+  return next;
+}
+
 /** True once a wallet has been created or imported on this device. */
 export async function hasWallet(): Promise<boolean> {
   const result = await Keychain.getGenericPassword({

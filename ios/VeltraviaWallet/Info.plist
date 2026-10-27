@@ -36,6 +36,10 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
+	<key>NSCameraUsageDescription</key>
+	<string>Veltravia uses the camera to scan QR codes locally. Nothing is uploaded.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Veltravia reads a photo you pick to find a QR code in it. Nothing is uploaded.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>

@@ -71,7 +71,7 @@ export default function WalletsScreen({ navigation }: { navigation: any }) {
           >
             <AnimatedSupportIcon size={24} color={theme.ink} />
           </Pressable>
-          <Pressable hitSlop={10} style={[styles.headerBtn, { backgroundColor: chipBg }]}>
+          <Pressable hitSlop={10} style={[styles.headerBtn, { backgroundColor: chipBg }]} onPress={() => navigation.navigate('Settings')}>
             <GearIcon size={24} color={theme.ink} />
           </Pressable>
         </View>

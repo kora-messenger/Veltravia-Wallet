@@ -10,6 +10,7 @@ import Svg, {
   Path,
   Circle,
   Rect,
+  Text as SvgText,
   Defs,
   LinearGradient as SvgGradient,
   Stop,
@@ -150,16 +151,12 @@ export const HomeTabIcon = ({ size = 24, color = '#000', filled }: IconProps & {
 );
 
 export const MarketsTabIcon = ({ size = 24, color = '#000' }: IconProps) => (
-  /* Sharp candlestick chart: butt caps + miter joins, no rounding. */
+  /* Trust-style trend line: one uniform wavy stroke rising to a sharp
+     arrow point at the top right, rounded terminals. Untapped the bar
+     renders it in muted grey-blue; tapped it goes violet on the pill. */
   <Svg {...base(size)}>
-    <G stroke={color} strokeWidth={2} strokeLinecap="butt" strokeLinejoin="miter">
-      <Path d="M5 4v16" />
-      <Path d="M12 3v18" />
-      <Path d="M19 8v12" />
-    </G>
-    <Rect x="2.5" y="8" width="5" height="6" {...sharp(color, 2)} />
-    <Rect x="9.5" y="6" width="5" height="8" {...sharp(color, 2)} />
-    <Rect x="16.5" y="10.5" width="5" height="6" {...sharp(color, 2)} />
+    <Path d="M4 17l5-5 4 4 7-8" {...stroke(color, 2)} />
+    <Path d="M15 8h5v5" {...stroke(color, 2)} />
   </Svg>
 );
 
@@ -330,6 +327,92 @@ export const ShieldCheckIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }
   </Svg>
 );
 
+/* ---------------- settings rows (Trust style: dark line icons) ------- */
+
+/** Address Book: contact card with a person. */
+export const AddressBookIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M4.5 6a1.5 1.5 0 0 1 1.5-1.5h13A1.5 1.5 0 0 1 20.5 6v12a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 18V6z" {...stroke(color, strokeWidth)} />
+    <Path d="M12 9.4a2.1 2.1 0 1 1 0 4.2 2.1 2.1 0 0 1 0-4.2zM8.4 16.6c.8-1.9 6.4-1.9 7.2 0" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/** Perps: candlestick chart. */
+export const PerpsIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M6.5 6v1.6M6.5 17.4v-1.6M17.5 5v1.6M17.5 16.4v-2.2" {...stroke(color, strokeWidth)} strokeLinecap="round" />
+    <Path d="M5 7.6h3v8.2H5zM16 6.6h3v7.6h-3z" {...stroke(color, strokeWidth)} strokeLinejoin="round" />
+  </Svg>
+);
+
+/** Infinity lemniscate: Perps tab (perpetuals never expire). */
+export const InfinityIcon = ({ size = 24, color = '#000', strokeWidth = 2.2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path
+      d="M7.4 9C4.9 9 3 10.8 3 12s1.9 3 4.4 3c4.4 0 4.8-6 9.2-6 2.5 0 4.4 1.8 4.4 3s-1.9 3-4.4 3c-4.4 0-4.8-6-9.2-6z"
+      {...stroke(color, strokeWidth)}
+    />
+  </Svg>
+);
+
+/** Generic brand tile for any asset/network without a dedicated logo. */
+export const BrandTile = ({
+  size = 40, color = '#6C63FF', mark = '', round = true, lightMark = true,
+}: { size?: number; color?: string; mark?: string; round?: boolean; lightMark?: boolean }) => (
+  <Svg width={size} height={size} viewBox="0 0 40 40">
+    {round ? <Circle cx="20" cy="20" r="20" fill={color} /> : <Rect width="40" height="40" rx="9" fill={color} />}
+    {mark ? (
+      <SvgText x="20" y="26.5" fontSize="18" fontWeight="700" fill={lightMark ? '#FFFFFF' : '#14151F'} textAnchor="middle">
+        {mark}
+      </SvgText>
+    ) : (
+      <Rect x="11" y="11" width="18" height="18" rx="2" fill="#FFFFFF" />
+    )}
+  </Svg>
+);
+
+/** Empty-search illustration: document with a magnifier (Trust's "No results found"). */
+export const NoResultsIllustration = ({ size = 120 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 120 120">
+    <Rect x="46" y="14" width="56" height="76" rx="8" fill="#ECEDF2" />
+    <Path d="M60 36h30M60 48h30M60 60h20" stroke="#D5D7E0" strokeWidth="4" strokeLinecap="round" />
+    <Circle cx="48" cy="62" r="24" fill="#F7F7FA" stroke="#9A9DB0" strokeWidth="6" />
+    <Path d="M66 80l20 20" stroke="#9A9DB0" strokeWidth="7" strokeLinecap="round" />
+  </Svg>
+);
+
+/* ---------------- social brand glyphs (filled) ---------------- */
+
+const fill = (color: string) => ({ fill: color, fillRule: 'evenodd' as const });
+
+/** X (Twitter). */
+export const XIcon = ({ size = 22, color = '#000' }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M18.9 1.15h3.68l-8.04 9.19 9.46 12.51h-7.41l-5.8-7.58-6.64 7.58H.47l8.6-9.83L0 1.15h7.59l5.24 6.93 6.07-6.93zM17.61 20.64h2.04L6.49 3.24H4.3l13.31 17.4z" {...fill(color)} />
+  </Svg>
+);
+
+/** Telegram. */
+export const TelegramIcon = ({ size = 22, color = '#000' }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M23.91 3.79 20.3 20.84c-.25 1.21-.98 1.5-2 .94l-5.5-4.07-2.66 2.57c-.3.3-.55.56-1.1.56-.72 0-.6-.27-.84-.95L6.3 13.7.85 12c-1.18-.35-1.19-1.16.26-1.7l21.26-8.2c.97-.43 1.9.24 1.53 1.7z" {...fill(color)} />
+  </Svg>
+);
+
+/** YouTube. */
+export const YouTubeIcon = ({ size = 22, color = '#000' }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M23.5 6.19a3.02 3.02 0 0 0-2.12-2.14C19.5 3.55 12 3.55 12 3.55s-7.5 0-9.38.5A3.02 3.02 0 0 0 .5 6.19C0 8.07 0 12 0 12s0 3.93.5 5.81a3.02 3.02 0 0 0 2.12 2.14c1.88.5 9.38.5 9.38.5s7.5 0 9.38-.5a3.02 3.02 0 0 0 2.12-2.14C24 15.93 24 12 24 12s0-3.93-.5-5.81zM9.55 15.57V8.43L15.82 12l-6.27 3.57z" {...fill(color)} />
+  </Svg>
+);
+
+/** TikTok. */
+export const TikTokIcon = ({ size = 22, color = '#000' }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.78-1.35 3.94-1.31 1.94-3.58 3.07-5.91 3.03-1.9-.07-3.73-.93-5.03-2.35-2.07-2.25-2.44-5.75-.95-8.4 1.42-2.58 4.45-3.93 7.36-3.4.02 1.48-.01 2.96 0 4.44-1.35-.22-2.76.18-3.75 1.14-.95.87-1.35 2.2-1.1 3.42.28 1.55 1.68 2.75 3.27 2.86 1.05.06 2.1-.4 2.83-1.19.6-.65.9-1.54.9-2.44.02-4.17.01-8.33.01-12.5z" {...fill(color)} />
+  </Svg>
+);
+
 /* ---------------- brand mark ---------------- */
 /** Veltravia "V" mark: two folded ribbons, purple→blue (header logo). */
 export const VeltraviaMark = ({ size = 32 }: { size?: number }) => (
@@ -432,6 +515,28 @@ export const CoinBtc = ({ size = 40 }: { size?: number }) => (
       strokeLinejoin="round"
     />
     <Path d="M15.500 18.100h6.100M18 9v2.500M21.500 9v2.500M18 25.800v2.500M21.500 25.800v2.500" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" />
+  </Svg>
+);
+
+/** Network badges used by Select network (simple brand-style marks). */
+export const NetArbitrum = ({ size = 40 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 40 40">
+    <Rect width="40" height="40" rx="8" fill="#2D374B" />
+    <Path d="M20 7l10 5.8v11.6L20 30.2 10 24.4V12.8L20 7z" fill="none" stroke="#28A0F0" strokeWidth="1.8" strokeLinejoin="round" />
+    <Path d="M15 26l6-12h2l-6 12zM20 26l5-10 1.4 2.4-3.6 7.6z" fill="#FFFFFF" />
+  </Svg>
+);
+export const NetBase = ({ size = 40 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 40 40">
+    <Rect width="40" height="40" rx="8" fill="#0000FF" />
+    <Rect x="11" y="11" width="18" height="18" rx="2" fill="#FFFFFF" />
+  </Svg>
+);
+export const NetOptimism = ({ size = 40 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 40 40">
+    <Rect width="40" height="40" rx="8" fill="#FF0420" />
+    <Circle cx="20" cy="20" r="9" fill="#FFFFFF" />
+    <Circle cx="20" cy="20" r="4" fill="#FF0420" />
   </Svg>
 );
 
@@ -636,14 +741,67 @@ export const ReloadIcon = ({ size = 24, color = '#000', strokeWidth = 2.2 }: Ico
   </Svg>
 );
 
-/** Chevron left / right for the back-forward pill. */
-export const ChevronLeftIcon = ({ size = 22, color = '#000', strokeWidth = 2.2 }: IconProps) => (
+/**
+ * Chevrons (Trust style): thin 1.8 stroke, round caps, open iOS proportions.
+ * Used for the browser back/forward pill and settings row affordances.
+ */
+export const ChevronLeftIcon = ({ size = 22, color = '#000', strokeWidth = 1.8 }: IconProps) => (
   <Svg {...base(size)}>
-    <Path d="M14.5 6l-6 6 6 6" {...stroke(color, strokeWidth)} />
+    <Path d="M14.5 5.5l-6.5 6.5 6.5 6.5" {...stroke(color, strokeWidth)} strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
-export const ChevronRightIcon = ({ size = 22, color = '#000', strokeWidth = 2.2 }: IconProps) => (
+export const ChevronRightIcon = ({ size = 22, color = '#000', strokeWidth = 1.8 }: IconProps) => (
   <Svg {...base(size)}>
-    <Path d="M9.5 6l6 6-6 6" {...stroke(color, strokeWidth)} />
+    <Path d="M9.5 5.5l6.5 6.5-6.5 6.5" {...stroke(color, strokeWidth)} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+/** Photo gallery (scanner header). */
+export const GalleryIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Rect x="3.5" y="5.5" width="17" height="13" rx="3" {...stroke(color, strokeWidth)} />
+    <Path d="M5.5 15.5l3.6-3.6a1.6 1.6 0 012.3 0l3.8 3.8" {...stroke(color, strokeWidth)} />
+    <Path d="M14 11.2l1.6-1.6a1.6 1.6 0 012.3 0l2.1 2.1" {...stroke(color, strokeWidth)} />
+    <Circle cx="8.7" cy="9.3" r="1.3" fill={color} />
+  </Svg>
+);
+
+/** Flashlight (scanner header, torch toggle). */
+export const FlashIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M9 3.5h6" {...stroke(color, strokeWidth)} />
+    <Path d="M8 3.5h8l-.8 3.2a2.5 2.5 0 00-.2 1v1.6a2.5 2.5 0 00.6 1.6l.9 1.1a2.5 2.5 0 01.6 1.6v5.8a1.5 1.5 0 01-1.5 1.5H9.4a1.5 1.5 0 01-1.5-1.5v-5.8a2.5 2.5 0 01.6-1.6l.9-1.1a2.5 2.5 0 00.6-1.6V7.7a2.5 2.5 0 00-.2-1L8 3.5z" {...stroke(color, strokeWidth)} />
+    <Path d="M10.5 13.5h3" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/** "Open in browser": box with arrow leaving it (web-mode browser menu). */
+export const OpenInBrowserIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M12 3.5v9m0 0l3-3m-3 3l-3-3" {...stroke(color, strokeWidth)} />
+    <Path d="M6.5 6.5h-1a2 2 0 00-2 2v9a2 2 0 002 2h13a2 2 0 002-2v-9a2 2 0 00-2-2h-1" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/** Arrow pointing down-right (Short button). */
+export const ArrowDownRightIcon = ({ size = 24, color = '#000', strokeWidth = 2.2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M7 7l10 10M17 8v9H8" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/** History (counter-clockwise clock) for the Perps header. */
+export const HistoryIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M3.5 12a8.5 8.5 0 108.5-8.5A8.6 8.6 0 005.9 6M3.5 4.5V7.5H6.5" {...stroke(color, strokeWidth)} />
+    <Path d="M12 7.8V12l3 1.8" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/** External link: arrow leaving a box, top right (Contact support row). */
+export const ExternalLinkIcon = ({ size = 24, color = '#000', strokeWidth = 1.9 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M14 4h6v6M20 4l-9 9" {...stroke(color, strokeWidth)} />
+    <Path d="M18 14v4a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2h4" {...stroke(color, strokeWidth)} />
   </Svg>
 );

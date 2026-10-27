@@ -29,6 +29,17 @@ import PasscodeScreen from '../screens/onboarding/PasscodeScreen';
 import SelectRecoveryMethodScreen from '../screens/SelectRecoveryMethodScreen';
 import BuyScreen from '../features/buy/BuyScreen';
 import SelectCurrencyScreen from '../features/buy/SelectCurrencyScreen';
+import AddressBookScreen from '../screens/AddressBookScreen';
+import PerpsScreen from '../screens/PerpsScreen';
+import { loadPerpsAccounts } from '../services/perpsAccount';
+import PerpsAboutScreen from '../screens/PerpsAboutScreen';
+import PerpsMenuScreen from '../screens/PerpsMenuScreen';
+import PerpsDepositScreen from '../screens/PerpsDepositScreen';
+import TokensScreen from '../screens/TokensScreen';
+import SelectNetworkScreen from '../screens/SelectNetworkScreen';
+import ManageCryptoScreen from '../screens/ManageCryptoScreen';
+import ImportCryptoScreen from '../screens/ImportCryptoScreen';
+import ScanQrScreen from '../screens/ScanQrScreen';
 import NotificationSheet from '../components/NotificationSheet';
 import LockScreen from '../screens/LockScreen';
 import { setAppLocked } from '../core/security/appLockState';
@@ -69,13 +80,24 @@ export type RootStackParamList = {
   AiChat: { mode?: 'support' | 'fresh' } | undefined;
   Buy: { pickedCurrency?: string } | undefined;
   SelectCurrency: { selected?: string } | undefined;
+  Settings: undefined;
+  ManageCrypto: undefined;
+  ImportCrypto: undefined;
+  ScanQr: undefined;
+  SelectNetwork: undefined;
+  AddressBook: undefined;
+  Perps: undefined;
+  PerpsMenu: undefined;
+  PerpsAbout: undefined;
+  PerpsDeposit: { mode: 'deposit' | 'withdraw' };
 };
 
 export type MainTabParamList = {
   Home: undefined;
   Markets: undefined;
   Swap: undefined;
-  Settings: undefined;
+  Perps: undefined;
+  Tokens: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -91,7 +113,8 @@ function MainTabs() {
       <Tabs.Screen name="Home" component={HomeScreen} />
       <Tabs.Screen name="Markets" component={MarketsScreen} />
       <Tabs.Screen name="Swap" component={SwapScreen} />
-      <Tabs.Screen name="Settings" component={SettingsScreen} />
+      <Tabs.Screen name="Perps" component={PerpsScreen} />
+      <Tabs.Screen name="Tokens" component={TokensScreen} />
     </Tabs.Navigator>
   );
 }
@@ -112,6 +135,9 @@ export default function Navigation() {
   // screen the user left (e.g. the share view) with only the OS fingerprint
   // dialog over it — the lock screen must already be painted when we return.
   const hasPassRef = React.useRef(false);
+
+  // Perps account balances (separate from the main wallet) load once at startup.
+  React.useEffect(() => { loadPerpsAccounts(); }, []);
 
   React.useEffect(() => {
     let alive = true;
@@ -243,6 +269,15 @@ export default function Navigation() {
         <Stack.Screen name="BalanceDetails" component={BalanceDetailsScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="Buy" component={BuyScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="SelectCurrency" component={SelectCurrencyScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="Settings" component={SettingsScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="ManageCrypto" component={ManageCryptoScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="ImportCrypto" component={ImportCryptoScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="ScanQr" component={ScanQrScreen} options={{ animation: 'fade', gestureEnabled: false, headerShown: false }} />
+      <Stack.Screen name="SelectNetwork" component={SelectNetworkScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="AddressBook" component={AddressBookScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="PerpsMenu" component={PerpsMenuScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="PerpsAbout" component={PerpsAboutScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="PerpsDeposit" component={PerpsDepositScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="AiChat" component={AiChatScreen} options={{ animation: 'slide_from_bottom' }} />
       </Stack.Navigator>
       <NotificationSheet visible={notifPrompt} onClose={() => setNotifPrompt(false)} />

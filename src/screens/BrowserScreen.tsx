@@ -20,12 +20,15 @@ import { WebView, type WebViewNavigation } from 'react-native-webview';
 import { useTheme } from '../theme/ThemeProvider';
 import {
   CloseIcon, MoreIcon, LockSmallIcon, HeartIcon, ReloadIcon, ChevronLeftIcon, ChevronRightIcon,
+  OpenInBrowserIcon,
 } from '../components/icons';
 import AppModal from '../components/AppModal';
 import { copyToClipboard } from '../core/clipboard';
+import { Linking } from 'react-native';
+import DappDisclaimerModal from '../components/DappDisclaimerModal';
 import { showToast } from '../components/Toast';
 import {
-  useBrowserState, updateTab, hostOf, isFavorite, toggleFavorite, normalizeUrl, isAllowedNavigation, siteModeLabel,
+  useBrowserState, updateTab, closeTab, hostOf, isFavorite, toggleFavorite, normalizeUrl, isAllowedNavigation, siteModeLabel,
   nextBarsVisible, parseScrollMessage, SCROLL_REPORTER_JS,
 } from '../services/browserState';
 
@@ -70,9 +73,12 @@ export default function BrowserScreen() {
 
   const tabId: string = route.params?.tabId;
   const startUrl: string = normalizeUrl(route.params?.url ?? 'about:blank');
+  const isDapp: boolean = !!route.params?.dapp;
+  const isWeb: boolean = !isDapp; // plain links get the lighter web chrome
 
   const webRef = useRef<any>(null);
   const [url, setUrl] = useState(startUrl);
+  const [disclaimerOpen, setDisclaimerOpen] = useState(isDapp);
   const [canBack, setCanBack] = useState(false);
   const [canForward, setCanForward] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -142,6 +148,22 @@ export default function BrowserScreen() {
     showToast(on ? 'Added to favorites' : 'Removed from favorites', { kind: 'success' });
   };
 
+  // Web mode: hand the page to the system browser (Trust's "Open in browser").
+  const openInSystemBrowser = async () => {
+    setMenuOpen(false);
+    try {
+      await Linking.openURL(url);
+    } catch {
+      showToast('No browser app found', { kind: 'error' });
+    }
+  };
+
+  // Web-mode back: step back through page history, close when out of history.
+  const onBackPress = () => {
+    if (canBack) webRef.current?.goBack();
+    else close();
+  };
+
   const onShare = async () => {
     setMenuOpen(false);
     try {
@@ -171,12 +193,19 @@ export default function BrowserScreen() {
   };
 
   const circleBg = dark ? '#1D2133' : '#EEEEF0'; // measured: #EEEEF0
+  const webBarBg = dark ? '#1A1C22' : '#F2F2F2'; // web-mode bars (measured)
+  const webBarBgSoft = dark ? '#14161C' : '#FAFAFA';
   const ink = dark ? theme.ink : '#0F111A'; // near-black like Trust
   const muted = theme.inkMuted;
   const host = hostOf(url);
   const progressW = progress.interpolate({ inputRange: [0, 1], outputRange: [0, width] });
-  const TOP_H = insets.top + 6 + 4 + 6 + HEADER_H + 6; // grab handle + header + progress
-  const BOTTOM_H = CIRCLE + 10 + Math.max(insets.bottom, 12);
+  // dApp chrome keeps the grab handle; the lighter web chrome does not.
+  const TOP_H = isWeb
+    ? insets.top + HEADER_H + 6 // header + progress
+    : insets.top + 6 + 4 + 6 + HEADER_H + 6; // grab handle + header + progress
+  const BOTTOM_H = isWeb
+    ? HEADER_H + Math.max(insets.bottom, 10) // thin web bar
+    : CIRCLE + 10 + Math.max(insets.bottom, 12);
   // The page reclaims the space the bars give up. Margins are layout props, so they
   // follow a JS-driven twin of the same 0..1 value (two numbers over ~220ms).
   const webTop = barsLayout.interpolate({ inputRange: [0, 1], outputRange: [TOP_H, insets.top + 22] });
@@ -236,15 +265,25 @@ export default function BrowserScreen() {
       {!fullscreen && (
         <Animated.View
           pointerEvents="box-none"
-          style={[styles.topBar, { paddingTop: insets.top, backgroundColor: theme.background, transform: [{ translateY: headerY }] }]}
+          style={[styles.topBar, { paddingTop: insets.top, backgroundColor: isWeb ? webBarBg : theme.background, transform: [{ translateY: headerY }] }]}
         >
-          <View style={styles.grabWrap}>
-            <View style={[styles.grab, { backgroundColor: dark ? 'rgba(255,255,255,0.25)' : 'rgba(6,14,44,0.18)' }]} />
-          </View>
+          {!isWeb && (
+            <View style={styles.grabWrap}>
+              <View style={[styles.grab, { backgroundColor: dark ? 'rgba(255,255,255,0.25)' : 'rgba(6,14,44,0.18)' }]} />
+            </View>
+          )}
           <View style={styles.header}>
-            <Pressable onPress={close} accessibilityLabel="Close browser" style={[styles.circle, { backgroundColor: circleBg }]}>
-              <CloseIcon size={25} color={ink} />
-            </Pressable>
+            {isWeb ? (
+              // Web chrome: plain back arrow on the grey bar (steps through
+              // page history, closes the browser when the history runs out).
+              <Pressable onPress={onBackPress} accessibilityLabel="Back" style={styles.webBtn}>
+                <ChevronLeftIcon size={26} color={ink} />
+              </Pressable>
+            ) : (
+              <Pressable onPress={close} accessibilityLabel="Close browser" style={[styles.circle, { backgroundColor: circleBg }]}>
+                <CloseIcon size={25} color={ink} />
+              </Pressable>
+            )}
             <Pressable
               style={styles.domain}
               onPress={() => {
@@ -252,12 +291,18 @@ export default function BrowserScreen() {
                 showToast('Link copied', { kind: 'success' });
               }}
             >
-              <LockSmallIcon size={16} color={ink} />
+              <LockSmallIcon size={16} color={isWeb ? '#34C759' : ink} />
               <Text numberOfLines={1} style={[styles.domainText, { color: ink }]}>{host}</Text>
             </Pressable>
-            <Pressable onPress={() => setMenuOpen(true)} accessibilityLabel="Browser menu" style={[styles.circle, { backgroundColor: circleBg }]}>
-              <MoreIcon size={25} color={ink} />
-            </Pressable>
+            {isWeb ? (
+              <Pressable onPress={() => setMenuOpen(true)} accessibilityLabel="Browser menu" style={styles.webBtn}>
+                <MoreIcon size={25} color={ink} />
+              </Pressable>
+            ) : (
+              <Pressable onPress={() => setMenuOpen(true)} accessibilityLabel="Browser menu" style={[styles.circle, { backgroundColor: circleBg }]}>
+                <MoreIcon size={25} color={ink} />
+              </Pressable>
+            )}
           </View>
           <View style={styles.progressTrack}>
             <Animated.View style={[styles.progressBar, { width: progressW, opacity: fade, backgroundColor: theme.brand }]} />
@@ -269,35 +314,52 @@ export default function BrowserScreen() {
       {!fullscreen && (
         <Animated.View
           pointerEvents="box-none"
-          style={[styles.bottom, styles.bottomAbs, { paddingBottom: Math.max(insets.bottom, 12), backgroundColor: theme.background, transform: [{ translateY: footerY }] }]}
+          style={[styles.bottom, styles.bottomAbs, { paddingBottom: isWeb ? Math.max(insets.bottom, 10) : Math.max(insets.bottom, 12), backgroundColor: isWeb ? webBarBgSoft : theme.background, transform: [{ translateY: footerY }] }, isWeb && styles.webBottom]}
         >
-          <View style={[styles.circle, { backgroundColor: circleBg }]}>
+          {isWeb ? (
+            // Web chrome: plain back / forward / reload cluster.
+            <>
+              <Pressable disabled={!canBack} onPress={() => webRef.current?.goBack()} hitSlop={8} style={styles.webBtn}>
+                <ChevronLeftIcon size={26} color={canBack ? ink : muted} />
+              </Pressable>
+              <Pressable disabled={!canForward} onPress={() => webRef.current?.goForward()} hitSlop={8} style={styles.webBtn}>
+                <ChevronRightIcon size={26} color={canForward ? ink : muted} />
+              </Pressable>
+              <Pressable onPress={() => { setLoadFailed(false); setTimeout(() => webRef.current?.reload(), 30); }} hitSlop={8} style={styles.webBtn}>
+                <ReloadIcon size={24} color={ink} />
+              </Pressable>
+              <View style={{ flex: 1 }} />
+            </>
+          ) : null}
+          {!isWeb && <View style={[styles.circle, { backgroundColor: circleBg }]}>
             <View style={[styles.tabBox, { borderColor: ink }]}>
               <Text style={[styles.tabNum, { color: ink }]}>{Math.max(tabs.length, 1)}</Text>
             </View>
-          </View>
+          </View>}
 
-          <View style={[styles.navPill, { backgroundColor: circleBg }]}>
+          {!isWeb && <View style={[styles.navPill, { backgroundColor: circleBg }]}>
             <Pressable disabled={!canBack} onPress={() => webRef.current?.goBack()} hitSlop={8} style={styles.navBtn}>
               <ChevronLeftIcon size={25} color={canBack ? ink : muted} />
             </Pressable>
             <Pressable disabled={!canForward} onPress={() => webRef.current?.goForward()} hitSlop={8} style={styles.navBtn}>
               <ChevronRightIcon size={25} color={canForward ? ink : muted} />
             </Pressable>
-          </View>
+          </View>}
 
           <View style={{ flex: 1 }} />
 
-          <Pressable onPress={onHeart} accessibilityLabel="Favorite" style={[styles.circle, { backgroundColor: circleBg }]}>
+          {!isWeb && <Pressable onPress={onHeart} accessibilityLabel="Favorite" style={[styles.circle, { backgroundColor: circleBg }]}>
             <HeartIcon size={25} color={ink} filled={fav} />
-          </Pressable>
-          <Pressable
-            onPress={() => { setLoadFailed(false); setTimeout(() => webRef.current?.reload(), 30); }}
-            accessibilityLabel="Reload"
-            style={[styles.circle, { backgroundColor: circleBg }]}
-          >
-            <ReloadIcon size={25} color={ink} />
-          </Pressable>
+          </Pressable>}
+          {!isWeb && (
+            <Pressable
+              onPress={() => { setLoadFailed(false); setTimeout(() => webRef.current?.reload(), 30); }}
+              accessibilityLabel="Reload"
+              style={[styles.circle, { backgroundColor: circleBg }]}
+            >
+              <ReloadIcon size={25} color={ink} />
+            </Pressable>
+          )}
         </Animated.View>
       )}
 
@@ -323,6 +385,15 @@ export default function BrowserScreen() {
               },
             ]}
           >
+            {isWeb ? (
+              <Pressable style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.6 }]} onPress={openInSystemBrowser}>
+                <View style={styles.menuRow}>
+                  <OpenInBrowserIcon size={22} color={ink} />
+                  <Text style={[styles.menuLabel, { color: ink }]}>Open in browser</Text>
+                </View>
+              </Pressable>
+            ) : (
+            <>
             <View style={styles.menuItem}>
               <Text style={[styles.menuLabel, { color: ink }]}>Network</Text>
               <Text style={[styles.menuSub, { color: muted }]}>Ethereum</Text>
@@ -336,9 +407,21 @@ export default function BrowserScreen() {
             <Pressable style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.6 }]} onPress={enterFullscreen}>
               <Text style={[styles.menuLabel, { color: ink }]}>Fullscreen mode</Text>
             </Pressable>
+            </>
+            )}
           </View>
         </Pressable>
       </AppModal>
+
+      <DappDisclaimerModal
+        visible={disclaimerOpen}
+        onCancel={() => {
+          setDisclaimerOpen(false);
+          closeTab(tabId);
+          navigation.goBack();
+        }}
+        onConfirm={() => setDisclaimerOpen(false)}
+      />
     </View>
   );
 }
@@ -371,6 +454,9 @@ const styles = StyleSheet.create({
     elevation: 12, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 18, shadowOffset: { width: 0, height: 8 },
   },
   menuItem: { paddingVertical: 11, paddingHorizontal: 22 },
+  menuRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  webBtn: { width: 40, height: HEADER_H, alignItems: 'center', justifyContent: 'center' },
+  webBottom: { justifyContent: 'flex-start', paddingHorizontal: 14, paddingTop: 0 },
   menuLabel: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
   menuSub: { fontSize: 14, fontFamily: 'Inter-500', fontWeight: '500', marginTop: 1 },
 });

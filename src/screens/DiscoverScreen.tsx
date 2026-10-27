@@ -12,7 +12,7 @@
  *    (decoded from the recording: 101px rows on a 169px pitch) — until the
  *    query resolves, then All / Tokens / Predictions / dApps results.
  */
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, TextInput, Animated, Easing, Platform,
   Keyboard, useWindowDimensions, type NativeSyntheticEvent, type NativeScrollEvent,
@@ -65,8 +65,8 @@ function DappAvatar({ d, size = 40 }: { d: Pick<Dapp, 'name' | 'color'>; size?: 
 }
 
 const OpenArrow = ({ color }: { color: string }) => (
-  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-    <Path d="M7 17L17 7M9 7h8v8" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+  <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+    <Path d="M7 17L17 7M9 7h8v8" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
 
@@ -118,9 +118,11 @@ function DappRow({ d, onPress }: { d: Dapp; onPress: () => void }) {
       <DappAvatar d={d} />
       <View style={styles.rowMid}>
         <Text numberOfLines={1} style={[styles.rowTitle, { color: theme.ink }]}>{d.name}</Text>
-        <Text numberOfLines={1} style={[styles.rowSub, { color: theme.inkMuted }]}>{d.category}</Text>
+        <Text numberOfLines={2} style={[styles.rowSub, { color: theme.inkMuted }]}>{d.description || d.category}</Text>
       </View>
-      <OpenArrow color={theme.inkMuted} />
+      <View style={styles.arrowTop}>
+        <OpenArrow color={theme.inkMuted} />
+      </View>
     </Pressable>
   );
 }
@@ -176,6 +178,7 @@ function RecentsStrip({ recents, onTap }: { recents: RecentItem[]; onTap: (r: Re
 
 export default function DiscoverScreen() {
   const { theme } = useTheme();
+  const dark = theme.mode === 'dark';
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const recents = useRecents();
@@ -194,6 +197,9 @@ export default function DiscoverScreen() {
 
   // keyboard: lift the search bar above it (edge-to-edge Android ignores resize)
   const [kb, setKb] = useState(0);
+  // The gesture-nav inset is stable; remember it because insets.bottom can
+  // read 0 while the keyboard (which covers the gesture area) is open.
+  const gestureInset = useRef(Math.max(insets.bottom, 0));
   useEffect(() => {
     const show = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hide = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
@@ -246,7 +252,7 @@ export default function DiscoverScreen() {
 
   const openDapp = useCallback((d: Dapp) => {
     addRecent({ id: d.id, kind: 'dapp', label: d.name, caption: 'dApp', color: d.color });
-    if (!openInBrowser(d.url)) showToast("Couldn't open that dApp. Try again later.", { kind: 'error' });
+    if (!openInBrowser(d.url, { dapp: true })) showToast("Couldn't open that dApp. Try again later.", { kind: 'error' });
   }, []);
 
   const onRecentTap = useCallback((r: RecentItem) => {
@@ -280,8 +286,10 @@ export default function DiscoverScreen() {
   };
 
   const searching = searchOpen && query.trim().length > 0;
-  const barBottom = kb > 0 ? kb + 8 : Math.max(insets.bottom, 12) + 8;
-  const listBottom = barBottom + 44 + 16; // clear the docked search bar
+  // Edge-to-edge: the reported IME height excludes the gesture-bar strip,
+  // so clear kb + gesture inset (+ gap). Same proven formula as the AI chat input.
+  const barBottom = kb > 0 ? kb + gestureInset.current + 8 : Math.max(insets.bottom, 12) + 8;
+  const listBottom = barBottom + 46 + 12; // clear the docked search bar
 
   /* search results body */
   const renderResults = () => {
@@ -404,12 +412,12 @@ export default function DiscoverScreen() {
 
       {/* ---- bottom search bar ---- */}
       <View style={[styles.barWrap, { bottom: barBottom }]} pointerEvents="box-none">
-        <View style={[styles.counter, { backgroundColor: theme.surfaceAlt }]}>
+        <View style={[styles.counter, { backgroundColor: dark ? theme.surfaceAlt : '#EEEEF0' }]}>
           <View style={[styles.counterBox, { borderColor: theme.ink }]}>
             <Text style={[styles.counterText, { color: theme.ink }]}>0</Text>
           </View>
         </View>
-        <View style={[styles.field, { backgroundColor: theme.surfaceAlt }]}>
+        <View style={[styles.field, { backgroundColor: dark ? theme.surfaceAlt : '#EEEEF0' }]}>
           <SearchIcon size={18} color={theme.inkMuted} />
           <TextInput
             ref={inputRef as any}
@@ -417,7 +425,7 @@ export default function DiscoverScreen() {
             onChangeText={(t) => { setSearchOpen(true); setQuery(t); }}
             onFocus={() => setSearchOpen(true)}
             placeholder="Tokens, dApps"
-            placeholderTextColor={theme.inkMuted}
+            placeholderTextColor={dark ? theme.inkMuted : '#838799'}
             selectionColor={theme.brand}
             autoCorrect={false}
             autoCapitalize="none"
@@ -429,12 +437,12 @@ export default function DiscoverScreen() {
               <ClearCircle color={theme.inkMuted} />
             </Pressable>
           ) : (
-            <Pressable onPress={onPaste} style={[styles.pasteBtn, { backgroundColor: theme.background }]}>
+            <Pressable onPress={onPaste} style={[styles.pasteBtn, { backgroundColor: dark ? 'rgba(255,255,255,0.10)' : '#E1E1E4' }]}>
               <Text style={[styles.pasteText, { color: theme.ink }]}>Paste</Text>
             </Pressable>
           )}
         </View>
-        <Pressable onPress={closeDiscover} style={[styles.closeBtn, { backgroundColor: theme.surfaceAlt }]} accessibilityLabel="Close search">
+        <Pressable onPress={closeDiscover} style={[styles.closeBtn, { backgroundColor: dark ? theme.surfaceAlt : '#EEEEF0' }]} accessibilityLabel="Close search">
           <CloseIcon size={22} color={theme.ink} />
         </Pressable>
       </View>
@@ -469,6 +477,7 @@ const styles = StyleSheet.create({
 
   /* rows */
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  arrowTop: { alignSelf: 'flex-start', marginTop: 9 }, // level with the title line, like Trust
   rowMid: { flex: 1 },
   rowTitle: { fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600' },
   rowSub: { fontSize: 12, fontFamily: 'Inter-500', fontWeight: '500', marginTop: 2 },
@@ -496,13 +505,13 @@ const styles = StyleSheet.create({
   emptySub: { fontSize: 14, fontFamily: 'Inter-500', fontWeight: '500', textAlign: 'center' },
 
   /* bottom search bar */
-  barWrap: { position: 'absolute', left: 14, right: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  counter: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  counterBox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  barWrap: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  counter: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
+  counterBox: { width: 24, height: 24, borderRadius: 7, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   counterText: { fontSize: 12, fontFamily: 'Inter-700', fontWeight: '700' },
-  field: { flex: 1, height: 44, borderRadius: 22, flexDirection: 'row', alignItems: 'center', paddingLeft: 16, paddingRight: 8, gap: 8 },
+  field: { flex: 1, height: 46, borderRadius: 23, flexDirection: 'row', alignItems: 'center', paddingLeft: 16, paddingRight: 6, gap: 8 },
   input: { flex: 1, fontSize: 15, fontFamily: 'Inter-500', paddingVertical: 0 },
-  pasteBtn: { height: 32, paddingHorizontal: 14, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  pasteText: { fontSize: 14, fontFamily: 'Inter-600', fontWeight: '600' },
-  closeBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  pasteBtn: { height: 34, paddingHorizontal: 15, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  pasteText: { fontSize: 14, fontFamily: 'Inter-600', fontWeight: '600', color: '#1A1A1D' },
+  closeBtn: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
 });

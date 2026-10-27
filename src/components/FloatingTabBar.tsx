@@ -21,18 +21,18 @@ import {
   MarketsTabIcon,
   SwapIcon,
   DiscoverTabIcon,
-  SettingsTabIcon,
+  InfinityIcon,
 } from './icons';
 
 const TAB_ICONS: Record<string, React.ComponentType<any>> = {
   Home: HomeTabIcon,
   Markets: MarketsTabIcon,
   Discover: DiscoverTabIcon,
-  Settings: SettingsTabIcon,
+  Perps: InfinityIcon,
 };
 
 /** Icons inside the pill, in order. Swap lives in the center notch. */
-const SIDE_TABS: Array<keyof typeof TAB_ICONS> = ['Home', 'Markets', 'Discover', 'Settings'];
+const SIDE_TABS: Array<keyof typeof TAB_ICONS> = ['Home', 'Markets', 'Discover', 'Perps'];
 
 const PILL_H = 64; // pill height (also the corner radius: fully rounded ends)
 const PILL_BOTTOM = 20; // gap between pill and the bottom edge of the screen

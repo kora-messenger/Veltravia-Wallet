@@ -93,7 +93,7 @@ export function registerBrowserNavigator(nav: Navigator | null) {
  * Open any web link in the in-app browser. Only http(s) is allowed; anything
  * else (javascript:, file:, intent:) is refused.
  */
-export function openInBrowser(url: string): boolean {
+export function openInBrowser(url: string, opts: { dapp?: boolean } = {}): boolean {
   const raw = url.trim();
   // Any explicit scheme other than http(s) is refused outright — never
   // "fixed" into an https URL (javascript:, file:, intent:, data:, ftp: ...).
@@ -103,7 +103,7 @@ export function openInBrowser(url: string): boolean {
   const u = normalizeUrl(raw);
   if (!/^https?:\/\/[^\s]+$/i.test(u)) return false;
   const tab = openTab(u);
-  navRef?.navigate('Browser', { tabId: tab.id, url: tab.url });
+  navRef?.navigate('Browser', { tabId: tab.id, url: tab.url, dapp: !!opts.dapp });
   return !!navRef;
 }
 

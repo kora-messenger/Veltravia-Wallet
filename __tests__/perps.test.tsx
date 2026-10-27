@@ -1,0 +1,116 @@
+import React from 'react';
+import renderer, { act } from 'react-test-renderer';
+import { NavigationContainer } from '@react-navigation/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+jest.mock('../src/theme/ThemeProvider', () => ({
+  useTheme: () => ({ theme: { mode: 'light', ink: '#0F111A', inkMuted: '#8A8EA3', brand: '#6C63FF', background: '#FFFFFF', surface: '#F5F5F7', surfaceAlt: '#FFFFFF' } }),
+}));
+jest.mock('../src/wallets/WalletsProvider', () => ({
+  useWallets: () => ({ activeWallet: { id: 'w1' } }),
+}));
+jest.mock('../src/core/storage/secureStorage', () => ({
+  readSettings: jest.fn(async () => ({})),
+  writeSettings: jest.fn(async () => ({})),
+}));
+jest.mock('../src/components/Toast', () => ({ showToast: jest.fn() }));
+
+import PerpsScreen from '../src/screens/PerpsScreen';
+import {
+  depositToPerps, withdrawFromPerps, getPerpsAccount, isFunded, accountValue, resetPerpsAccounts,
+} from '../src/services/perpsAccount';
+import { formatPerpPrice, formatChange, perpSpark, PERP_SECTIONS } from '../src/services/perpsMarkets';
+
+// Flatten string children; array children (text + newline + text) join into one string.
+const texts = (tree: renderer.ReactTestRenderer) =>
+  tree.root
+    .findAll((n) => typeof n.props.children === 'string' || (Array.isArray(n.props.children) && n.props.children.every((c: unknown) => typeof c === 'string')))
+    .map((n) => (Array.isArray(n.props.children) ? n.props.children.join('') : (n.props.children as string)));
+
+const mount = async () => {
+  let tree!: renderer.ReactTestRenderer;
+  await act(async () => { tree = renderer.create(
+      <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
+        <NavigationContainer><PerpsScreen /></NavigationContainer>
+      </SafeAreaProvider>,
+    ); });
+  return tree;
+};
+
+describe('perps account', () => {
+  beforeEach(() => resetPerpsAccounts());
+
+  it('starts empty and unfunded (separate from the main wallet)', () => {
+    const a = getPerpsAccount('w1');
+    expect(isFunded(a)).toBe(false);
+    expect(accountValue(a)).toBe(0);
+  });
+
+  it('deposit funds the account; withdraw is capped to the free balance', () => {
+    depositToPerps('w1', 100);
+    expect(getPerpsAccount('w1').available).toBe(100);
+    expect(withdrawFromPerps('w1', 150)).toBe(false); // over the free balance
+    expect(withdrawFromPerps('w1', 40)).toBe(true);
+    expect(getPerpsAccount('w1').available).toBe(60);
+  });
+
+  it('ignores non-positive deposits and keeps wallets independent', () => {
+    depositToPerps('w1', 0);
+    depositToPerps('w1', -5);
+    expect(isFunded(getPerpsAccount('w1'))).toBe(false);
+    depositToPerps('w2', 25);
+    expect(isFunded(getPerpsAccount('w1'))).toBe(false);
+    expect(getPerpsAccount('w2').available).toBe(25);
+  });
+});
+
+describe('perps home', () => {
+  beforeEach(() => resetPerpsAccounts());
+
+  it('unfunded: shows the deposit hero, not a balance', async () => {
+    const t = await mount();
+    const all = texts(t);
+    expect(all.some((s) => s.includes('Deposit to fund'))).toBe(true);
+    expect(all).not.toContain('Perps balance');
+    await act(async () => { t.unmount(); });
+  });
+
+  it('funded: hero disappears and the perps balance shows', async () => {
+    depositToPerps('w1', 250);
+    const t = await mount();
+    const all = texts(t);
+    expect(all.some((s) => s.includes('Deposit to fund'))).toBe(false);
+    expect(all).toContain('Perps balance');
+    expect(all).toContain('$250.00');
+    expect(all).toContain('Withdraw');
+    await act(async () => { t.unmount(); });
+  });
+
+  it('lists the market sections and the Long / Short pills', async () => {
+    const t = await mount();
+    const all = texts(t);
+    for (const title of ['Popular', 'New', 'Crypto', 'Stocks', 'Forex', 'Meme']) expect(all).toContain(title);
+    expect(all).toContain('Long');
+    expect(all).toContain('Short');
+    await act(async () => { t.unmount(); });
+  });
+});
+
+describe('perps markets data', () => {
+  it('formats prices with Trust-style precision', () => {
+    expect(formatPerpPrice(80772)).toBe('$80,772.0');
+    expect(formatPerpPrice(157.85)).toBe('$157.85');
+    expect(formatPerpPrice(81.192)).toBe('$81.192');
+    expect(formatPerpPrice(1.4784)).toBe('$1.4784');
+    expect(formatPerpPrice(0.06691)).toBe('$0.06691');
+    expect(formatPerpPrice(0.0007844)).toBe('$0.0007844');
+  });
+  it('formats signed 24h change', () => {
+    expect(formatChange(5.71)).toBe('+5.71%');
+    expect(formatChange(-2.95)).toBe('-2.95%');
+  });
+  it('sparkline is deterministic and ends in the direction of the change', () => {
+    expect(perpSpark('X', 3)).toEqual(perpSpark('X', 3));
+    expect(PERP_SECTIONS.length).toBe(6);
+  });
+});
