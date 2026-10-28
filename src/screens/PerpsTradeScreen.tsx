@@ -34,12 +34,17 @@ import {
 import { SwapIcon } from '../components/icons';
 import { HyperliquidTile, AsterTile } from '../components/PerpsVenueMarks';
 import CandleChart from '../components/CandleChart';
+import OrderBookView from '../components/OrderBookView';
+import OrderBookSettingsSheet from '../components/OrderBookSettingsSheet';
 import { showToast } from '../components/Toast';
 import { FONT } from '../theme/typography';
 import { PERP_SECTIONS, formatPerpPrice, type PerpMarket } from '../services/perpsMarkets';
 import { providerBalance, usePerpsAccount } from '../services/perpsAccount';
 import { addPerpsRecent } from '../services/perpsRecents';
 import type { Candle } from '../services/candleEngine';
+import {
+  buildOrderBook, DEFAULT_BOOK_SETTINGS, groupOptionsFor, type BookSettings,
+} from '../services/orderBook';
 import type { Interval } from '../services/candleEngine';
 import {
   type SheetSnap, type TradeSide, snapHeights, settleSnap, sideTitle, amountFromPercent,
@@ -167,6 +172,21 @@ export default function PerpsTradeScreen() {
   const [candleMode, setCandleMode] = useState(true);    // blue toggle: candles vs line
   const [scrub, setScrub] = useState<Candle | null>(null);
   const [chartReady, setChartReady] = useState(false);
+  // list icon: swap the chart for the order book (tap again to return)
+  const [showBook, setShowBook] = useState(false);
+  const [bookSettings, setBookSettings] = useState<BookSettings>(DEFAULT_BOOK_SETTINGS);
+  const [bookSettingsOpen, setBookSettingsOpen] = useState(false);
+  const [bookTick, setBookTick] = useState(0);
+  useEffect(() => {
+    if (!showBook) return undefined;
+    const id = setInterval(() => setBookTick((t) => t + 1), 1000); // sizes refresh ~1s
+    return () => clearInterval(id);
+  }, [showBook]);
+  const book = useMemo(
+    () => buildOrderBook(`${venue}:${symbol}`, price, bookSettings.group, bookTick),
+    [venue, symbol, price, bookSettings.group, bookTick],
+  );
+  const bookGroups = useMemo(() => groupOptionsFor(price), [price]);
   useEffect(() => { const t = setTimeout(() => setChartReady(true), 450); return () => clearTimeout(t); }, []);
 
   /* ------------- three-snap sheet ------------- */
@@ -277,7 +297,23 @@ export default function PerpsTradeScreen() {
         )}
       </View>
 
+      {/* ---------- order book (replaces the chart) ---------- */}
+      {showBook ? (
+        <View style={styles.bookWrap}>
+          <OrderBookView
+            book={book}
+            currency={bookSettings.currency}
+            group={bookSettings.group}
+            dark={dark}
+            ink={theme.ink}
+            inkMuted={theme.inkMuted}
+            onOpenSettings={() => setBookSettingsOpen(true)}
+          />
+        </View>
+      ) : null}
+
       {/* ---------- chart ---------- */}
+      {!showBook ? (
       <View style={[styles.chartWrap, { height: chartH }]}>
         {chartReady ? (
           <CandleChart
@@ -308,9 +344,10 @@ export default function PerpsTradeScreen() {
           <View style={styles.hexBtn}><HexSettingsIcon size={22} color={theme.inkMuted} /></View>
         ) : null}
       </View>
+      ) : null}
 
       {/* ---------- expanded-chart extras: timeframes + indicators ---------- */}
-      {expanded ? (
+      {expanded && !showBook ? (
         <View testID="chartExtras">
           <View style={styles.tfRow}>
             {RANGES.map((r) => {
@@ -362,8 +399,13 @@ export default function PerpsTradeScreen() {
                 <ChevronsUpDownIcon size={13} color={theme.inkMuted} />
               </View>
             </View>
-            <Pressable accessibilityLabel="Order book" onPress={() => showToast('Order book arrives with live data', { kind: 'info' })} style={[styles.iconBtn, { backgroundColor: chipBg }]}>
-              <OrderBookIcon size={22} color={theme.ink} />
+            <Pressable
+              accessibilityLabel="Order book"
+              accessibilityState={{ selected: showBook }}
+              onPress={() => { setShowBook((b) => !b); if (!showBook && snap === 'peek') goSnap('half'); }}
+              style={[styles.iconBtn, { backgroundColor: showBook ? (dark ? '#2A2F55' : '#E3E1FB') : chipBg }]}
+            >
+              <OrderBookIcon size={22} color={showBook ? (dark ? '#A9A4FF' : BRAND_BTN) : theme.ink} />
             </Pressable>
             <Pressable
               accessibilityLabel="Toggle candles"
@@ -423,6 +465,15 @@ export default function PerpsTradeScreen() {
           </View>
         ) : null}
       </Animated.View>
+
+      <OrderBookSettingsSheet
+        visible={bookSettingsOpen}
+        settings={bookSettings}
+        baseSymbol={market.symbol}
+        groups={bookGroups}
+        onClose={() => setBookSettingsOpen(false)}
+        onApply={setBookSettings}
+      />
     </View>
   );
 }
@@ -446,6 +497,7 @@ const styles = StyleSheet.create({
   ohlcDate: { fontFamily: FONT.regular, fontSize: 14 },
   ohlcDelta: { fontFamily: FONT.medium, fontSize: 14 },
   chartWrap: { marginTop: 8 },
+  bookWrap: { marginTop: 4 },
   spinnerBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   expandPill: { position: 'absolute', left: 12, bottom: 6, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, height: 34, borderRadius: 17, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
   expandText: { fontFamily: FONT.medium, fontSize: 14 },

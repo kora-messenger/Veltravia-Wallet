@@ -281,3 +281,121 @@ describe('Sheet drag + scrub header (gesture-level)', () => {
     await act(async () => { t.unmount(); });
   });
 });
+
+describe('Order book (Trust recording, list icon)', () => {
+  const open = async () => {
+    const t = await mount(PerpsTradeScreen, 'PerpsTrade', { venue: 'hyperliquid', symbol: 'BTC', side: 'short' });
+    await act(async () => { byLabel(t, 'Order book').props.onPress(); });
+    return t;
+  };
+  const rowsOf = (t: renderer.ReactTestRenderer) => t.root.findAll((n) => n.props.testID === 'bookRows')[0];
+  const hasId = (t: renderer.ReactTestRenderer, id: string) => t.root.findAll((n) => n.props.testID === id).length > 0;
+
+  it('the list icon swaps the chart for the book, and again returns to the chart', async () => {
+    const t = await mount(PerpsTradeScreen, 'PerpsTrade', { venue: 'hyperliquid', symbol: 'BTC', side: 'short' });
+    expect(hasId(t, 'orderBook')).toBe(false);
+    expect(texts(t)).toContain('Expand');
+    await act(async () => { byLabel(t, 'Order book').props.onPress(); });
+    expect(hasId(t, 'orderBook')).toBe(true);
+    expect(texts(t)).not.toContain('Expand');
+    // the sheet below is untouched
+    expect(texts(t)).toEqual(expect.arrayContaining(['Open Short', 'Fund wallet', 'Leverage']));
+    await act(async () => { byLabel(t, 'Order book').props.onPress(); });
+    expect(hasId(t, 'orderBook')).toBe(false);
+    expect(texts(t)).toContain('Expand');
+    await act(async () => { t.unmount(); });
+  });
+
+  it('shows the Bid / Price / Ask header, 19 rows, USD + Group by 1 and the B/S ratio', async () => {
+    const t = await open();
+    const all = texts(t);
+    expect(all).toEqual(expect.arrayContaining(['Bid', 'Price', 'Ask', 'USD', 'Group by ', '1', 'B', 'S']));
+    const rows = rowsOf(t).props.children;
+    expect(rows).toHaveLength(19);
+    const pcts = all.filter((x) => /^\d+%$/.test(x)).map((x) => parseInt(x, 10));
+    expect(pcts).toHaveLength(2);
+    expect(pcts[0] + pcts[1]).toBe(100);
+    await act(async () => { t.unmount(); });
+  });
+
+  it('sizes refresh about once a second', async () => {
+    const t = await open();
+    const snap = () => JSON.stringify(texts(t).filter((x) => /^[\d,]+$/.test(x)));
+    const a = snap();
+    await act(async () => { jest.advanceTimersByTime(1100); });
+    expect(snap()).not.toBe(a);
+    await act(async () => { t.unmount(); });
+  });
+
+  it('the footer opens Order book settings (USD / BTC, Group by 1 2 5 10 100, Apply)', async () => {
+    const t = await open();
+    expect(texts(t)).not.toContain('Order book settings');
+    await act(async () => { byLabel(t, 'Display currency').props.onPress(); });
+    const all = texts(t);
+    expect(all).toEqual(expect.arrayContaining(['Order book settings', 'Reset', 'Display currency', 'USD', 'BTC', 'Group by', '1', '2', '5', '10', '100', 'Apply']));
+    await act(async () => { t.unmount(); });
+  });
+
+  it('Group by also opens the same sheet', async () => {
+    const t = await open();
+    await act(async () => { byLabel(t, 'Group by').props.onPress(); });
+    expect(texts(t)).toContain('Order book settings');
+    await act(async () => { t.unmount(); });
+  });
+
+  it('nothing changes until Apply; Apply regroups the ladder and switches the currency label', async () => {
+    const t = await open();
+    const priceCol = () => texts(t).filter((x) => /^80,\d{3}$/.test(x));
+    await act(async () => { byLabel(t, 'Group by').props.onPress(); });
+    await act(async () => { byLabel(t, 'Group 10').props.onPress(); byLabel(t, 'Currency BTC').props.onPress(); });
+    // draft only: the footer still reads USD / 1
+    expect(texts(t).filter((x) => x === 'USD').length).toBeGreaterThan(0);
+    await act(async () => { byLabel(t, 'Apply').props.onPress(); });
+    const px = priceCol().map((x) => parseInt(x.replace(',', ''), 10));
+    expect(px.length).toBeGreaterThan(5);
+    expect(px.every((p) => p % 10 === 0)).toBe(true);        // grouped by 10
+    expect(texts(t)).toContain('BTC');                       // footer label follows the currency
+    expect(texts(t)).toContain('10');
+    await act(async () => { t.unmount(); });
+  });
+
+  it('Reset returns the draft to USD / 1 and is inert while clean', async () => {
+    const t = await open();
+    await act(async () => { byLabel(t, 'Group by').props.onPress(); });
+    const reset = () => t.root.findAll((n) => n.props.accessibilityLabel === 'Reset order book settings' && typeof n.props.onPress === 'function')[0];
+    expect(reset().props.disabled).toBe(true);
+    await act(async () => { byLabel(t, 'Group 5').props.onPress(); });
+    expect(reset().props.disabled).toBe(false);
+    await act(async () => { reset().props.onPress(); });
+    expect(reset().props.disabled).toBe(true);
+    const sel = (l: string) => t.root.findAll((n) => n.props.accessibilityLabel === l && n.props.accessibilityState)[0].props.accessibilityState.selected;
+    expect(sel('Group 1')).toBe(true);
+    expect(sel('Group 5')).toBe(false);
+    expect(sel('Currency USD')).toBe(true);
+    await act(async () => { t.unmount(); });
+  });
+
+  it('closing the sheet without Apply discards the draft', async () => {
+    const t = await open();
+    await act(async () => { byLabel(t, 'Group by').props.onPress(); });
+    await act(async () => { byLabel(t, 'Group 100').props.onPress(); });
+    await act(async () => { byLabel(t, 'Close order book settings').props.onPress(); });
+    await act(async () => { byLabel(t, 'Group by').props.onPress(); });
+    const sel = (l: string) => t.root.findAll((n) => n.props.accessibilityLabel === l && n.props.accessibilityState)[0].props.accessibilityState.selected;
+    expect(sel('Group 1')).toBe(true);
+    expect(sel('Group 100')).toBe(false);
+    await act(async () => { t.unmount(); });
+  });
+
+  it('opening the book while the sheet is at peek returns it to half', async () => {
+    const t = await mount(PerpsTradeScreen, 'PerpsTrade', { venue: 'hyperliquid', symbol: 'BTC', side: 'short' });
+    await act(async () => { byLabel(t, 'Expand chart').props.onPress(); });
+    expect(texts(t)).toContain('Indicators');
+    await act(async () => { byLabel(t, 'Order book').props.onPress(); });
+    await act(async () => { jest.advanceTimersByTime(500); });
+    expect(hasId(t, 'orderBook')).toBe(true);
+    expect(texts(t)).not.toContain('Indicators');
+    expect(texts(t)).toContain('Leverage');
+    await act(async () => { t.unmount(); });
+  });
+});
