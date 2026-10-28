@@ -115,8 +115,12 @@ export default function PerpsMarketScreen() {
   const cardBg = dark ? '#12162A' : '#F4F4F4';
   const hairline = dark ? 'rgba(255,255,255,0.08)' : '#EFEFF2';
 
+  // Related markets PUSH a new market page (Trust 2026-10-28 09:42 flow):
+  // BTC -> tap ZEC -> ZEC page; back returns to the BTC page, back again
+  // returns to where the first market was opened from. replace() would
+  // destroy the BTC page and break that back-stack walk.
   const openRelated = (m: PerpMarket) =>
-    navigation.replace('PerpsMarket', { venue: m.venue ?? 'hyperliquid', symbol: m.symbol });
+    navigation.push('PerpsMarket', { venue: m.venue ?? 'hyperliquid', symbol: m.symbol });
 
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>

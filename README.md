@@ -170,6 +170,10 @@ The "−" button on the Perps home opens a tall bottom sheet over the Perps scre
 - **Receive** opens **Select network** (Arbitrum, Ethereum, Base, Optimism, BNB Smart Chain, Polygon, Avalanche, Solana) with the "We'll deposit USDC to your wallet…" note.
 - Settlement through api.veltraviawallet.com arrives with the Wallet Core signing bridge; until then the slide updates the local Perps account.
 
+### Perps: market navigation is a proper back-stack (Trust 09:42 flow)
+
+Every market tap PUSHES a new market page instead of replacing the current one (related markets used to `replace`). Back walks the full history in order: open BTC from the list -> tap ZEC in Related markets -> back returns to the BTC page -> back again returns to the list/home the first market was opened from. Each visited page keeps its own state (Advanced mode, favorites) because it stays mounted in the stack. 183 tests.
+
 ### Perps market page: the REAL TradingView chart (step 2, part 2)
 
 The Advanced chart is now the genuine **TradingView Advanced Charts library (CL v32.1.0)**, exactly as Trust Wallet ships it:

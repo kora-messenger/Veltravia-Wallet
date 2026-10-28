@@ -156,19 +156,22 @@ describe('market page: About, timeframes, related (screenshot parity)', () => {
     await act(async () => { t.unmount(); });
   });
 
-  it('Related markets show same-venue markets; tapping one replaces the page with it', async () => {
+  it('Related markets PUSH a new market page; back-stack walks BTC -> ZEC -> back to BTC (Trust 09:42 flow)', async () => {
     const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
     expect(texts(t)).toContain('Related markets');
-    // ETH card opens the ETH page (replace, not push)
-    const card = t.root.findAll((n) => n.props.accessibilityLabel === undefined && typeof n.props.onPress === 'function' && Array.isArray(n.props.children));
     const nav = t.root.findByType(PerpsMarketScreen).props.navigation;
-    const spy = jest.spyOn(nav, 'replace');
-    const ethCard = t.root.findAll((n) => (n.props.children as any)?.some?.((c: any) => typeof c?.props?.children === 'string' && c.props.children === 'ETH')).length > 0
-      ? t.root.findAll((n) => typeof n.props.onPress === 'function').filter((n) => (n.props.children as any)?.some?.((c: any) => typeof c?.props?.children === 'string' && (c.props.children === 'ETH')))[0]
-      : null;
+    const pushSpy = jest.spyOn(nav, 'push').mockImplementation(() => {});
+    const replaceSpy = jest.spyOn(nav, 'replace').mockImplementation(() => {});
+    // the ETH related card
+    const ethCard = t.root.findAll((n) => typeof n.props.onPress === 'function')
+      .find((n) => (n.props.children as any)?.some?.((c: any) => typeof c?.props?.children === 'string' && c.props.children === 'ETH'));
     expect(ethCard).toBeTruthy();
     await act(async () => { ethCard!.props.onPress(); });
-    expect(spy).toHaveBeenCalledWith('PerpsMarket', { venue: 'hyperliquid', symbol: 'ETH' });
+    expect(pushSpy).toHaveBeenCalledWith('PerpsMarket', { venue: 'hyperliquid', symbol: 'ETH' });
+    expect(replaceSpy).not.toHaveBeenCalled();
+    // this BTC page is untouched (still mounted, still BTC)
+    expect(texts(t)).toContain('About Bitcoin');
+    pushSpy.mockRestore(); replaceSpy.mockRestore();
     await act(async () => { t.unmount(); });
   });
 });
