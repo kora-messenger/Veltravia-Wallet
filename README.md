@@ -152,6 +152,10 @@ The official token now has a contract and logo, ready to deploy:
 - `src/assets/vwt-logo.png` + `vwt-logo-small.png` — VWT coin logo: gold infinity on deep navy with the violet→cyan glow, plus a 256px in-app copy.
 - Deploying to a live chain is a manual step (needs a funded wallet); once the address exists it goes into the app's token metadata so VWT displays natively.
 
+### Perps balance loading time (Trust parity)
+
+Trust doesn't resolve the Perps balance instantly: measured from a screen recording, its skeleton stays up about **4.3 seconds** on a cold open before the real balance appears. Ours now mirrors that: on a fresh app open the skeleton holds while the providers' balances are looked up (`SIMULATED_LOOKUP_MS = 4300` until api.veltraviawallet.com serves the real lookup, at which point the real response time takes over). `MIN_SKELETON_MS` (600ms) stops a very fast answer from flashing. Leaving and re-entering the tab mid-load does not restart the wait, and every later visit is instant from cache.
+
 ### Perps Withdraw sheet (Trust parity)
 
 The "−" button on the Perps home opens a tall bottom sheet over the Perps screen: X + "Withdraw", the typed amount (with "≈ $" below), a **Withdraw from** row (provider + its balance), a **Receive** row (USDC + network), a percent slider (0/25/50/75/100 stops, drag shows a % bubble), an in-sheet keypad, and a **Slide to Withdraw** control.

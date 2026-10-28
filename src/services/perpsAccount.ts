@@ -129,25 +129,56 @@ export function resetPerpsAccounts() {
   accounts = {};
   loaded = false;
   sessionLoaded = false;
+  inFlight = null;
   emit();
 }
 
 // --- fresh-open loading ------------------------------------------------------
-// The balance "fetch" only runs once per fresh app open: the first time the
+// The balance lookup only runs once per fresh app open: the first time the
 // Perps tab mounts, the screen shows Trust's skeleton while the balance is
-// fetched; every later visit renders instantly from the cached account.
+// looked up; every later visit renders instantly from the cached account.
+//
+// Trust holds the skeleton until the providers actually answer, which takes
+// about 4-5 seconds on a cold open (measured from a screen recording: skeleton
+// up for ~4.3s, then the real balance). We mirror that: the lookup waits for
+// the account to load, then for the provider balance round trip. The round
+// trip is simulated here until api.veltraviawallet.com serves it; once it does
+// the real response time replaces SIMULATED_LOOKUP_MS and MIN_SKELETON_MS only
+// keeps a very fast answer from flashing.
 let sessionLoaded = false;
+
+/** Stand-in for the providers' balance round trip (Trust measured ~4.3s). */
+export const SIMULATED_LOOKUP_MS = 4300;
+/** Never show the skeleton for less than this, so a quick answer doesn't flash. */
+export const MIN_SKELETON_MS = 600;
 
 export function perpsSessionLoaded(): boolean {
   return sessionLoaded;
 }
 
-export async function ensurePerpsSessionLoad(): Promise<void> {
-  if (sessionLoaded) return;
-  await loadPerpsAccounts();
-  // Simulated round-trip until the api.veltraviawallet.com feed is wired.
-  await new Promise<void>((res) => { setTimeout(res, 800); });
-  sessionLoaded = true;
+/** Injectable for tests; the real implementation will call the backend. */
+let lookupBalances: () => Promise<void> = () =>
+  new Promise<void>((res) => { setTimeout(res, SIMULATED_LOOKUP_MS); });
+
+export function setBalanceLookup(fn: () => Promise<void>) {
+  lookupBalances = fn;
+}
+
+let inFlight: Promise<void> | null = null;
+
+export function ensurePerpsSessionLoad(): Promise<void> {
+  if (sessionLoaded) return Promise.resolve();
+  if (inFlight) return inFlight; // leaving and re-entering mid-load must not restart the wait
+  const started = Date.now();
+  inFlight = (async () => {
+    await loadPerpsAccounts();
+    await lookupBalances();
+    const remaining = MIN_SKELETON_MS - (Date.now() - started);
+    if (remaining > 0) await new Promise<void>((res) => { setTimeout(res, remaining); });
+    sessionLoaded = true;
+    inFlight = null;
+  })();
+  return inFlight;
 }
 
 const round = (n: number) => Math.round(n * 100) / 100;
