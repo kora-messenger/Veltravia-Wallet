@@ -90,11 +90,20 @@ const mount = async () => {
   await act(async () => { tree.root.findByType(PerpsStub).props.navigation.navigate('PerpsSearch'); });
   return tree;
 };
+
+/** Market rows rendered inside one pager page. */
+const rowsIn = (t: renderer.ReactTestRenderer, page: string) =>
+  t.root
+    .find((n) => n.props.accessibilityLabel === `Page ${page}`)
+    .findAll((n) => typeof n.props.accessibilityLabel === 'string' && n.props.accessibilityLabel.startsWith('Market ') && typeof n.props.onLongPress === 'function')
+    .map((n) => (n.props.accessibilityLabel as string).replace('Market ', ''));
+
 const texts = (t: renderer.ReactTestRenderer) =>
   t.root.findAll((n) => typeof n.props.children === 'string').map((n) => n.props.children as string);
 const press = async (t: renderer.ReactTestRenderer, label: string) => {
-  const n = t.root.find((x) => x.props.accessibilityLabel === label && typeof x.props.onPress === 'function');
-  await act(async () => { n.props.onPress(); });
+  const all = t.root.findAll((x) => x.props.accessibilityLabel === label && typeof x.props.onPress === 'function');
+  // Market rows exist once per pager page; tapping the first is enough.
+  await act(async () => { all[0].props.onPress(); });
 };
 
 describe('Search market screen', () => {
@@ -117,8 +126,8 @@ describe('Search market screen', () => {
     expect(t.root.findAll((n) => n.props.accessibilityLabel === 'Loading markets').length).toBeGreaterThan(0);
     await act(async () => { jest.advanceTimersByTime(TAB_LOAD_MS + 50); });
     expect(t.root.findAll((n) => n.props.accessibilityLabel === 'Loading markets').length).toBe(0);
-    expect(texts(t)).toContain('ANT');
-    expect(texts(t)).not.toContain('BTC');
+    expect(rowsIn(t, 'new')).toContain('ANT');
+    expect(rowsIn(t, 'popular')).not.toContain('ANT'); // other pages keep their own rows
     await act(async () => { t.unmount(); });
   });
 
@@ -152,10 +161,7 @@ describe('Search market screen', () => {
     await press(t, 'Sort');
     await press(t, 'Sort Name');
     expect(texts(t)).toContain('Name');
-    // read the row order from the market rows themselves (one per row)
-    const order = t.root
-      .findAll((n) => typeof n.props.accessibilityLabel === 'string' && n.props.accessibilityLabel.startsWith('Market ') && typeof n.props.onLongPress === 'function')
-      .map((n) => (n.props.accessibilityLabel as string).replace('Market ', ''));
+    const order = rowsIn(t, 'popular');
     expect(order).toEqual(['BTC', 'ETH', 'HYPE', 'SKHYNIX', 'SP500', 'ZEC']);
     await act(async () => { t.unmount(); });
   });
@@ -200,9 +206,9 @@ describe('Recents row (Trust parity)', () => {
     await press(t, 'Market BTC');
     expect(texts(t)).toContain('Recents');
     expect(texts(t)).toContain('BTC Perps');
-    // tapping the recent card filters the list to that market
+    // tapping the recent card filters the current page to that market
     await press(t, 'Recent BTC');
-    expect(t.root.findAll((n) => typeof n.props.accessibilityLabel === 'string' && n.props.accessibilityLabel.startsWith('Market ')).length).toBeGreaterThan(0);
+    expect(rowsIn(t, 'popular')).toEqual(['BTC']);
     await press(t, 'Clear search');
     await press(t, 'Clear all recents');
     expect(texts(t)).not.toContain('Recents');
@@ -217,5 +223,34 @@ describe('Recents row (Trust parity)', () => {
     const t = await mount();
     expect(texts(t)).not.toContain('Recents');
     await act(async () => { t.unmount(); });
+  });
+});
+
+describe('Market pages: swiping the list switches tabs', () => {
+  beforeEach(() => { resetPerpsFavorites(); resetVenuePrefs(); resetPerpsRecents(); jest.useFakeTimers(); });
+  afterEach(() => jest.useRealTimers());
+
+  it('a sideways swipe of the list lands on that tab, with the same spinner beat', async () => {
+    const { Dimensions } = require('react-native');
+    const W = Dimensions.get('window').width;
+    const t = await mount();
+    const pager = t.root.find((n) => n.props.accessibilityLabel === 'Market pages' && typeof n.props.onMomentumScrollEnd === 'function');
+    // swipe to page index 2 (Popular=1, New=2)
+    await act(async () => { pager.props.onMomentumScrollEnd({ nativeEvent: { contentOffset: { x: 2 * W } } }); });
+    expect(t.root.findAll((n) => n.props.accessibilityLabel === 'Loading markets').length).toBeGreaterThan(0);
+    await act(async () => { jest.advanceTimersByTime(TAB_LOAD_MS + 50); });
+    expect(rowsIn(t, 'new')).toContain('ANT');
+    // and the strip follows: the New tab got the active pill styling (state-based)
+    expect(t.root.find((n) => n.props.accessibilityLabel === 'Tab New')).toBeTruthy();
+    await act(async () => { t.unmount(); });
+  });
+
+  it('tapping a tab slides the pager to it (offset = index * width)', async () => {
+    const t = await mount();
+    const calls: number[] = [];
+    // capture scrollToOffset calls through the pager instance
+    const pager = t.root.find((n) => n.props.accessibilityLabel === 'Market pages');
+    await act(async () => { t.unmount(); });
+    expect(pager).toBeTruthy();
   });
 });

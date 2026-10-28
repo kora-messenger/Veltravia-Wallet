@@ -174,7 +174,7 @@ The "−" button on the Perps home opens a tall bottom sheet over the Perps scre
 
 The search icon on the Perps home opens a full-screen market browser (screen `PerpsSearch`, built from a Trust screen recording):
 
-- **Tab strip**: a star tab (favorites) plus Popular, New, Crypto, Stocks, Forex, Meme. Switching tab shows a brief spinner, like Trust, then that tab's markets.
+- **Tab strip**: a star tab (favorites) plus Popular, New, Crypto, Stocks, Forex, Meme. Switching tab shows a brief spinner, like Trust, then that tab's markets. The market list is a **horizontal pager**: swiping the content sideways switches tabs (with the same vibration + spinner beat), and the strip auto-scrolls to keep the active tab pill visible — tapping a tab slides the pager to it.
 - **Filter chips**: "All providers" (picker: All / Hyperliquid / Aster) and "Volume (24h)" (sort picker: Volume, Price change, Price, Max leverage, Name; picking the active option again flips the direction, shown by the arrow).
 - **List**: the same rows as the Perps home (logo, leverage pill, volume, sparkline, price, 24h change). Tap the small star on a row (or long-press the row) to favorite it; favorites persist and appear once in the star tab, which shows "No favorites yet" when empty.
 - **Bottom "Search market" bar**: typing narrows the current tab by symbol. The round X clears the text first; pressed again with an empty box, it closes the screen.

@@ -15,6 +15,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, Pressable, ScrollView, FlatList, TextInput, ActivityIndicator, Keyboard, Vibration,
+  useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -64,7 +65,14 @@ export default function PerpsSearchScreen() {
   const favorites = usePerpsFavorites();
   const recents = usePerpsRecents();
 
+  // One page per tab, swipeable like Trust: the list is a horizontal pager and
+  // the tab strip follows it (and vice versa).
+  const PAGES = useMemo(() => [FAVORITES_TAB, ...SEARCH_TABS.map((t) => t.key)], []);
   const [tab, setTab] = useState<string>('popular');
+  const { width: W } = useWindowDimensions();
+  const pagerRef = useRef<FlatList<string>>(null);
+  const tabsRef = useRef<any>(null);
+  const tabX = useRef<Record<string, number>>({});
   const [provider, setProvider] = useState<ProviderFilter>('all');
   const [sort, setSort] = useState<SortKey>('volume');
   const [dir, setDir] = useState<SortDir>('desc');
@@ -83,13 +91,35 @@ export default function PerpsSearchScreen() {
     return () => clearTimeout(t);
   }, [tab]);
 
-  const rows = useMemo(
-    () => queryMarkets({
-      tab, provider, query, sort, dir, favorites,
-      venueVisible: { hyperliquid: hl.showInMarkets, aster: aster.showInMarkets },
-    }),
-    [tab, provider, query, sort, dir, favorites, hl.showInMarkets, aster.showInMarkets],
-  );
+  const rowsByTab = useMemo(() => {
+    const venueVisible = { hyperliquid: hl.showInMarkets, aster: aster.showInMarkets };
+    return Object.fromEntries(PAGES.map((t) => [
+      t,
+      queryMarkets({ tab: t, provider, query, sort, dir, favorites, venueVisible }),
+    ]));
+  }, [PAGES, provider, query, sort, dir, favorites, hl.showInMarkets, aster.showInMarkets]);
+
+  /** Switch tab from a tap: vibrate, update state, slide the pager. */
+  const selectTab = (t: string) => {
+    Vibration.vibrate(10);
+    setTab(t);
+    pagerRef.current?.scrollToOffset({ offset: PAGES.indexOf(t) * W, animated: true });
+  };
+
+  /** A sideways swipe of the market list switches tabs too. */
+  const onPageScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const i = Math.max(0, Math.min(PAGES.length - 1, Math.round(e.nativeEvent.contentOffset.x / W)));
+    const t = PAGES[i];
+    Vibration.vibrate(10);
+    setTab(t);
+  };
+
+  // keep the active tab pill visible in the strip
+  useEffect(() => {
+    const x = tabX.current[tab];
+    if (x == null || !tabsRef.current) return;
+    tabsRef.current.scrollTo({ x: Math.max(0, x - W / 2 + 60), animated: true });
+  }, [tab, W]);
 
   // Recents resolve against the dataset; hidden venues drop out of the row.
   const recentMarkets = useMemo(
@@ -141,10 +171,10 @@ export default function PerpsSearchScreen() {
       ) : null}
 
       {/* tab strip */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
+      <ScrollView ref={tabsRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
         <Pressable
           accessibilityLabel="Favorites"
-          onPress={() => { Vibration.vibrate(10); setTab(FAVORITES_TAB); }}
+          onPress={() => selectTab(FAVORITES_TAB)}
           style={[styles.tab, tab === FAVORITES_TAB && { backgroundColor: dark ? '#252A3D' : '#E7E7EC' }]}
         >
           <StarIcon size={22} color={tab === FAVORITES_TAB ? theme.ink : muted} filled={tab === FAVORITES_TAB} />
@@ -155,7 +185,8 @@ export default function PerpsSearchScreen() {
             <Pressable
               key={t.key}
               accessibilityLabel={`Tab ${t.title}`}
-              onPress={() => { Vibration.vibrate(10); setTab(t.key); }}
+              onLayout={(e) => { tabX.current[t.key] = e.nativeEvent.layout.x; }}
+              onPress={() => selectTab(t.key)}
               style={[styles.tab, active && { backgroundColor: dark ? '#252A3D' : '#E7E7EC' }]}
             >
               <Text style={[styles.tabText, { color: active ? theme.ink : muted }]}>{t.title}</Text>
@@ -185,52 +216,73 @@ export default function PerpsSearchScreen() {
         <View style={styles.center} accessibilityLabel="Loading markets">
           <ActivityIndicator color={muted} />
         </View>
-      ) : rows.length === 0 ? (
-        <View style={styles.center}>
-          <Text style={[styles.empty, { color: muted }]}>{emptyText}</Text>
-        </View>
       ) : (
         <FlatList
-          data={rows}
-          keyExtractor={(r) => r.key}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: 100 + insets.bottom }}
-          renderItem={({ item }) => {
-            const m = item.market;
-            const up = m.change24h >= 0;
-            const col = up ? GREEN : RED;
-            const fav = favorites.has(favKey(m));
+          ref={pagerRef}
+          accessibilityLabel="Market pages"
+          data={PAGES}
+          keyExtractor={(t) => t}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={onPageScrollEnd}
+          getItemLayout={(_, i) => ({ length: W, offset: W * i, index: i })}
+          extraData={rowsByTab}
+          renderItem={({ item: t }) => {
+            const rows = rowsByTab[t] ?? [];
             return (
-              <Pressable
-                accessibilityLabel={`Market ${m.symbol}`}
-                onLongPress={() => toggleFavorite(favKey(m))}
-                onPress={() => addPerpsRecent({ venue: m.venue ?? 'hyperliquid', symbol: m.symbol })}
-                style={({ pressed }) => [styles.row, pressed && { backgroundColor: dark ? 'rgba(255,255,255,0.05)' : '#F1F1F4' }]}
+              <ScrollView
+                accessibilityLabel={`Page ${t}`}
+                style={{ width: W }}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ paddingBottom: 100 + insets.bottom }}
               >
-                <MarketLogo m={m} />
-                <View style={styles.rowLeft}>
-                  <View style={styles.symbolLine}>
-                    <Text style={[styles.symbol, { color: theme.ink }]} numberOfLines={1}>{m.symbol}</Text>
-                    <View style={[styles.levPill, { backgroundColor: leverageBg }]}>
-                      <Text style={[styles.levText, { color: muted }]}>{m.leverage}x</Text>
-                    </View>
+                {rows.length === 0 ? (
+                  <View style={styles.center}>
+                    <Text style={[styles.empty, { color: muted }]}>
+                      {t === FAVORITES_TAB && !query ? 'No favorites yet. Tap the star on a market to add it.' : 'No markets found'}
+                    </Text>
                   </View>
-                  <Text style={[styles.vol, { color: muted }]}>{m.volume}</Text>
-                </View>
-                <Sparkline data={perpSpark(`${item.section}:${m.symbol}`, m.change24h)} width={90} height={44} color={col} strokeWidth={1.6} fill="flat" sharp id={`s-${item.key}`} />
-                <View style={styles.rowRight}>
-                  <Text style={[styles.price, { color: theme.ink }]}>{formatPerpPrice(m.price)}</Text>
-                  <Text style={[styles.change, { color: col }]}>{formatChange(m.change24h)}</Text>
-                </View>
-                <Pressable
-                  accessibilityLabel={fav ? `Unfavorite ${m.symbol}` : `Favorite ${m.symbol}`}
-                  hitSlop={8}
-                  onPress={() => toggleFavorite(favKey(m))}
-                  style={styles.favBtn}
-                >
-                  <StarIcon size={18} color={fav ? '#F4B728' : muted} filled={fav} />
-                </Pressable>
-              </Pressable>
+                ) : rows.map((item) => {
+                  const m = item.market;
+                  const up = m.change24h >= 0;
+                  const col = up ? GREEN : RED;
+                  const fav = favorites.has(favKey(m));
+                  return (
+                    <Pressable
+                      key={item.key}
+                      accessibilityLabel={`Market ${m.symbol}`}
+                      onLongPress={() => toggleFavorite(favKey(m))}
+                      onPress={() => addPerpsRecent({ venue: m.venue ?? 'hyperliquid', symbol: m.symbol })}
+                      style={({ pressed }) => [styles.row, pressed && { backgroundColor: dark ? 'rgba(255,255,255,0.05)' : '#F1F1F4' }]}
+                    >
+                      <MarketLogo m={m} />
+                      <View style={styles.rowLeft}>
+                        <View style={styles.symbolLine}>
+                          <Text style={[styles.symbol, { color: theme.ink }]} numberOfLines={1}>{m.symbol}</Text>
+                          <View style={[styles.levPill, { backgroundColor: leverageBg }]}>
+                            <Text style={[styles.levText, { color: muted }]}>{m.leverage}x</Text>
+                          </View>
+                        </View>
+                        <Text style={[styles.vol, { color: muted }]}>{m.volume}</Text>
+                      </View>
+                      <Sparkline data={perpSpark(`${item.section}:${m.symbol}`, m.change24h)} width={90} height={44} color={col} strokeWidth={1.6} fill="flat" sharp id={`s-${t}-${item.key}`} />
+                      <View style={styles.rowRight}>
+                        <Text style={[styles.price, { color: theme.ink }]}>{formatPerpPrice(m.price)}</Text>
+                        <Text style={[styles.change, { color: col }]}>{formatChange(m.change24h)}</Text>
+                      </View>
+                      <Pressable
+                        accessibilityLabel={fav ? `Unfavorite ${m.symbol}` : `Favorite ${m.symbol}`}
+                        hitSlop={8}
+                        onPress={() => toggleFavorite(favKey(m))}
+                        style={styles.favBtn}
+                      >
+                        <StarIcon size={18} color={fav ? '#F4B728' : muted} filled={fav} />
+                      </Pressable>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
             );
           }}
         />
