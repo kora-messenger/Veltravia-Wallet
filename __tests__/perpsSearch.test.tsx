@@ -270,3 +270,21 @@ describe('Tab strip (Trust parity)', () => {
       ['BTC', 'ETH', 'HYPE', 'ZEC', 'NEAR', 'SOL', 'XRP', 'ENA', 'XMR', 'WLD']);
   });
 });
+
+describe('Pre-IPO and Commodities (Trust screenshots 2026-10-28)', () => {
+  it('Pre-IPO lists ANTH, ANT, OAI, PREDICT, MOONSHOT, PAPER, XTEN, POLYMARKET, OURA with the shot numbers', () => {
+    const rows = queryMarkets({ tab: 'preipo', provider: 'all', query: '', sort: 'volume', dir: 'desc', favorites: new Set<string>(), venueVisible: { hyperliquid: true, aster: true } });
+    expect(rows.map((r) => r.market.symbol)).toEqual(['ANTH', 'ANT', 'OAI', 'PREDICT', 'MOONSHOT', 'PAPER', 'XTEN', 'POLYMARKET', 'OURA']);
+    expect(rows[0].market.price).toBe(1878.7);
+    expect(rows[0].market.leverage).toBe(15);
+    expect(rows[8].market.price).toBe(48.546);
+  });
+
+  it('Commodities lists CL, BRENTOIL, SILVER, GOLD, NATGAS, PLATINUM, COPPER, PALLADIUM, BZ, HO with the shot numbers', () => {
+    const rows = queryMarkets({ tab: 'commodities', provider: 'all', query: '', sort: 'volume', dir: 'desc', favorites: new Set<string>(), venueVisible: { hyperliquid: true, aster: true } });
+    expect(rows.map((r) => r.market.symbol)).toEqual(['CL', 'BRENTOIL', 'SILVER', 'GOLD', 'NATGAS', 'PLATINUM', 'COPPER', 'PALLADIUM', 'BZ', 'HO']);
+    expect(rows[0].market.volume).toBe('$231.14M Vol');
+    expect(rows[3].market.price).toBe(4047.2);
+    expect(rows[9].market.leverage).toBe(10);
+  });
+});
