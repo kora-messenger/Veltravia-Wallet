@@ -14,7 +14,7 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, Pressable, ScrollView, FlatList, TextInput, ActivityIndicator, Keyboard,
+  View, Text, StyleSheet, Pressable, ScrollView, FlatList, TextInput, ActivityIndicator, Keyboard, Vibration,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -107,7 +107,7 @@ export default function PerpsSearchScreen() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
         <Pressable
           accessibilityLabel="Favorites"
-          onPress={() => setTab(FAVORITES_TAB)}
+          onPress={() => { Vibration.vibrate(10); setTab(FAVORITES_TAB); }}
           style={[styles.tab, tab === FAVORITES_TAB && { backgroundColor: dark ? '#252A3D' : '#E7E7EC' }]}
         >
           <StarIcon size={22} color={tab === FAVORITES_TAB ? theme.ink : muted} filled={tab === FAVORITES_TAB} />
@@ -118,7 +118,7 @@ export default function PerpsSearchScreen() {
             <Pressable
               key={t.key}
               accessibilityLabel={`Tab ${t.title}`}
-              onPress={() => setTab(t.key)}
+              onPress={() => { Vibration.vibrate(10); setTab(t.key); }}
               style={[styles.tab, active && { backgroundColor: dark ? '#252A3D' : '#E7E7EC' }]}
             >
               <Text style={[styles.tabText, { color: active ? theme.ink : muted }]}>{t.title}</Text>
