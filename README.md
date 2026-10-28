@@ -172,7 +172,7 @@ The "−" button on the Perps home opens a tall bottom sheet over the Perps scre
 
 ### Activity loading/failure states unified (Trust 10:22 screenshot)
 
-Both Activity screens (wallet + Perps) now share one loading/failure pattern:
+The **Perps Activity screen** carries this loading/failure pattern (the main wallet Activity screen keeps its own existing state):
 
 - **Failure state:** Trust's cog illustration is replaced everywhere with Ijezie's sad no-Wi-Fi robot (`src/assets/activity-error-robot.png`, transparent background so one asset serves light and dark). Copy matches Trust 10:22 exactly: a single grey line "Failed to load activity" and a 288x59 **Retry** pill (no headline, no error caption). Retry re-runs the full load.
 - **Skeleton:** the shared `Skeleton` primitives (used by both Activity screens, Perps home session load, Discover search, ReceiveSheet) carry Trust's two-part animation: the 700/600ms opacity pulse plus the moving light band sweeping every block every 0.8s.
