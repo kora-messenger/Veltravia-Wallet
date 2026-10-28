@@ -414,7 +414,7 @@ export default function PerpsMarketScreen() {
         <View style={styles.lsRow}>
           <Pressable
             accessibilityLabel="Long"
-            onPress={() => showToast('Trade tickets arrive with live data', { kind: 'info' })}
+            onPress={() => navigation.navigate('PerpsTrade', { venue, symbol, side: 'long' })}
             style={[styles.lsBtn, { backgroundColor: GREEN }]}
           >
             <Text style={styles.lsText}>Long</Text>
@@ -422,7 +422,7 @@ export default function PerpsMarketScreen() {
           </Pressable>
           <Pressable
             accessibilityLabel="Short"
-            onPress={() => showToast('Trade tickets arrive with live data', { kind: 'info' })}
+            onPress={() => navigation.navigate('PerpsTrade', { venue, symbol, side: 'short' })}
             style={[styles.lsBtn, { backgroundColor: RED }]}
           >
             <Text style={styles.lsText}>Short</Text>

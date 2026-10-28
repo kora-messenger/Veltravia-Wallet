@@ -276,11 +276,19 @@ export default function PerpsScreen() {
 
       {/* Long / Short pills float above the tab bar */}
       <View pointerEvents="box-none" style={[styles.ls, { bottom: 104 + insets.bottom }]}>
-        <Pressable style={({ pressed }) => [styles.lsBtn, { backgroundColor: GREEN, opacity: pressed ? 0.88 : 1 }]}>
+        <Pressable
+          accessibilityLabel="Long"
+          onPress={() => navigation.navigate('PerpsSearch', { mode: 'long' })}
+          style={({ pressed }) => [styles.lsBtn, { backgroundColor: GREEN, opacity: pressed ? 0.88 : 1 }]}
+        >
           <Text style={styles.lsText}>Long</Text>
           <ArrowUpRightTx size={18} color="#FFFFFF" strokeWidth={2.4} />
         </Pressable>
-        <Pressable style={({ pressed }) => [styles.lsBtn, { backgroundColor: RED, opacity: pressed ? 0.88 : 1 }]}>
+        <Pressable
+          accessibilityLabel="Short"
+          onPress={() => navigation.navigate('PerpsSearch', { mode: 'short' })}
+          style={({ pressed }) => [styles.lsBtn, { backgroundColor: RED, opacity: pressed ? 0.88 : 1 }]}
+        >
           <Text style={styles.lsText}>Short</Text>
           <ArrowDownRightIcon size={18} color="#FFFFFF" strokeWidth={2.4} />
         </Pressable>

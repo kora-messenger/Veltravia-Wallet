@@ -312,3 +312,14 @@ Android builds via GitHub Actions (`android.yml`). Market, portfolio and Discove
 - **Phase 3:** hosted AI assistant, Buy flow, Bitcoin (UTXO wave)
 - **Next:** live API (prices, balances, Discover trending/search), Wallet Core signing bridge, real token logos
 - **v2:** Swap (DEX routing), in-app dApp browser + WalletConnect, NFTs
+
+### Perps trade ticket (Long / Short), from the Oct 28 recording
+
+Trust reuses ONE market list two ways, and so do we (`PerpsSearchScreen` takes `mode`):
+
+- **Browse** (search icon, Recents, "Popular >"): tapping a market opens Market Detail.
+- **Trade** (the floating Long / Short buttons on the Perps home): the identical list, but tapping a market goes straight to the ticket for that side (`PerpsTrade { venue, symbol, side }`). Market Detail's own Long / Short buttons open the same ticket.
+
+`PerpsTradeScreen`: market header (logo with a venue badge, `40x` pill, price, day change). Holding a candle swaps it for Open / High / Low / Close, the candle's date and its signed change, and releasing restores it. Below it a compact candle chart with an Expand pill, then a draggable sheet with **three snaps**: peek (just the header row, chart goes large with Collapse, 1H 1D 1W 1M 1Y YTD AI, an interval picker and an Indicators card), half (default: amount, 5-stop slider, Leverage Cross 3x, TP/SL, Pay with, CTA, "Risk disclosure - 0.15% fee") and full (adds "Liquidation price"). The CTA reads **Fund wallet** while the venue balance is $0, then Open Long / Open Short. "Pay with" opens `PerpsPayWithScreen` (back + search, "No crypto yet" empty state, and a "Fund wallet with" NGN / USD / EUR / GBP list).
+
+Pure logic lives in `src/services/perpsTrade.ts` (snap heights and fling settling, slider stops, size = margin x leverage, liquidation estimate, CTA state, OHLC formatting). **Not wired yet:** order signing/submission (Open Long/Short only toasts), the leverage and TP/SL pickers, the order book, fiat on-ramp purchases and Manage indicators, which all need live data / the Wallet Core signer.

@@ -924,3 +924,24 @@ export const CalendarIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: I
     <Path d="M7.6 13h2M11 13h2M14.4 13h2M7.6 16.4h2M11 16.4h2M14.4 16.4h2" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
   </Svg>
 );
+
+/** Chart "Expand": arrows pointing out to opposite corners. */
+export const ExpandArrowsIcon = ({ size = 16, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+/** Chart "Collapse": arrows pointing in. */
+export const CollapseArrowsIcon = ({ size = 16, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+/** Order-book glyph: stacked bars of different lengths, left-aligned. */
+export const OrderBookIcon = ({ size = 22, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M4 6h16M4 10h10M4 14h16M4 18h8" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+  </Svg>
+);

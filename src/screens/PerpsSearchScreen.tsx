@@ -12,13 +12,13 @@
  * Provider filter respects Settings > Perps "Show in markets": a hidden
  * venue never appears here either.
  */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, Pressable, ScrollView, FlatList, TextInput, ActivityIndicator, Keyboard, Vibration,
   useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeProvider';
 import Sparkline from '../components/Sparkline';
 import AppModal from '../components/AppModal';
@@ -61,6 +61,20 @@ export default function PerpsSearchScreen() {
   const dark = theme.mode === 'dark';
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  // Trust reuses this one screen two ways: opened from the search icon it's a
+  // browser (tap a market -> Market Detail); opened from Long / Short the very
+  // same list sends a tap straight to the trade ticket for that side.
+  const side: 'long' | 'short' | undefined =
+    route.params?.mode === 'long' || route.params?.mode === 'short' ? route.params.mode : undefined;
+  const openMarket = useCallback(
+    (m: { venue?: string; symbol: string }) => {
+      const venue = m.venue ?? 'hyperliquid';
+      if (side) navigation.navigate('PerpsTrade', { venue, symbol: m.symbol, side });
+      else navigation.navigate('PerpsMarket', { venue, symbol: m.symbol });
+    },
+    [navigation, side],
+  );
   const hl = useVenuePrefs('hyperliquid');
   const aster = useVenuePrefs('aster');
   const favorites = usePerpsFavorites();
@@ -170,7 +184,7 @@ export default function PerpsSearchScreen() {
                 key={`${m.venue ?? 'hyperliquid'}:${m.symbol}`}
                 accessibilityLabel={`Recent ${m.symbol}`}
                 style={[styles.recentCard, { backgroundColor: chipBg }]}
-                onPress={() => navigation.navigate('PerpsMarket', { venue: m.venue ?? 'hyperliquid', symbol: m.symbol })}
+                onPress={() => openMarket(m)}
               >
                 <MarketLogo m={m} />
                 <Text style={[styles.recentName, { color: theme.ink }]} numberOfLines={1}>{`${m.symbol} Perps`}</Text>
@@ -270,7 +284,7 @@ export default function PerpsSearchScreen() {
                       key={item.key}
                       accessibilityLabel={`Market ${m.symbol}`}
                       onLongPress={() => toggleFavorite(favKey(m))}
-                      onPress={() => navigation.navigate('PerpsMarket', { venue: m.venue ?? 'hyperliquid', symbol: m.symbol })}
+                      onPress={() => openMarket(m)}
                       style={({ pressed }) => [styles.row, { backgroundColor: pressed ? (dark ? '#161A28' : '#F1F1F4') : theme.background }]}
                     >
                       <MarketLogo m={m} />
