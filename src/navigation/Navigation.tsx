@@ -36,6 +36,7 @@ import PerpsAboutScreen from '../screens/PerpsAboutScreen';
 import PerpsMenuScreen from '../screens/PerpsMenuScreen';
 import PerpsDepositScreen from '../screens/PerpsDepositScreen';
 import PerpsWithdrawScreen from '../screens/PerpsWithdrawScreen';
+import PerpsSearchScreen from '../screens/PerpsSearchScreen';
 import PerpsVenueScreen from '../screens/PerpsVenueScreen';
 import { loadVenuePrefs } from '../services/perpsVenues';
 import TokensScreen from '../screens/TokensScreen';
@@ -94,6 +95,7 @@ export type RootStackParamList = {
   PerpsAbout: undefined;
   PerpsDeposit: { mode: 'deposit' | 'withdraw' };
   PerpsWithdraw: undefined;
+  PerpsSearch: undefined;
   PerpsVenue: { venue: 'hyperliquid' | 'aster' };
 };
 
@@ -289,6 +291,7 @@ export default function Navigation() {
       <Stack.Screen name="PerpsMenu" component={PerpsMenuScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PerpsAbout" component={PerpsAboutScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PerpsDeposit" component={PerpsDepositScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="PerpsSearch" component={PerpsSearchScreen} options={{ animation: 'fade' }} />
       <Stack.Screen
         name="PerpsWithdraw"
         component={PerpsWithdrawScreen}

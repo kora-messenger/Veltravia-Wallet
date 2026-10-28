@@ -170,6 +170,17 @@ The "−" button on the Perps home opens a tall bottom sheet over the Perps scre
 - **Receive** opens **Select network** (Arbitrum, Ethereum, Base, Optimism, BNB Smart Chain, Polygon, Avalanche, Solana) with the "We'll deposit USDC to your wallet…" note.
 - Settlement through api.veltraviawallet.com arrives with the Wallet Core signing bridge; until then the slide updates the local Perps account.
 
+### Perps "Search market" (Trust parity)
+
+The search icon on the Perps home opens a full-screen market browser (screen `PerpsSearch`, built from a Trust screen recording):
+
+- **Tab strip**: a star tab (favorites) plus Popular, New, Crypto, Stocks, Forex, Meme. Switching tab shows a brief spinner, like Trust, then that tab's markets.
+- **Filter chips**: "All providers" (picker: All / Hyperliquid / Aster) and "Volume (24h)" (sort picker: Volume, Price change, Price, Max leverage, Name; picking the active option again flips the direction, shown by the arrow).
+- **List**: the same rows as the Perps home (logo, leverage pill, volume, sparkline, price, 24h change). Tap the small star on a row (or long-press the row) to favorite it; favorites persist and appear once in the star tab, which shows "No favorites yet" when empty.
+- **Bottom "Search market" bar**: typing narrows the current tab by symbol. The round X clears the text first; pressed again with an empty box, it closes the screen.
+- **Respects Settings > Perps "Show in markets"**: a hidden venue's markets never appear here either.
+- Logic lives in `src/services/perpsSearch.ts` (pure, tested) and favorites in `src/services/perpsFavorites.ts`. The dataset is still the local `PERP_SECTIONS` until the backend feed lands.
+
 ### Scanner exempt from the app lock (Trust parity)
 
 When the app lock is on, the QR scanner stays reachable without unlocking:

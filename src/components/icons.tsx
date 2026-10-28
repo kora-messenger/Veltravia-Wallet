@@ -555,6 +555,24 @@ export const NetAvalanche = ({ size = 40 }: { size?: number }) => (
   </Svg>
 );
 
+/** Star outline / filled (Perps favorites). */
+export const StarIcon = ({ size = 24, color = '#000', strokeWidth = 1.8, filled = false }: IconProps & { filled?: boolean }) => (
+  <Svg {...base(size)}>
+    <Path
+      d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.7L12 16.6 6.9 19.3l1-5.7-4.1-4 5.7-.8L12 3.6z"
+      {...stroke(color, strokeWidth)}
+      fill={filled ? color : 'none'}
+    />
+  </Svg>
+);
+
+/** Down/up arrow used next to the sort label (rotates for ascending). */
+export const SortArrowIcon = ({ size = 16, color = '#000', strokeWidth = 2, up = false }: IconProps & { up?: boolean }) => (
+  <Svg {...base(size)}>
+    <Path d={up ? 'M12 19V5m-6 6l6-6 6 6' : 'M12 5v14m-6-6l6 6 6-6'} {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
 export const COIN_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   BTC: CoinBtc,
   ETH: CoinEth,
