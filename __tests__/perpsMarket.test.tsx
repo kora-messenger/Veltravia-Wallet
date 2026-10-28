@@ -172,3 +172,115 @@ describe('market page: About, timeframes, related (screenshot parity)', () => {
     await act(async () => { t.unmount(); });
   });
 });
+
+describe('Advanced chart mode (Trust recording 2026-10-28 09:33)', () => {
+  beforeEach(() => { resetPerpsFavorites(); resetPerpsRecents(); });
+
+  const has = (t: renderer.ReactTestRenderer, label: string) =>
+    t.root.findAll((x) => x.props.accessibilityLabel === label && typeof x.props.onPress === 'function').length > 0;
+
+  it('normal view: About / Stats / Related and the Advanced button; no Indicators card', async () => {
+    const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    const all = texts(t);
+    expect(all).toContain('About Bitcoin');
+    expect(all).toContain('Related markets');
+    expect(all).not.toContain('Indicators');
+    expect(has(t, 'Advanced chart')).toBe(true);
+    expect(has(t, 'Return')).toBe(false);
+    await act(async () => { t.unmount(); });
+  });
+
+  it('Advanced: hides About/Stats/Related, shows Indicators (Volume + Manage), TradingView logo, Return; keeps Long/Short', async () => {
+    const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    await press(t, 'Advanced chart');
+    const all = texts(t);
+    expect(all).not.toContain('About Bitcoin');
+    expect(all).not.toContain('Related markets');
+    expect(all).not.toContain('24h volume');
+    expect(all).toContain('Indicators');
+    expect(all).toContain('Volume');
+    expect(all).toContain('Manage');
+    expect(all).toContain('Return');
+    expect(all).toContain('Long');
+    expect(all).toContain('Short');
+    expect(has(t, 'TradingView')).toBe(true);
+    expect(has(t, 'Advanced chart')).toBe(false);
+    await act(async () => { t.unmount(); });
+  });
+
+  it('Return goes back to the normal page', async () => {
+    const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    await press(t, 'Advanced chart');
+    await press(t, 'Return');
+    expect(texts(t)).toContain('About Bitcoin');
+    expect(texts(t)).not.toContain('Indicators');
+    await act(async () => { t.unmount(); });
+  });
+
+  it('the TradingView logo opens tradingview.com in the system browser', async () => {
+    const { Linking } = require('react-native');
+    const spy = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    await press(t, 'Advanced chart');
+    await press(t, 'TradingView');
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(String(spy.mock.calls[0][0])).toContain('tradingview.com');
+    spy.mockRestore();
+    await act(async () => { t.unmount(); });
+  });
+
+  it('Manage toggles the Volume indicator (Volume <-> None)', async () => {
+    const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    await press(t, 'Advanced chart');
+    expect(texts(t)).toContain('Volume');
+    await press(t, 'Manage indicators');
+    expect(texts(t)).toContain('None');
+    await press(t, 'Manage indicators');
+    expect(texts(t)).toContain('Volume');
+    await act(async () => { t.unmount(); });
+  });
+
+  it('interval picker: opens, lists intervals, picking one updates the chip', async () => {
+    const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    expect(texts(t)).toContain('30m');
+    await press(t, 'Candle interval');
+    expect(texts(t)).toContain('Candle interval');
+    await press(t, 'Interval 4h');
+    expect(texts(t)).toContain('4h');
+    expect(texts(t)).not.toContain('30m');
+    await act(async () => { t.unmount(); });
+  });
+
+  it('choosing a range resets the interval to that range\'s default (1W -> 4h, 1H -> 1m)', async () => {
+    const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    await press(t, 'Timeframe 1H');
+    expect(texts(t)).toContain('1m');
+    await press(t, 'Timeframe 1Y');
+    expect(texts(t)).toContain('1d');
+    await act(async () => { t.unmount(); });
+  });
+
+  it('long-pressing the chart in Advanced mode shows the crosshair readout; releasing hides it', async () => {
+    jest.useFakeTimers();
+    const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    await press(t, 'Advanced chart');
+    const chart = t.root.find((x) => x.props.accessibilityLabel === 'Candle chart');
+    const touch = (x: number) => ({ nativeEvent: { touches: [{ pageX: x, pageY: 100 }], locationX: x, pageX: x } });
+    await act(async () => { chart.props.onResponderGrant(touch(150)); });
+    await act(async () => { jest.advanceTimersByTime(400); });
+    expect(texts(t).some((x) => x.startsWith('O '))).toBe(true);
+    await act(async () => { chart.props.onResponderRelease(); });
+    expect(texts(t).some((x) => x.startsWith('O '))).toBe(false);
+    jest.useRealTimers();
+    await act(async () => { t.unmount(); });
+  });
+
+  it('the normal (non-Advanced) chart ignores gestures', async () => {
+    jest.useFakeTimers();
+    const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    const chart = t.root.find((x) => x.props.accessibilityLabel === 'Candle chart');
+    expect(chart.props.onStartShouldSetResponder()).toBe(false);
+    jest.useRealTimers();
+    await act(async () => { t.unmount(); });
+  });
+});

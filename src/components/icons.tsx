@@ -573,6 +573,39 @@ export const SortArrowIcon = ({ size = 16, color = '#000', strokeWidth = 2, up =
   </Svg>
 );
 
+/** Arrow pointing up-left (the "Return" pill). */
+export const ArrowLeftUpIcon = ({ size = 16, color = '#000', strokeWidth = 2.4 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M18 18L6 6M6 6v8M6 6h8" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/** Hexagon with a dot (chart settings, bottom-right of the chart). */
+export const HexSettingsIcon = ({ size = 22, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M12 2.8l7.6 4.4v9.6L12 21.2l-7.6-4.4V7.2L12 2.8z" {...stroke(color, strokeWidth)} />
+    <Circle cx="12" cy="12" r="2.6" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/** Up/down chevrons (interval picker "30m"). */
+export const ChevronsUpDownIcon = ({ size = 14, color = '#000', strokeWidth = 2.4 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M7 9.5l5-5 5 5" {...stroke(color, strokeWidth)} />
+    <Path d="M7 14.5l5 5 5-5" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
+/** TradingView mark: square dot, T-bar and slashed V (drawn as paths, no raster). */
+export const TradingViewMark = ({ size = 32 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 36 28">
+    <Path d="M14 22H7V11h7v11zM2.5 11.2a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z" fill="#131722" />
+    <Path d="M14.5 22H21L27.8 6H21.3L14.5 22z" fill="#131722" />
+    <Circle cx="22.2" cy="9" r="3.4" fill="#131722" />
+    <Path d="M28.5 22h6.6L28.4 6h-4.6l4.7 16z" fill="#131722" />
+  </Svg>
+);
+
 /** Four-point sparkle (AI-written "About" sections). */
 export const SparkleIcon = ({ size = 16, color = '#000' }: IconProps) => (
   <Svg {...base(size)}>

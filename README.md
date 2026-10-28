@@ -170,6 +170,16 @@ The "−" button on the Perps home opens a tall bottom sheet over the Perps scre
 - **Receive** opens **Select network** (Arbitrum, Ethereum, Base, Optimism, BNB Smart Chain, Polygon, Avalanche, Solana) with the "We'll deposit USDC to your wallet…" note.
 - Settlement through api.veltraviawallet.com arrives with the Wallet Core signing bridge; until then the slide updates the local Perps account.
 
+### Perps market page: candle chart and Advanced mode (step 2)
+
+The chart is now a real interactive candlestick chart (`CandleChart` + pure maths in `services/candleEngine.ts`, 21 + 7 tests):
+
+- **Candles** with green/red bodies and wicks, a dashed purple last-price line and tag, a right **price axis** (nice round ticks, bold at the round values) and a bottom **time axis** (HH:mm, bold day number at midnight).
+- **Ranges** 1H, 1D, 1W, 1M, 1Y, YTD each open on Trust's interval (1D -> 30m, 1W/1M -> 4h, 1Y -> 1d); the **interval picker** (30m with up/down chevrons) lets you choose 1m, 5m, 15m, 30m, 1h, 4h or 1d. The leading **trend icon** toggles candles <-> a close-price line.
+- **Advanced** (the outlined button) switches the page to the full chart mode seen in the recording: About/Stats/Related are hidden; the chart grows tall; a **volume histogram** appears; an **Indicators** card (Volume, **Manage** toggles it) sits below; the TradingView mark opens tradingview.com in the system browser; **Return** goes back; the hex icon is chart settings. Long/Short and "Provided by" stay.
+- **Gestures in Advanced**: one finger pans, two-finger pinch zooms around the fingers, and the **price scale re-fits** to what is visible (so zooming in tightens the axis, as in the recording). Long-press shows a **crosshair** with an OHLC readout; release hides it.
+- Candles are generated deterministically per market + range + interval and always end at the live price, until api.veltraviawallet.com serves real OHLC. No gesture library: PanResponder-style responder events only.
+
 ### Perps market page (rebuilt from the 2026-10-28 screenshots)
 
 Tapping any market (Perps home, Search market, Watchlist, a Recent card, or a Related market card) opens its market page:

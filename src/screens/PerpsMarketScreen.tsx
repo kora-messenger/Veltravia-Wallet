@@ -14,18 +14,18 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, Pressable, ScrollView, useWindowDimensions,
+  View, Text, StyleSheet, Pressable, ScrollView, useWindowDimensions, Linking, Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeProvider';
 import CandleChart from '../components/CandleChart';
-import Sparkline from '../components/Sparkline';
 import { showToast } from '../components/Toast';
 import {
   BackIcon, StarIcon, BellIcon, HistoryIcon, ChevronRight, ChevronDownIcon,
-  ArrowUpRightTx, ArrowDownRightIcon, COIN_ICONS, SparkleIcon, ShareSquareIcon,
+  ArrowUpRightTx, ArrowDownRightIcon, COIN_ICONS, SparkleIcon, ShareSquareIcon, TrendIcon, ArrowLeftUpIcon, HexSettingsIcon, TradingViewMark, ChevronsUpDownIcon, CheckIcon,
 } from '../components/icons';
+import { RANGES, INTERVALS, defaultInterval, type Range, type Interval } from '../services/candleEngine';
 import { PERP_SECTIONS, formatPerpPrice, formatChange, type PerpMarket } from '../services/perpsMarkets';
 import { getMarketInfo, getMarketStats, relatedMarkets, marketName } from '../services/perpsMarketInfo';
 import { usePerpsFavorites, toggleFavorite, loadPerpsFavorites } from '../services/perpsFavorites';
@@ -36,7 +36,7 @@ import { useVenuePrefs, type PerpsVenue as VenueType } from '../services/perpsVe
 const GREEN = '#158444';
 const RED = '#D63232';
 
-const TIMEFRAMES = ['1H', '1D', '1W', '1M', '1Y', 'YTD', '30m'];
+const TRADINGVIEW_URL = 'https://www.tradingview.com/?utm_source=veltraviawallet.com&utm_medium=chart';
 
 /** Resolve a market from the dataset (exported for tests). */
 export function findMarket(venue: string, symbol: string): PerpMarket | undefined {
@@ -78,7 +78,13 @@ export default function PerpsMarketScreen() {
   const isFav = favorites.has(key);
 
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [tf, setTf] = useState('1D');
+  const [range, setRange] = useState<Range>('1D');
+  const [interval, setIntervalState] = useState<Interval>('30m');
+  const [advanced, setAdvanced] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [volumeOn, setVolumeOn] = useState(true);
+  const [lineMode, setLineMode] = useState(false);
+  const pickRange = (r: Range) => { setRange(r); setIntervalState(defaultInterval(r)); };
 
   // opening a market records it in Recents
   useEffect(() => {
@@ -165,36 +171,98 @@ export default function PerpsMarketScreen() {
           </View>
         </View>
 
-        {/* chart + Advanced */}
+        {/* chart (+ Advanced button in the normal view) */}
         <View style={styles.chartWrap}>
-          <CandleChart seedKey={`${symbol}:${tf}`} last={market.price} color={theme.brand} />
-          <Pressable
-            accessibilityLabel="Advanced chart"
-            onPress={() => showToast('Advanced charts arrive with live data', { kind: 'info' })}
-            style={[styles.advancedBtn, { borderColor: dark ? 'rgba(255,255,255,0.16)' : '#D9D9DE' }]}
-          >
-            <ShareSquareIcon size={14} color={theme.ink} />
-            <Text style={[styles.advancedText, { color: theme.ink }]}>Advanced</Text>
-          </Pressable>
+          <CandleChart
+            seedKey={`${venue}:${symbol}`}
+            last={market.price}
+            range={range}
+            interval={interval}
+            height={advanced ? 400 : 240}
+            interactive={advanced}
+            showVolume={advanced && volumeOn}
+            dark={dark}
+            brand={theme.brand}
+            line={lineMode}
+          />
+          {!advanced && (
+            <Pressable
+              accessibilityLabel="Advanced chart"
+              onPress={() => setAdvanced(true)}
+              style={[styles.advancedBtn, { borderColor: dark ? 'rgba(255,255,255,0.16)' : '#D9D9DE' }]}
+            >
+              <ShareSquareIcon size={14} color={theme.ink} />
+              <Text style={[styles.advancedText, { color: theme.ink }]}>Advanced</Text>
+            </Pressable>
+          )}
+          {advanced && (
+            <>
+              <Pressable
+                accessibilityLabel="TradingView"
+                onPress={() => Linking.openURL(TRADINGVIEW_URL).catch(() => showToast("Couldn't open TradingView. Try again later.", { kind: 'error' }))}
+                style={styles.tvLogo}
+              >
+                <TradingViewMark size={32} />
+              </Pressable>
+              <Pressable
+                accessibilityLabel="Return"
+                onPress={() => setAdvanced(false)}
+                style={[styles.returnPill, { backgroundColor: dark ? '#1D2133' : '#F1F1F4' }]}
+              >
+                <ArrowLeftUpIcon size={14} color={theme.ink} />
+                <Text style={[styles.returnText, { color: theme.ink }]}>Return</Text>
+              </Pressable>
+              <Pressable
+                accessibilityLabel="Chart settings"
+                onPress={() => setVolumeOn((v) => !v)}
+                style={styles.hexBtn}
+              >
+                <HexSettingsIcon size={22} color={theme.inkMuted} />
+              </Pressable>
+            </>
+          )}
         </View>
 
-        {/* timeframes */}
+        {/* timeframes: line/candle toggle, ranges, interval picker */}
         <View style={styles.tfRow}>
-          {TIMEFRAMES.map((x) => (
+          <Pressable accessibilityLabel="Chart type" onPress={() => setLineMode((v) => !v)} style={styles.tfIcon}>
+            <TrendIcon size={20} color={theme.ink} />
+          </Pressable>
+          {RANGES.map((x) => (
             <Pressable
               key={x}
               accessibilityLabel={`Timeframe ${x}`}
-              onPress={() => setTf(x)}
-              style={[styles.tf, x === tf ? { backgroundColor: dark ? '#2C2C31' : '#1A1A1D' } : null]}
+              onPress={() => pickRange(x)}
+              style={[styles.tf, x === range ? { backgroundColor: dark ? '#2A2D3E' : '#EEEEF0' } : null]}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                <Text style={[styles.tfText, { color: x === tf ? '#FFFFFF' : theme.ink }]}>{x}</Text>
-                {x === '30m' && <ChevronDownIcon size={10} color={x === tf ? '#FFFFFF' : theme.ink} />}
-              </View>
+              <Text style={[styles.tfText, { color: x === range ? theme.ink : theme.inkMuted }]}>{x}</Text>
             </Pressable>
           ))}
+          <Pressable accessibilityLabel="Candle interval" onPress={() => setPickerOpen(true)} style={styles.tf}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={[styles.tfText, { color: theme.ink }]}>{interval}</Text>
+              <ChevronsUpDownIcon size={14} color={theme.ink} />
+            </View>
+          </Pressable>
         </View>
 
+        {advanced && (
+          <View style={[styles.indicators, { backgroundColor: dark ? '#12162A' : '#F4F4F6' }]}>
+            <View>
+              <Text style={[styles.indLabel, { color: theme.inkMuted }]}>Indicators</Text>
+              <Text style={[styles.indValue, { color: theme.ink }]}>{volumeOn ? 'Volume' : 'None'}</Text>
+            </View>
+            <Pressable
+              accessibilityLabel="Manage indicators"
+              onPress={() => setVolumeOn((v) => !v)}
+              style={[styles.manageBtn, { backgroundColor: dark ? 'rgba(108,99,255,0.22)' : '#E6E4FF' }]}
+            >
+              <Text style={[styles.manageText, { color: theme.brand }]}>Manage</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {!advanced && (<>
         {/* About (AI-written) */}
         <Pressable accessibilityLabel="About" onPress={() => setAboutOpen((v) => !v)} style={styles.sectionHead}>
           <SparkleIcon size={16} color={theme.brand} />
@@ -243,7 +311,23 @@ export default function PerpsMarketScreen() {
             </Pressable>
           ))}
         </ScrollView>
+        </>)}
       </ScrollView>
+
+      {/* interval picker */}
+      <Modal visible={pickerOpen} transparent animationType="fade" onRequestClose={() => setPickerOpen(false)}>
+        <Pressable style={styles.scrim} onPress={() => setPickerOpen(false)}>
+          <View style={[styles.pickerSheet, { backgroundColor: theme.background }]}>
+            <Text style={[styles.pickerTitle, { color: theme.ink }]}>Candle interval</Text>
+            {INTERVALS.map((iv) => (
+              <Pressable key={iv} accessibilityLabel={`Interval ${iv}`} onPress={() => { setIntervalState(iv); setPickerOpen(false); }} style={styles.pickerRow}>
+                <Text style={[styles.pickerText, { color: theme.ink, fontWeight: iv === interval ? '700' : '500' }]}>{iv}</Text>
+                {iv === interval && <CheckIcon size={18} color={theme.brand} />}
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
 
       {/* bottom bar */}
       <View style={[styles.bottom, { paddingBottom: insets.bottom + 10, backgroundColor: theme.background }]}>
@@ -294,12 +378,27 @@ const styles = StyleSheet.create({
   assetName: { fontSize: 13, fontFamily: 'Inter-500', marginTop: 1 },
   price: { fontSize: 20, fontFamily: 'Inter-800', fontWeight: '800' },
   change: { fontSize: 12, fontFamily: 'Inter-600', fontWeight: '600', marginTop: 2 },
-  chartWrap: { marginHorizontal: 16, marginTop: 8 },
-  advancedBtn: { position: 'absolute', left: 8, bottom: 8, flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, height: 28, backgroundColor: 'rgba(255,255,255,0.72)' },
+  chartWrap: { marginHorizontal: 0, marginTop: 8, paddingLeft: 0 },
+  advancedBtn: { position: 'absolute', left: 16, bottom: 34, flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, height: 28, backgroundColor: 'rgba(255,255,255,0.72)' },
   advancedText: { fontSize: 12, fontFamily: 'Inter-600', fontWeight: '600' },
-  tfRow: { flexDirection: 'row', gap: 6, paddingHorizontal: 16, paddingVertical: 12, flexWrap: 'wrap' },
-  tf: { height: 28, borderRadius: 14, paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center' },
-  tfText: { fontSize: 12, fontFamily: 'Inter-600', fontWeight: '600' },
+  tfRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
+  tfIcon: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  tf: { height: 34, borderRadius: 17, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
+  tfText: { fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600' },
+  tvLogo: { position: 'absolute', left: 6, bottom: 34, width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } },
+  returnPill: { position: 'absolute', left: 52, bottom: 36, flexDirection: 'row', alignItems: 'center', gap: 5, height: 34, borderRadius: 17, paddingHorizontal: 12 },
+  returnText: { fontSize: 14, fontFamily: 'Inter-600', fontWeight: '600' },
+  hexBtn: { position: 'absolute', right: 6, bottom: 2, width: 32, height: 28, alignItems: 'center', justifyContent: 'center' },
+  indicators: { marginHorizontal: 16, marginTop: 4, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  indLabel: { fontSize: 14, fontFamily: 'Inter-500' },
+  indValue: { fontSize: 17, fontFamily: 'Inter-700', fontWeight: '700', marginTop: 4 },
+  manageBtn: { height: 40, borderRadius: 20, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center' },
+  manageText: { fontSize: 15, fontFamily: 'Inter-700', fontWeight: '700' },
+  scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.28)', justifyContent: 'flex-end' },
+  pickerSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 18, paddingBottom: 30 },
+  pickerTitle: { fontSize: 17, fontFamily: 'Inter-700', fontWeight: '700', marginBottom: 6 },
+  pickerRow: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pickerText: { fontSize: 16, fontFamily: 'Inter-500' },
   sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingTop: 18, paddingBottom: 8 },
   sectionTitle: { fontSize: 16, fontFamily: 'Inter-700', fontWeight: '700', flex: 1 },
   aboutText: { fontSize: 13, lineHeight: 19, fontFamily: 'Inter-400' },
