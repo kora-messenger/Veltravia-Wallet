@@ -170,6 +170,14 @@ The "−" button on the Perps home opens a tall bottom sheet over the Perps scre
 - **Receive** opens **Select network** (Arbitrum, Ethereum, Base, Optimism, BNB Smart Chain, Polygon, Avalanche, Solana) with the "We'll deposit USDC to your wallet…" note.
 - Settlement through api.veltraviawallet.com arrives with the Wallet Core signing bridge; until then the slide updates the local Perps account.
 
+### Scanner exempt from the app lock (Trust parity)
+
+When the app lock is on, the QR scanner stays reachable without unlocking:
+
+- The lock screen (passcode) has a **scan icon bottom-left**; tapping it opens the Scan screen while the app stays locked.
+- The lock overlay **skips the ScanQr route**: no passcode prompt covers the scanner. Closing the scanner (or scanning and popping) returns to the lock screen — everything else stays gated.
+- Safe by construction: a scan opened from the lock screen has no scan target, so a scanned code can only show a toast; nothing (browser, send, wallet data) can be reached while locked.
+
 ### dApp disclaimer (rebuilt, Trust parity)
 
 Tapping a dApp in Discover (e.g. Aave) pops the disclaimer **on the Discover screen** — the dApp does NOT open behind it and nothing loads until the user accepts:

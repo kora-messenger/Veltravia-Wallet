@@ -133,6 +133,9 @@ export default function Navigation() {
   // background, like Trust. Unlock reveals the app (MainTabs for an
   // existing wallet); the welcome screen never shows again.
   const [locked, setLocked] = React.useState(true);
+  // Current top route: the QR scanner stays reachable while the app is
+  // locked (Trust parity) — the lock overlay skips the ScanQr route.
+  const [routeName, setRouteName] = React.useState<string>('');
   const [booted, setBooted] = React.useState(false);
   const [walletExists, setWalletExists] = React.useState(false);
   // Cached passcode state so the background lock is SYNCHRONOUS. Reading the
@@ -208,7 +211,10 @@ export default function Navigation() {
     <View style={{ flex: 1, backgroundColor: theme.background }}>
     {/* The navigator stays mounted while locked so the screen the user was on
         (e.g. Wallets) survives unlock; the opaque lock overlay covers it. */}
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer
+      ref={navigationRef}
+      onStateChange={() => setRouteName((navigationRef.current?.getCurrentRoute()?.name ?? '') as string)}
+    >
       <React.Fragment>
       <Stack.Navigator
         initialRouteName={walletExists ? 'MainTabs' : 'Onboarding'}
@@ -294,11 +300,14 @@ export default function Navigation() {
       <NotificationSheet visible={notifPrompt} onClose={() => setNotifPrompt(false)} />
       </React.Fragment>
     </NavigationContainer>
-    {locked && (
+    {locked && routeName !== 'ScanQr' && (
       // Opaque, topmost layer. Sheets are AppModals and unmount while locked,
       // so this is the only passcode / fingerprint surface on screen.
       <View style={[StyleSheet.absoluteFill, { zIndex: 9999, elevation: 9999, backgroundColor: theme.background }]}>
-        <LockScreen onUnlock={unlock} />
+        <LockScreen
+          onUnlock={unlock}
+          onScan={() => (navigationRef.current as any)?.navigate('ScanQr')}
+        />
       </View>
     )}
     </View>

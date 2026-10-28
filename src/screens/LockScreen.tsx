@@ -19,7 +19,7 @@ import { View, Text, Pressable, StyleSheet, Animated, Easing, StatusBar, Vibrati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
 import BiometricSplash from '../components/BiometricSplash';
-import { FingerprintIcon, BackspaceIcon, ScanFaceIcon } from '../components/icons';
+import { FingerprintIcon, BackspaceIcon, ScanFaceIcon, ScanIcon } from '../components/icons';
 import { verifyPasscode } from '../core/storage/passcode';
 import { isBiometricsSupported, isBiometricUnlockEnabled, promptBiometrics, getBiometryType, type BiometryType } from '../core/security/biometrics';
 import { setFlagSecure } from '../core/security';
@@ -31,7 +31,12 @@ const RED = '#E5484D';
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 30_000;
 
-export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
+/**
+ * onScan opens the QR scanner WITHOUT unlocking (Trust parity: the lock
+ * screen has a scan icon at the bottom-left; the scanner is the one surface
+ * the app lock does not cover).
+ */
+export default function LockScreen({ onUnlock, onScan }: { onUnlock: () => void; onScan: () => void }) {
   const { theme } = useTheme();
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
@@ -256,6 +261,13 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
           </Pressable>
         ))}
       </View>
+      <Pressable
+        accessibilityLabel="Scan QR code"
+        onPress={onScan}
+        style={({ pressed }) => [styles.scanBtn, { backgroundColor: theme.mode === 'dark' ? '#1D2133' : '#EEEEF0', opacity: pressed ? 0.7 : 1 }]}
+      >
+        <ScanIcon size={24} color={theme.ink} />
+      </Pressable>
       {splash && <BiometricSplash />}
     </SafeAreaView>
   );
@@ -272,4 +284,5 @@ const styles = StyleSheet.create({
   pad: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 36, paddingBottom: 24 },
   key: { width: '33.333%', height: 76, alignItems: 'center', justifyContent: 'center' },
   keyText: { fontFamily: 'Inter-600', fontSize: 30, lineHeight: 36 },
+  scanBtn: { position: 'absolute', left: 28, bottom: 20, width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
 });
