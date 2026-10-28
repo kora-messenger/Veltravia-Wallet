@@ -34,8 +34,8 @@ const VENUE_INFO: Record<PerpsVenue, {
   },
   aster: {
     name: 'Aster',
-    feesUrl: 'https://docs.aster.xyz/fees-and-funding',
-    rulesUrl: 'https://docs.aster.xyz',
+    feesUrl: 'https://docs.asterdex.com/trading/perpetuals/fees-and-specs/fees',
+    rulesUrl: 'https://www.asterdex.com/en/futures/trading-rules/trading-rules',
   },
 };
 
