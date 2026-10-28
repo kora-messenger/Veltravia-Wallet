@@ -40,11 +40,13 @@ jobs:
 
       - name: Build Release APK
         run: |
-          cd android && ./gradlew assembleRelease
+          cd android && ./gradlew assembleRelease assembleDebug
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: veltravia-wallet-debug-apk
-          path: android/app/build/outputs/apk/release/app-release.apk
+          name: veltravia-wallet-apks
+          path: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
