@@ -915,3 +915,12 @@ export const CardIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconP
     <Path d="M6.6 14.6h3.4" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
   </Svg>
 );
+
+/** Calendar glyph for the Start/End range fields (Trust's grey grid calendar). */
+export const CalendarIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect x="3.5" y="5" width="17" height="15.5" rx="2.4" stroke={color} strokeWidth={strokeWidth} />
+    <Path d="M3.5 9.6h17M8 3.2v3.4M16 3.2v3.4" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    <Path d="M7.6 13h2M11 13h2M14.4 13h2M7.6 16.4h2M11 16.4h2M14.4 16.4h2" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+  </Svg>
+);

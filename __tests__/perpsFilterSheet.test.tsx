@@ -110,8 +110,23 @@ describe('Perps "Filter" sheet (Trust 10:38 screenshot)', () => {
     await act(async () => { tree.unmount(); });
   });
 
+  it('Date > Custom seeds the Start/End range fields (now-7d -> now)', async () => {
+    const t = await mount();
+    await act(async () => { chip(t, 'Custom').props.onPress(); });
+    const all = texts(t);
+    expect(all).toContain('Start');
+    expect(all).toContain('End');
+    expect(all.some((x) => /^Oct \d+, 2026 \d+:\d+ [AP]M$/.test(x) || /^\w{3} \d+, 2026 \d+:\d+ [AP]M$/.test(x))).toBe(true);
+    // both fields open the native picker (a no-op in tests, value unchanged)
+    const before = all.filter((x) => /AM|PM/.test(x)).length;
+    await act(async () => { t.root.find((n) => n.props.accessibilityLabel === 'Start date').props.onPress(); });
+    expect(t.root.findAll((n) => n.props.accessibilityLabel === 'End date').length).toBeGreaterThan(0);
+    expect(texts(t).filter((x) => /AM|PM/.test(x)).length).toBe(before);
+    await act(async () => { t.unmount(); });
+  });
+
   it('Reset returns the draft to the defaults', async () => {
-    const filters: PerpsActivityFilters = { provider: 'hyperliquid', assets: [], type: ['trade'], showFundingPayment: true, status: ['failed'], date: '30d' };
+    const filters: PerpsActivityFilters = { provider: 'hyperliquid', assets: [], type: ['trade'], showFundingPayment: true, status: ['failed'], date: '30d', customStart: null, customEnd: null };
     const t = await mount(filters);
     await act(async () => { chip(t, 'Hyperliquid').props.onPress(); }); // deselect -> still dirty via type/status/date
     const reset = t.root.find((n) => typeof n.props.onPress === 'function' && n.props.children?.props?.children === 'Reset');

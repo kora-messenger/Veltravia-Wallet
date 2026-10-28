@@ -27,7 +27,7 @@ import { BackIcon, FilterLinesIcon } from '../components/icons';
 import { T, SP, TOUCH } from '../theme/typography';
 import { ActivitySkeleton } from '../components/Skeleton';
 import NetInfo from '@react-native-community/netinfo';
-import PerpsFilterSheet, { PerpsActivityFilters, DEFAULT_PERPS_ACTIVITY_FILTERS } from '../components/PerpsFilterSheet';
+import PerpsFilterSheet, { PerpsActivityFilters, DEFAULT_PERPS_ACTIVITY_FILTERS, perpsFiltersActive } from '../components/PerpsFilterSheet';
 
 export default function PerpsActivityScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
@@ -115,6 +115,10 @@ export default function PerpsActivityScreen({ navigation }: { navigation: any })
         </View>
         <Pressable hitSlop={12} onPress={() => setSheetOpen(true)} style={[styles.circle, { backgroundColor: chipBg }]}>
           <FilterLinesIcon size={TOUCH.headerIcon} color={theme.ink} />
+          {perpsFiltersActive(filters) ? (
+            // Trust: a ~7dp brand dot on the circle's top-right while any filter is applied
+            <View testID="filterActiveDot" style={[styles.filterDot, { backgroundColor: theme.brand, borderColor: chipBg }]} />
+          ) : null}
         </Pressable>
       </View>
 
@@ -213,6 +217,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SP.md,
     paddingBottom: SP.xs,
   },
+  filterDot: { position: 'absolute', top: 1, right: 1, width: 8, height: 8, borderRadius: 4 },
   circle: {
     width: TOUCH.headerCircle,
     height: TOUCH.headerCircle,

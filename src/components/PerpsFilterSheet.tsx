@@ -23,8 +23,18 @@
  *                    draft equals the defaults, brand gradient once dirty —
  *                    plus the drag handle pill at the very bottom
  *
- * Chips: light #f5f5f5 (themed surfaceAlt), ~16dp radius; selected chips get
- * the Veltravia violet tint + brand text.
+ * Chips (measured from the 10:44 recording): idle #EFEEF1 fill with muted
+ * grey text; SELECTED = darker grey fill (#CECED6) with near-black text and
+ * NO border / no brand tint. Reset: pale grey when clean, near-black once
+ * anything is selected (not a brand colour). Show results: pale (#F8F7FA /
+ * #C8C9CE text) when clean, solid brand once dirty. The Assets row's
+ * "Select" is grey with a near-black chevron.
+ *
+ * Date > Custom: the sheet grows upward (to ~116px from the top) and shows
+ * Start / End fields (rounded #EFEEF1, small grey label, bold value, calendar
+ * icon). Tapping a field opens the native Android Material date dialog then
+ * the clock (DateTimePickerModule.kt); defaults are now-7d -> now. The sheet
+ * scrolls when it outgrows the screen.
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
@@ -32,7 +42,8 @@ import AppModal from './AppModal';
 import PrimaryButton from './PrimaryButton';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
-import { CloseIcon, ChevronRight, DocIcon, CardIcon, SwapIcon } from './icons';
+import { CloseIcon, ChevronRight, DocIcon, CardIcon, SwapIcon, CalendarIcon } from './icons';
+import { pickDateTime, formatRangeStamp } from '../core/dateTimePicker';
 import { HyperliquidTile, AsterTile } from './PerpsVenueMarks';
 import { T, SP, RADIUS, FONT } from '../theme/typography';
 import { Animated, Easing } from 'react-native';
@@ -55,6 +66,9 @@ export interface PerpsActivityFilters {
   status: PerpsActivityStatus[];
   /** null = all time. */
   date: PerpsActivityDate | null;
+  /** epoch ms; only meaningful when date === 'custom'. */
+  customStart: number | null;
+  customEnd: number | null;
 }
 
 export const DEFAULT_PERPS_ACTIVITY_FILTERS: PerpsActivityFilters = {
@@ -64,7 +78,14 @@ export const DEFAULT_PERPS_ACTIVITY_FILTERS: PerpsActivityFilters = {
   showFundingPayment: false,
   status: [],
   date: null,
+  customStart: null,
+  customEnd: null,
 };
+
+/** True when any filter differs from the defaults (also drives the header button's dot). */
+export function perpsFiltersActive(f: PerpsActivityFilters): boolean {
+  return !filtersEqual(f, DEFAULT_PERPS_ACTIVITY_FILTERS);
+}
 
 function filtersEqual(a: PerpsActivityFilters, b: PerpsActivityFilters): boolean {
   return (
@@ -74,7 +95,8 @@ function filtersEqual(a: PerpsActivityFilters, b: PerpsActivityFilters): boolean
     a.showFundingPayment === b.showFundingPayment &&
     a.status.length === b.status.length &&
     a.status.every((s) => b.status.includes(s)) &&
-    a.date === b.date
+    a.date === b.date &&
+    (a.date !== 'custom' || (a.customStart === b.customStart && a.customEnd === b.customEnd))
   );
 }
 
@@ -98,7 +120,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
 interface ChipSpec {
   key: string;
   label: string;
-  Mark?: React.ComponentType<{ size?: number }>;
+  Mark?: React.ComponentType<{ size?: number; color?: string }>;
 }
 
 const PROVIDER_CHIPS: ChipSpec[] = [
@@ -144,8 +166,11 @@ export default function PerpsFilterSheet({
   }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const dirty = !filtersEqual(draft, DEFAULT_PERPS_ACTIVITY_FILTERS);
-  const chipIdle = dark ? '#232640' : '#F5F5F7';
-  const chipSel = dark ? 'rgba(108,99,255,0.30)' : 'rgba(108,99,255,0.12)';
+  const chipIdle = dark ? '#232640' : '#EFEEF1';
+  const chipSel = dark ? '#3A3E5C' : '#CECED6';   // Trust: darker grey, not a brand tint
+  const chipTextIdle = dark ? '#9A9EB5' : '#818685';
+  const chipTextSel = dark ? '#FFFFFF' : '#080D13';
+  const mutedPale = dark ? '#5B5F78' : '#CECDD0';
 
   const toggleProvider = useCallback((key: string) => {
     setDraft((d) => ({ ...d, provider: d.provider === key ? null : (key as PerpsProvider) }));
@@ -163,8 +188,30 @@ export default function PerpsFilterSheet({
     }));
   }, []);
   const toggleDate = useCallback((key: string) => {
-    setDraft((d) => ({ ...d, date: d.date === key ? null : (key as PerpsActivityDate) }));
+    setDraft((d) => {
+      if (d.date === key) return { ...d, date: null };
+      if (key !== 'custom') return { ...d, date: key as PerpsActivityDate };
+      const end = d.customEnd ?? Date.now();
+      return { ...d, date: 'custom', customEnd: end, customStart: d.customStart ?? end - 7 * 86400000 };
+    });
   }, []);
+  const editRange = useCallback(async (which: 'start' | 'end') => {
+    const cur = which === 'start' ? draft.customStart : draft.customEnd;
+    const picked = await pickDateTime({
+      initial: cur ?? Date.now(),
+      max: which === 'start' ? undefined : undefined,
+    });
+    if (picked == null) return;
+    setDraft((d) => {
+      const next = { ...d, [which === 'start' ? 'customStart' : 'customEnd']: picked } as PerpsActivityFilters;
+      // keep start <= end (the later one drags the other along)
+      if (next.customStart != null && next.customEnd != null && next.customStart > next.customEnd) {
+        if (which === 'start') next.customEnd = next.customStart;
+        else next.customStart = next.customEnd;
+      }
+      return next;
+    });
+  }, [draft.customStart, draft.customEnd]);
   const reset = useCallback(() => setDraft(DEFAULT_PERPS_ACTIVITY_FILTERS), []);
   const showResults = useCallback(() => {
     onApply(draft);
@@ -178,10 +225,10 @@ export default function PerpsFilterSheet({
         onPress={onPress}
         accessibilityRole="button"
         accessibilityState={{ selected }}
-        style={[pfs.chip, { backgroundColor: selected ? chipSel : chipIdle, borderColor: selected ? theme.brand : 'transparent' }]}
+        style={[pfs.chip, { backgroundColor: selected ? chipSel : chipIdle }]}
       >
-        {Mark ? <Mark size={15} /> : null}
-        <Text style={[pfs.chipText, { color: selected ? theme.brand : theme.inkMuted }]}>{spec.label}</Text>
+        {Mark ? <Mark size={15} color={selected ? chipTextSel : chipTextIdle} /> : null}
+        <Text style={[pfs.chipText, { color: selected ? chipTextSel : chipTextIdle }]}>{spec.label}</Text>
       </Pressable>
     );
   };
@@ -201,7 +248,7 @@ export default function PerpsFilterSheet({
             <Text style={[pfs.title, { color: theme.ink }]}>Filter</Text>
           </View>
           <Pressable onPress={reset} hitSlop={12} disabled={!dirty}>
-            <Text style={[pfs.reset, { color: dirty ? theme.brand : (dark ? '#5B5F78' : '#D0D0D8') }]}>Reset</Text>
+            <Text style={[pfs.reset, { color: dirty ? theme.ink : mutedPale }]}>Reset</Text>
           </Pressable>
         </View>
 
@@ -217,8 +264,10 @@ export default function PerpsFilterSheet({
           {/* ---------- Assets ---------- */}
           <View style={pfs.assetsRow}>
             <Text style={[pfs.label, { color: theme.ink }]}>Assets</Text>
-            <Text style={[pfs.select, { color: dark ? '#5B5F78' : '#D0D0D8' }]}>Select</Text>
-            <ChevronRight size={15} color={dark ? '#5B5F78' : '#D0D0D8'} strokeWidth={2.4} />
+            <View style={pfs.selectWrap}>
+              <Text style={[pfs.select, { color: dark ? '#9A9EB5' : '#83838B' }]}>Select</Text>
+              <ChevronRight size={18} color={theme.ink} strokeWidth={2.4} />
+            </View>
           </View>
 
           {/* ---------- Type ---------- */}
@@ -250,6 +299,25 @@ export default function PerpsFilterSheet({
               <Chip key={c.key} spec={c} selected={draft.date === c.key} onPress={() => toggleDate(c.key)} />
             ))}
           </View>
+
+          {draft.date === 'custom' ? (
+            <View style={pfs.rangeWrap}>
+              {([['Start', draft.customStart, 'start'], ['End', draft.customEnd, 'end']] as const).map(([label, ms, which]) => (
+                <View key={which} style={{ marginBottom: 12 }}>
+                  <Text style={[pfs.rangeLabel, { color: dark ? '#9A9EB5' : '#7E7E88' }]}>{label}</Text>
+                  <Pressable
+                    onPress={() => editRange(which)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${label} date`}
+                    style={[pfs.rangeField, { backgroundColor: chipIdle }]}
+                  >
+                    <Text style={[pfs.rangeValue, { color: theme.ink }]}>{ms != null ? formatRangeStamp(ms) : ''}</Text>
+                    <CalendarIcon size={22} color={dark ? '#9A9EB5' : '#7E7E88'} />
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          ) : null}
         </ScrollView>
 
         {/* ---------- footer: Show results + drag handle ---------- */}
@@ -257,8 +325,8 @@ export default function PerpsFilterSheet({
           {dirty ? (
             <PrimaryButton label="Show results" onPress={showResults} height={58} />
           ) : (
-            <View style={[pfs.idleBtn, { backgroundColor: dark ? '#232640' : '#F8F8F8' }]}>
-              <Text style={[T.buttonLarge, { color: dark ? '#5B5F78' : '#D0D0D8' }]}>Show results</Text>
+            <View style={[pfs.idleBtn, { backgroundColor: dark ? '#232640' : '#F8F7FA' }]}>
+              <Text style={[T.buttonLarge, { color: dark ? '#5B5F78' : '#C8C9CE' }]}>Show results</Text>
             </View>
           )}
           <View style={[pfs.handle, { backgroundColor: dark ? '#3A3E5C' : '#E4E4E9' }]} />
@@ -271,7 +339,7 @@ export default function PerpsFilterSheet({
 const pfs = StyleSheet.create({
   root: { flex: 1 },
   sheet: {
-    maxHeight: '80%',
+    maxHeight: '90%',
     borderTopLeftRadius: RADIUS.xl,
     borderTopRightRadius: RADIUS.xl,
     paddingTop: SP.mdsm,
@@ -299,20 +367,30 @@ const pfs = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingHorizontal: 13,
-    height: 34,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    height: 36,
   },
-  chipText: { fontFamily: FONT.medium, fontSize: 13, lineHeight: 18 },
+  chipText: { fontFamily: FONT.medium, fontSize: 14, lineHeight: 18 },
+  rangeWrap: { marginTop: -6, marginBottom: 8 },
+  rangeLabel: { fontFamily: FONT.regular, fontSize: 13, lineHeight: 18, marginBottom: 6 },
+  rangeField: {
+    height: 56,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  rangeValue: { fontFamily: FONT.semiBold, fontSize: 17, lineHeight: 22 },
   assetsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
     marginBottom: 24,
     height: 22,
     justifyContent: 'space-between',
   },
+  selectWrap: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   select: { fontFamily: FONT.medium, fontSize: 16, lineHeight: 22 },
   fundingRow: {
     flexDirection: 'row',

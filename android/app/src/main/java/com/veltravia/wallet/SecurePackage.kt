@@ -7,7 +7,7 @@ import com.facebook.react.uimanager.ViewManager
 
 class SecurePackage : ReactPackage {
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> =
-      listOf(SecureModule(reactContext), ClipboardModule(reactContext), ShareModule(reactContext))
+      listOf(SecureModule(reactContext), ClipboardModule(reactContext), ShareModule(reactContext), DateTimePickerModule(reactContext))
 
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> =
       emptyList()

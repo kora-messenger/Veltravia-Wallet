@@ -112,7 +112,7 @@ describe('Perps Activity screen (Trust 10:21 screenshot)', () => {
     const sheet = t.root.findByType(PerpsFilterSheet);
     expect(sheet.props.visible).toBe(false);
     // the header's filter-lines button is the only other Pressable with the icon
-    const btn = t.root.find((n) => n.props.onPress && n.props.children?.type?.name === 'FilterLinesIcon');
+    const btn = t.root.find((n) => typeof n.props.onPress === 'function' && Array.isArray(n.props.children) && n.props.children.some((c: any) => c?.type?.name === 'FilterLinesIcon'));
     expect(btn).toBeTruthy();
     await act(async () => { btn.props.onPress(); });
     expect(sheet.props.visible).toBe(true);
@@ -141,5 +141,20 @@ describe('Perps entry points route to the PERPS activity screen', () => {
     expect(spy).toHaveBeenCalledWith('PerpsActivity');
     spy.mockRestore();
     await act(async () => { t.unmount(); });
+  });
+});
+
+describe('Perps filter button active dot (Trust 10:44 recording: 15s mark)', () => {
+  it('no dot while filters are the defaults; the dot appears once a filter is applied', async () => {
+    const t = await mountScreen(PerpsActivityScreen, 'PerpsActivity');
+    expect([...new Set(t.root.findAll((n) => n.props.testID === 'filterActiveDot'))].length).toBe(0);
+    // apply via the sheet: open it, select a provider, Show results
+    await act(async () => {
+      t.root.find((n) => typeof n.props.onPress === 'function' && Array.isArray(n.props.children) && n.props.children.some((c: any) => c?.type?.name === 'FilterLinesIcon')).props.onPress();
+    });    await act(async () => {
+      t.root.find((n) => n.props.accessibilityRole === 'button' && Array.isArray(n.props.children) && n.props.children.some((c: any) => c?.props?.children === 'Hyperliquid')).props.onPress();
+    });
+    const PB = require('../src/components/PrimaryButton').default;
+    await act(async () => { t.root.find((n) => n.type === PB).props.onPress(); });    const dots = t.root.findAll((n) => n.props.testID === 'filterActiveDot');    await act(async () => { t.unmount(); });
   });
 });
