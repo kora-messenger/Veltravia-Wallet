@@ -573,6 +573,23 @@ export const SortArrowIcon = ({ size = 16, color = '#000', strokeWidth = 2, up =
   </Svg>
 );
 
+/** Four-point sparkle (AI-written "About" sections). */
+export const SparkleIcon = ({ size = 16, color = '#000' }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" fill={color} />
+    <Path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z" fill={color} opacity={0.7} />
+  </Svg>
+);
+
+/** Square + outgoing arrow (Advanced chart button). */
+export const ShareSquareIcon = ({ size = 14, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M14 3h4a1 1 0 0 1 1 1v4" {...stroke(color, strokeWidth)} />
+    <Path d="M9 15L19 5M19 5v5M19 5h-5" {...stroke(color, strokeWidth)} />
+    <Path d="M8 3H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
 export const COIN_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   BTC: CoinBtc,
   ETH: CoinEth,
