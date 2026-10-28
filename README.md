@@ -170,6 +170,10 @@ The "−" button on the Perps home opens a tall bottom sheet over the Perps scre
 - **Receive** opens **Select network** (Arbitrum, Ethereum, Base, Optimism, BNB Smart Chain, Polygon, Avalanche, Solana) with the "We'll deposit USDC to your wallet…" note.
 - Settlement through api.veltraviawallet.com arrives with the Wallet Core signing bridge; until then the slide updates the local Perps account.
 
+### Perps "Filter" sheet (Trust 10:38 screenshot)
+
+The Perps Activity screen's filter-lines button now opens a dedicated **PerpsFilterSheet** (the wallet Activity keeps its own FilterSheet). Bottom sheet over the ~20% scrim, same envelope as Trust (rounded top corners, up to 80% of the screen, content-sized). Header: X in a light circle, centred bold "Filter", muted "Reset" (inactive until the draft is dirty). Sections, 24-30px apart: **Provider** single-select chips with the Hyperliquid/Aster marks; **Assets** row with a muted "Select >" (picker lands with live trading data); **Type** multi-select chips (Order=doc, Trade=card, Transfer=swap arrows); **Show funding payment** label + the 34x22 toggle (off by default); **Status** multi-select chips (Completed/Submitted/Processing/Failed); **Date** single-select chips (7d/30d/90d/Custom). Footer: full-width "Show results" pill — pale grey with muted text while clean, brand gradient once dirty — and the drag-handle pill at the very bottom. Chips use the Trust light-grey fill with ~16dp radius; selected chips get the Veltravia violet tint.
+
 ### Activity loading/failure states unified (Trust 10:22 screenshot)
 
 The **Perps Activity screen** carries this loading/failure pattern (the main wallet Activity screen keeps its own existing state):

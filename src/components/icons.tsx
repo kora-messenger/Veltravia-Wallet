@@ -897,3 +897,21 @@ export const ExternalLinkIcon = ({ size = 24, color = '#000', strokeWidth = 1.9 
     <Path d="M18 14v4a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2h4" {...stroke(color, strokeWidth)} />
   </Svg>
 );
+
+/** Order chip glyph — a document sheet (Trust's perps filter "Order" icon). */
+export const DocIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M6 3.5h9.2L19.5 8v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" stroke={color} strokeWidth={strokeWidth} strokeLinejoin="round" />
+    <Path d="M15 3.7V8h4.3" stroke={color} strokeWidth={strokeWidth} strokeLinejoin="round" />
+    <Path d="M8.6 12.6h7M8.6 16h4.8" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+  </Svg>
+);
+
+/** Trade chip glyph — a bank card (Trust's perps filter "Trade" icon). */
+export const CardIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect x="3" y="5.5" width="18" height="13" rx="2.2" stroke={color} strokeWidth={strokeWidth} />
+    <Path d="M3 9.8h18" stroke={color} strokeWidth={strokeWidth} />
+    <Path d="M6.6 14.6h3.4" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+  </Svg>
+);

@@ -5,7 +5,7 @@
  * perps trades/positions, not wallet transfers). Built with the same
  * pattern as the wallet one:
  *   - header: 36dp circles, back left, centred "Activity" 16 SemiBold,
- *     filter-lines button right (opens the same Filters sheet)
+ *     filter-lines button right (opens the Perps "Filter" sheet)
  *   - first load: the shared skeleton list
  *   - empty state: the Veltravia no-activity robot illustration,
  *     "No activity yet" (24 Bold) / "Your transactions will appear here"
@@ -27,7 +27,7 @@ import { BackIcon, FilterLinesIcon } from '../components/icons';
 import { T, SP, TOUCH } from '../theme/typography';
 import { ActivitySkeleton } from '../components/Skeleton';
 import NetInfo from '@react-native-community/netinfo';
-import FilterSheet, { ActivityFilters, DEFAULT_ACTIVITY_FILTERS } from '../components/FilterSheet';
+import PerpsFilterSheet, { PerpsActivityFilters, DEFAULT_PERPS_ACTIVITY_FILTERS } from '../components/PerpsFilterSheet';
 
 export default function PerpsActivityScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
@@ -41,7 +41,7 @@ export default function PerpsActivityScreen({ navigation }: { navigation: any })
   const [pillOpacity, setPillOpacity] = useState(() => new Animated.Value(1));
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [filters, setFilters] = useState<ActivityFilters>(DEFAULT_ACTIVITY_FILTERS);
+  const [filters, setFilters] = useState<PerpsActivityFilters>(DEFAULT_PERPS_ACTIVITY_FILTERS);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const chipBg = dark ? 'rgba(255,255,255,0.12)' : 'rgba(60,64,90,0.08)';
@@ -199,7 +199,7 @@ export default function PerpsActivityScreen({ navigation }: { navigation: any })
         </ScrollView>
       )}
 
-      <FilterSheet visible={sheetOpen} filters={filters} onClose={() => setSheetOpen(false)} onApply={setFilters} />
+      <PerpsFilterSheet visible={sheetOpen} filters={filters} onClose={() => setSheetOpen(false)} onApply={setFilters} />
     </View>
   );
 }

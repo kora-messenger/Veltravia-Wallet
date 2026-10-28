@@ -5,7 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 jest.mock('../src/theme/ThemeProvider', () => ({
-  useTheme: () => ({ theme: { mode: 'light', ink: '#0F111A', inkMuted: '#8A8EA3', brand: '#6C63FF', brandGradient: ['#6C63FF', '#4A90D9'], background: '#FFFFFF', surface: '#F5F5F7', surfaceAlt: '#EDEDF0' } }),
+  useTheme: () => ({ theme: { mode: 'light', ink: '#0F111A', inkMuted: '#8A8EA3', brand: '#6C63FF', brandGradient: ['#6C63FF', '#4A90D9'], buttonGradient: ['#6C63FF', '#4A90D9'], background: '#FFFFFF', surface: '#F5F5F7', surfaceAlt: '#EDEDF0' } }),
 }));
 jest.mock('../src/core/storage/secureStorage', () => ({
   readSettings: jest.fn(async () => ({})),
@@ -106,10 +106,16 @@ describe('Perps Activity screen (Trust 10:21 screenshot)', () => {
     await act(async () => { t.unmount(); });
   });
 
-  it('the filter-lines button opens the Filters sheet', async () => {
+  it('the filter-lines button opens the Perps "Filter" sheet (not the wallet Filters sheet)', async () => {
+    const PerpsFilterSheet = require('../src/components/PerpsFilterSheet').default;
     const t = await mountScreen(PerpsActivityScreen, 'PerpsActivity');
-    const fs = require('../src/components/FilterSheet').default;
-    expect(t.root.findAll((n) => n.type === fs).length).toBe(1); // mounted (sheet controls its own visibility)
+    const sheet = t.root.findByType(PerpsFilterSheet);
+    expect(sheet.props.visible).toBe(false);
+    // the header's filter-lines button is the only other Pressable with the icon
+    const btn = t.root.find((n) => n.props.onPress && n.props.children?.type?.name === 'FilterLinesIcon');
+    expect(btn).toBeTruthy();
+    await act(async () => { btn.props.onPress(); });
+    expect(sheet.props.visible).toBe(true);
     await act(async () => { t.unmount(); });
   });
 });
