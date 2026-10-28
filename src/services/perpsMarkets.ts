@@ -49,16 +49,6 @@ export const PERP_SECTIONS: PerpSection[] = [
     ],
   },
   {
-    key: 'crypto', title: 'Crypto',
-    markets: [
-      { symbol: 'BTC', venue: 'hyperliquid', leverage: 40, volume: '$1.70B Vol', price: 80786, change24h: 1.0 },
-      { symbol: 'ETH', venue: 'hyperliquid', leverage: 25, volume: '$763.00M Vol', price: 2348.6, change24h: 1.37 },
-      { symbol: 'HYPE', venue: 'hyperliquid', leverage: 10, volume: '$341.36M Vol', price: 81.269, change24h: 3.57, tile: t('#97FCE4', 'H', '#0B3B33') },
-      { symbol: 'ZEC', venue: 'hyperliquid', leverage: 10, volume: '$262.94M Vol', price: 1300.4, change24h: 5.84, tile: t('#F4B728', 'Z', '#0B0B0B') },
-      { symbol: 'NEAR', venue: 'hyperliquid', leverage: 10, volume: '$100.90M Vol', price: 4.6403, change24h: 3.62, tile: t('#111111', 'N') },
-    ],
-  },
-  {
     key: 'stocks', title: 'Stocks',
     markets: [
       { symbol: 'SNDK', venue: 'hyperliquid', leverage: 10, volume: '$152.27M Vol', price: 1310.5, change24h: 4.29, tile: t('#E5252F', 'S') },
@@ -67,10 +57,41 @@ export const PERP_SECTIONS: PerpSection[] = [
     ],
   },
   {
-    key: 'forex', title: 'Forex',
+    key: 'crypto', title: 'Crypto',
     markets: [
-      { symbol: 'JPY', venue: 'hyperliquid', leverage: 50, volume: '$1.79M Vol', price: 157.85, change24h: 0.26, tile: t('#FFFFFF', '●', '#E5252F') },
-      { symbol: 'GBP', venue: 'hyperliquid', leverage: 50, volume: '$55.01K Vol', price: 1.3311, change24h: -0.25, tile: t('#1B3F8F', 'GB') },
+      { symbol: 'BTC', venue: 'hyperliquid', leverage: 40, volume: '$1.74B Vol', price: 80843, change24h: 1.5 },
+      { symbol: 'ETH', venue: 'hyperliquid', leverage: 25, volume: '$671.23M Vol', price: 2351.6, change24h: 2.05 },
+      { symbol: 'HYPE', venue: 'hyperliquid', leverage: 10, volume: '$320.35M Vol', price: 81.133, change24h: 4.83, tile: t('#97FCE4', 'H', '#0B3B33') },
+      { symbol: 'ZEC', venue: 'hyperliquid', leverage: 10, volume: '$263.26M Vol', price: 1306.8, change24h: 7.15, tile: t('#F4B728', 'Z', '#0B0B0B') },
+      { symbol: 'NEAR', venue: 'hyperliquid', leverage: 10, volume: '$104.03M Vol', price: 4.6965, change24h: 6.32, tile: t('#111111', 'N') },
+      { symbol: 'SOL', venue: 'hyperliquid', leverage: 20, volume: '$90.20M Vol', price: 101.97, change24h: 2.44, tile: t('#14F195', 'S', '#0B0B0B') },
+      { symbol: 'XRP', venue: 'hyperliquid', leverage: 20, volume: '$77.54M Vol', price: 1.3262, change24h: 2.29, tile: t('#F2F2F2', 'X', '#111111') },
+      { symbol: 'ENA', venue: 'hyperliquid', leverage: 10, volume: '$44.06M Vol', price: 0.2057, change24h: -1.1, tile: t('#111111', 'E') },
+      { symbol: 'XMR', venue: 'hyperliquid', leverage: 5, volume: '$30.84M Vol', price: 613.41, change24h: 3.05, tile: t('#F26822', 'M') },
+      { symbol: 'WLD', venue: 'hyperliquid', leverage: 10, volume: '$23.26M Vol', price: 0.4347, change24h: 0.01, tile: t('#F2F2F2', 'W', '#111111') },
+    ],
+  },
+  {
+    key: 'preipo', title: 'Pre-IPO',
+    markets: [
+      { symbol: 'OPENAI', venue: 'hyperliquid', leverage: 3, volume: '$1.20M Vol', price: 852.4, change24h: 1.1, tile: t('#101010', 'O') },
+      { symbol: 'ANTHRP', venue: 'hyperliquid', leverage: 3, volume: '$0.95M Vol', price: 418.6, change24h: 2.3, tile: t('#D97757', 'A') },
+    ],
+  },
+  {
+    key: 'commodities', title: 'Commodities',
+    markets: [
+      { symbol: 'CL', venue: 'hyperliquid', leverage: 20, volume: '$224.15M Vol', price: 101.67, change24h: 0.01, tile: t('#101010', 'CL') },
+      { symbol: 'GOLD', venue: 'hyperliquid', leverage: 25, volume: '$61.30M Vol', price: 3980.5, change24h: 0.42, tile: t('#E0B030', 'Au', '#3A2A00') },
+      { symbol: 'SILVER', venue: 'hyperliquid', leverage: 20, volume: '$28.10M Vol', price: 49.82, change24h: 0.95, tile: t('#C9CDD6', 'Ag', '#333A48') },
+    ],
+  },
+  {
+    key: 'fx', title: 'FX',
+    markets: [
+      { symbol: 'EUR', venue: 'hyperliquid', leverage: 50, volume: '$2.36M Vol', price: 1.1123, change24h: -0.4, tile: t('#1B4FB5', 'EU') },
+      { symbol: 'JPY', venue: 'hyperliquid', leverage: 50, volume: '$1.95M Vol', price: 157.85, change24h: 0.07, tile: t('#FFFFFF', '●', '#E5252F') },
+      { symbol: 'GBP', venue: 'hyperliquid', leverage: 50, volume: '$75.44K Vol', price: 1.3276, change24h: -0.35, tile: t('#1B3F8F', 'GB') },
     ],
   },
   {

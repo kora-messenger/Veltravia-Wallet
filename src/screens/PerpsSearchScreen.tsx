@@ -72,6 +72,8 @@ export default function PerpsSearchScreen() {
   const { width: W } = useWindowDimensions();
   const pagerRef = useRef<FlatList<string>>(null);
   const tabsRef = useRef<any>(null);
+  const tabW = useRef<Record<string, number>>({});
+  const stripX = useRef(0);
   const tabX = useRef<Record<string, number>>({});
   const [provider, setProvider] = useState<ProviderFilter>('all');
   const [sort, setSort] = useState<SortKey>('volume');
@@ -114,11 +116,18 @@ export default function PerpsSearchScreen() {
     setTab(t);
   };
 
-  // keep the active tab pill visible in the strip
+  // Trust: tapping a tab scrolls the strip only as far as needed to reveal the
+  // whole pill (with a small margin); a tab that is already fully in view
+  // leaves the strip where it is.
   useEffect(() => {
     const x = tabX.current[tab];
-    if (x == null || !tabsRef.current) return;
-    tabsRef.current.scrollTo({ x: Math.max(0, x - W / 2 + 60), animated: true });
+    const w = tabW.current[tab];
+    if (x == null || w == null || !tabsRef.current) return;
+    const MARGIN = 20;
+    const left = stripX.current;
+    const right = left + W;
+    if (x - MARGIN < left) tabsRef.current.scrollTo({ x: Math.max(0, x - MARGIN), animated: true });
+    else if (x + w + MARGIN > right) tabsRef.current.scrollTo({ x: x + w + MARGIN - W, animated: true });
   }, [tab, W]);
 
   // Recents resolve against the dataset; hidden venues drop out of the row.
@@ -171,7 +180,14 @@ export default function PerpsSearchScreen() {
       ) : null}
 
       {/* tab strip */}
-      <ScrollView ref={tabsRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
+      <ScrollView
+        ref={tabsRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabs}
+        scrollEventThrottle={16}
+        onScroll={(e) => { stripX.current = e.nativeEvent.contentOffset.x; }}
+      >
         <Pressable
           accessibilityLabel="Favorites"
           onPress={() => selectTab(FAVORITES_TAB)}
@@ -185,7 +201,7 @@ export default function PerpsSearchScreen() {
             <Pressable
               key={t.key}
               accessibilityLabel={`Tab ${t.title}`}
-              onLayout={(e) => { tabX.current[t.key] = e.nativeEvent.layout.x; }}
+              onLayout={(e) => { tabX.current[t.key] = e.nativeEvent.layout.x; tabW.current[t.key] = e.nativeEvent.layout.width; }}
               onPress={() => selectTab(t.key)}
               style={[styles.tab, active && { backgroundColor: dark ? '#252A3D' : '#E7E7EC' }]}
             >

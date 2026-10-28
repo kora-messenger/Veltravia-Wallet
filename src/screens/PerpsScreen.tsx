@@ -5,7 +5,7 @@
  * the main wallet balance — see services/perpsAccount):
  *   - Not funded: hero "Deposit to fund your first position" + Deposit button.
  *   - Funded:     balance header (Perps balance + Deposit/Withdraw), no hero.
- * Below it: Popular / New / Crypto / Stocks / Forex / Meme market lists with a
+ * Below it: Popular / New / Stocks / Crypto / Pre-IPO / Commodities / FX / Meme market lists with a
  * sparkline per row, and the floating Long / Short pills above the tab bar.
  */
 import React, { useEffect, useMemo, useState } from 'react';

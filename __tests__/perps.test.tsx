@@ -119,7 +119,7 @@ describe('perps home', () => {
   it('lists the market sections and the Long / Short pills', async () => {
     const t = await mount();
     const all = texts(t);
-    for (const title of ['Popular', 'New', 'Crypto', 'Stocks', 'Forex', 'Meme']) expect(all).toContain(title);
+    for (const title of ['Popular', 'New', 'Stocks', 'Crypto', 'Pre-IPO', 'Commodities', 'FX', 'Meme']) expect(all).toContain(title);
     expect(all).toContain('Long');
     expect(all).toContain('Short');
     await act(async () => { t.unmount(); });
@@ -141,6 +141,6 @@ describe('perps markets data', () => {
   });
   it('sparkline is deterministic and ends in the direction of the change', () => {
     expect(perpSpark('X', 3)).toEqual(perpSpark('X', 3));
-    expect(PERP_SECTIONS.length).toBe(6);
+    expect(PERP_SECTIONS.map((x) => x.title)).toEqual(['Popular', 'New', 'Stocks', 'Crypto', 'Pre-IPO', 'Commodities', 'FX', 'Meme']);
   });
 });

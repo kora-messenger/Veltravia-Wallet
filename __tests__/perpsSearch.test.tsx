@@ -254,3 +254,19 @@ describe('Market pages: swiping the list switches tabs', () => {
     expect(pager).toBeTruthy();
   });
 });
+
+describe('Tab strip (Trust parity)', () => {
+  it('tab order matches Trust: star, Popular, New, Stocks, Crypto, Pre-IPO, Commodities, FX, Meme', () => {
+    expect(SEARCH_TABS.map((x) => x.title)).toEqual(['Popular', 'New', 'Stocks', 'Crypto', 'Pre-IPO', 'Commodities', 'FX', 'Meme']);
+  });
+
+  it('FX and Crypto carry the markets shown in the recording', () => {
+    const base2: QueryOptions = {
+      tab: 'fx', provider: 'all', query: '', sort: 'volume', dir: 'desc',
+      favorites: new Set<string>(), venueVisible: { hyperliquid: true, aster: true },
+    };
+    expect(queryMarkets(base2).map((r) => r.market.symbol)).toEqual(['EUR', 'JPY', 'GBP']);
+    expect(queryMarkets({ ...base2, tab: 'crypto' }).map((r) => r.market.symbol)).toEqual(
+      ['BTC', 'ETH', 'HYPE', 'ZEC', 'NEAR', 'SOL', 'XRP', 'ENA', 'XMR', 'WLD']);
+  });
+});
