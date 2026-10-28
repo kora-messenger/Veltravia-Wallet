@@ -200,18 +200,30 @@ describe('Recents row (Trust parity)', () => {
     expect(getPerpsRecents()).toEqual([]);
   });
 
-  it('screen: no Recents until a market is tapped, then the card appears; Clear all empties; tapping a card filters', async () => {
+  it('screen: no Recents until a market is opened; the card appears; Clear all empties; a card opens the market', async () => {
+    const { addPerpsRecent } = require('../src/services/perpsRecents');
     const t = await mount();
     expect(texts(t)).not.toContain('Recents');
-    await press(t, 'Market BTC');
+    // opening a market page records it (the market page does this on mount)
+    await act(async () => { addPerpsRecent({ venue: 'hyperliquid', symbol: 'BTC' }); });
     expect(texts(t)).toContain('Recents');
     expect(texts(t)).toContain('BTC Perps');
-    // tapping the recent card filters the current page to that market
+    // tapping the card opens that market's page
+    const nav = t.root.findByType(PerpsSearchScreen).props.navigation;
+    const spy = jest.spyOn(nav, 'navigate');
     await press(t, 'Recent BTC');
-    expect(rowsIn(t, 'popular')).toEqual(['BTC']);
-    await press(t, 'Clear search');
+    expect(spy).toHaveBeenCalledWith('PerpsMarket', { venue: 'hyperliquid', symbol: 'BTC' });
     await press(t, 'Clear all recents');
     expect(texts(t)).not.toContain('Recents');
+    await act(async () => { t.unmount(); });
+  });
+
+  it('screen: tapping a market row opens its page', async () => {
+    const t = await mount();
+    const nav = t.root.findByType(PerpsSearchScreen).props.navigation;
+    const spy = jest.spyOn(nav, 'navigate');
+    await press(t, 'Market ETH');
+    expect(spy).toHaveBeenCalledWith('PerpsMarket', { venue: 'hyperliquid', symbol: 'ETH' });
     await act(async () => { t.unmount(); });
   });
 

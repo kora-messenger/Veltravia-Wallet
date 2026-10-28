@@ -31,6 +31,8 @@ import {
   depositToPerps, withdrawFromPerps, getPerpsAccount, isFunded, accountValue, resetPerpsAccounts,
 } from '../src/services/perpsAccount';
 import { formatPerpPrice, formatChange, perpSpark, PERP_SECTIONS } from '../src/services/perpsMarkets';
+import { toggleFavorite, resetPerpsFavorites } from '../src/services/perpsFavorites';
+import { resetVenuePrefs, setShowInMarkets } from '../src/services/perpsVenues';
 
 // Flatten string children; array children (text + newline + text) join into one string.
 const texts = (tree: renderer.ReactTestRenderer) =>
@@ -142,5 +144,70 @@ describe('perps markets data', () => {
   it('sparkline is deterministic and ends in the direction of the change', () => {
     expect(perpSpark('X', 3)).toEqual(perpSpark('X', 3));
     expect(PERP_SECTIONS.map((x) => x.title)).toEqual(['Popular', 'New', 'Stocks', 'Crypto', 'Pre-IPO', 'Commodities', 'FX', 'Meme']);
+  });
+});
+
+describe('Watchlist on the Perps home (Trust parity)', () => {
+  beforeEach(() => { resetPerpsAccounts(); resetPerpsFavorites(); resetVenuePrefs(); mockSessionLoaded = true; });
+
+  it('no favorites: there is no Watchlist section at all', async () => {
+    const t = await mount();
+    expect(texts(t)).not.toContain('Watchlist');
+    expect(texts(t)).toContain('Popular');
+    await act(async () => { t.unmount(); });
+  });
+
+  it('a favorite appears under Watchlist ABOVE Popular; removing the last one makes it disappear', async () => {
+    const t = await mount();
+    await act(async () => { toggleFavorite('hyperliquid:BTC'); });
+    const order = [...new Set(texts(t).filter((x) => x === 'Watchlist' || x === 'Popular'))];
+    expect(order).toEqual(['Watchlist', 'Popular']); // first appearance order = top to bottom
+    // BTC is listed in the watchlist AND still in Popular
+    const btcRows = t.root.findAll((n) => n.props.accessibilityLabel === 'Market BTC' && typeof n.props.onPress === 'function');
+    expect(btcRows.length).toBeGreaterThanOrEqual(2);
+    await act(async () => { toggleFavorite('hyperliquid:BTC'); });
+    expect(texts(t)).not.toContain('Watchlist');
+    await act(async () => { t.unmount(); });
+  });
+
+  it('a market starred in several sections is listed once; hidden venues stay out', async () => {
+    const t = await mount();
+    await act(async () => { toggleFavorite('hyperliquid:ETH'); toggleFavorite('aster:ANT'); });
+    await act(async () => { setShowInMarkets('aster', false); });
+    // ETH (also in Popular+Crypto) once in Watchlist; ANT's venue is hidden so it is not listed
+    const watchRows = t.root
+      .findAll((n) => typeof n.props.accessibilityLabel === 'string' && n.props.accessibilityLabel === 'Market ETH' && typeof n.props.onPress === 'function');
+    expect(watchRows.length).toBeGreaterThanOrEqual(1);
+    expect(texts(t)).toContain('Watchlist');
+    await act(async () => { toggleFavorite('hyperliquid:ETH'); });
+    expect(texts(t)).not.toContain('Watchlist'); // ANT is the only favorite left but its venue is hidden
+    await act(async () => { t.unmount(); });
+  });
+
+  it('tapping a market row opens its page', async () => {
+    const { createNativeStackNavigator } = require('@react-navigation/native-stack');
+    const Stack = createNativeStackNavigator();
+    const Market = () => null;
+    let tree!: renderer.ReactTestRenderer;
+    await act(async () => {
+      tree = renderer.create(
+        <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
+          <NavigationContainer>
+            <Stack.Navigator initialRouteName="Perps">
+              <Stack.Screen name="Perps" component={PerpsScreen} />
+              <Stack.Screen name="PerpsMarket" component={Market} />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </SafeAreaProvider>,
+      );
+    });
+    const row = tree.root.findAll((n) => n.props.accessibilityLabel === 'Market ETH' && typeof n.props.onPress === 'function')[0];
+    await act(async () => { row.props.onPress(); });
+    const nav = tree.root.findByType(Market).props.navigation;
+    const route = tree.root.findByType(Market).props.route;
+    expect(route.name).toBe('PerpsMarket');
+    expect(route.params).toEqual({ venue: 'hyperliquid', symbol: 'ETH' });
+    expect(nav.getState().routes.map((r: { name: string }) => r.name)).toEqual(['Perps', 'PerpsMarket']);
+    await act(async () => { tree.unmount(); });
   });
 });

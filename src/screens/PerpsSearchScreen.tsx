@@ -22,6 +22,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeProvider';
 import Sparkline from '../components/Sparkline';
 import AppModal from '../components/AppModal';
+import SwipeDeleteRow from '../components/SwipeDeleteRow';
 import { HyperliquidTile, AsterTile } from '../components/PerpsVenueMarks';
 import {
   SearchIcon, CloseIcon, StarIcon, ChevronDownIcon, SortArrowIcon, CheckIcon, COIN_ICONS,
@@ -169,7 +170,7 @@ export default function PerpsSearchScreen() {
                 key={`${m.venue ?? 'hyperliquid'}:${m.symbol}`}
                 accessibilityLabel={`Recent ${m.symbol}`}
                 style={[styles.recentCard, { backgroundColor: chipBg }]}
-                onPress={() => setQuery(m.symbol)}
+                onPress={() => navigation.navigate('PerpsMarket', { venue: m.venue ?? 'hyperliquid', symbol: m.symbol })}
               >
                 <MarketLogo m={m} />
                 <Text style={[styles.recentName, { color: theme.ink }]} numberOfLines={1}>{`${m.symbol} Perps`}</Text>
@@ -264,13 +265,13 @@ export default function PerpsSearchScreen() {
                   const up = m.change24h >= 0;
                   const col = up ? GREEN : RED;
                   const fav = favorites.has(favKey(m));
-                  return (
+                  const rowEl = (
                     <Pressable
                       key={item.key}
                       accessibilityLabel={`Market ${m.symbol}`}
                       onLongPress={() => toggleFavorite(favKey(m))}
-                      onPress={() => addPerpsRecent({ venue: m.venue ?? 'hyperliquid', symbol: m.symbol })}
-                      style={({ pressed }) => [styles.row, pressed && { backgroundColor: dark ? 'rgba(255,255,255,0.05)' : '#F1F1F4' }]}
+                      onPress={() => navigation.navigate('PerpsMarket', { venue: m.venue ?? 'hyperliquid', symbol: m.symbol })}
+                      style={({ pressed }) => [styles.row, { backgroundColor: pressed ? (dark ? '#161A28' : '#F1F1F4') : theme.background }]}
                     >
                       <MarketLogo m={m} />
                       <View style={styles.rowLeft}>
@@ -297,6 +298,16 @@ export default function PerpsSearchScreen() {
                       </Pressable>
                     </Pressable>
                   );
+                  return t === FAVORITES_TAB ? (
+                    <SwipeDeleteRow
+                      key={item.key}
+                      accessibilityLabel={`Delete ${m.symbol}`}
+                      actionBg={dark ? '#3A1E22' : '#FADADA'}
+                      onDelete={() => toggleFavorite(favKey(m))}
+                    >
+                      {rowEl}
+                    </SwipeDeleteRow>
+                  ) : rowEl;
                 })}
               </ScrollView>
             );

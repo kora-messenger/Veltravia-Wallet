@@ -170,13 +170,23 @@ The "−" button on the Perps home opens a tall bottom sheet over the Perps scre
 - **Receive** opens **Select network** (Arbitrum, Ethereum, Base, Optimism, BNB Smart Chain, Polygon, Avalanche, Solana) with the "We'll deposit USDC to your wallet…" note.
 - Settlement through api.veltraviawallet.com arrives with the Wallet Core signing bridge; until then the slide updates the local Perps account.
 
+### Perps favorites, Watchlist and market page (Trust parity)
+
+Favorites are one shared list (`perpsFavorites.ts`) that three places read:
+
+- **Market page** (`PerpsMarketScreen`): opened by tapping any market row (Perps home, Search market, Watchlist, Recents card). Header: back, **star**, bell, history; then symbol + leverage chip, price + 24h change, chart (placeholder line until the candle feed), timeframe chips, About, Stats, Long / Short and "Provided by <venue>". Tapping the star adds/removes the market from favorites. Opening a market records it in Recents.
+- **Star tab on Search market**: lists every favorited market (once each). Swipe a row left to reveal the pale-red **Delete** action; tapping it removes the market from favorites (as in Trust's recording).
+- **Watchlist on the Perps home**: a "Watchlist" section **above Popular** lists every favorite (same row design, hidden venues excluded). **With no favorites the section does not exist at all** and the home shows Popular first. The market stays in its normal sections too.
+
+Chart, About copy, alerts and the Long / Short order flow arrive with the backend feed and signing bridge; the buttons show a short info toast until then.
+
 ### Perps "Search market" (Trust parity)
 
 The search icon on the Perps home opens a full-screen market browser (screen `PerpsSearch`, built from a Trust screen recording):
 
 - **Tab strip** (from Trust's recording): star (favorites), Popular, New, Stocks, Crypto, Pre-IPO, Commodities, FX, Meme. The strip itself scrolls sideways; tapping a tab moves the grey pill and scrolls the strip only as far as needed to reveal that pill (a tab already fully in view leaves the strip where it is). Switching tab vibrates and shows a brief spinner, then that tab's markets. The market list under it is also a horizontal pager, so swiping the content switches tabs too and the strip follows. Crypto, FX, Pre-IPO (ANTH, ANT, OAI, PREDICT, MOONSHOT, PAPER, XTEN, POLYMARKET, OURA) and Commodities (CL, BRENTOIL, SILVER, GOLD, NATGAS, PLATINUM, COPPER, PALLADIUM, BZ, HO) carry the rows from Trust's screenshots; Pre-IPO and Commodities markets are Aster-listed.
 - **Filter chips**: "All providers" (picker: All / Hyperliquid / Aster) and "Volume (24h)" (sort picker: Volume, Price change, Price, Max leverage, Name; picking the active option again flips the direction, shown by the arrow).
-- **List**: the same rows as the Perps home (logo, leverage pill, volume, sparkline, price, 24h change). Tap the small star on a row (or long-press the row) to favorite it; favorites persist and appear once in the star tab, which shows "No favorites yet" when empty.
+- **List**: the same rows as the Perps home (logo, leverage pill, volume, sparkline, price, 24h change). Tap the small star on a row (or long-press the row) to favorite it; favorites persist and appear once in the star tab (swipe a row left and tap Delete to remove it), which shows "No favorites yet" when empty. Tapping a row opens its market page.
 - **Bottom "Search market" bar**: typing narrows the current tab by symbol. The round X clears the text first; pressed again with an empty box, it closes the screen.
 - **Recents row (Trust parity)**: markets you've tapped appear as horizontal "SYM Perps" cards under a "Recents" heading with a violet "Clear all". Tapping a card filters the list to that market. Newest first, capped at 8, persisted (`perpsRecents.ts`); hidden venues drop out of the row too. The row hides entirely when empty.
 - **Respects Settings > Perps "Show in markets"**: a hidden venue's markets never appear here either.

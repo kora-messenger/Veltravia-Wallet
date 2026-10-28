@@ -26,6 +26,8 @@ import {
   perpsSessionLoaded, ensurePerpsSessionLoad,
 } from '../services/perpsAccount';
 import { useVenuePrefs } from '../services/perpsVenues';
+import { usePerpsFavorites, loadPerpsFavorites } from '../services/perpsFavorites';
+import { favKey } from '../services/perpsSearch';
 import {
   PERP_SECTIONS, formatPerpPrice, formatChange, perpSpark, type PerpMarket,
 } from '../services/perpsMarkets';
@@ -66,6 +68,8 @@ export default function PerpsScreen() {
   const [availOpen, setAvailOpen] = useState(false);
   const hlPrefs = useVenuePrefs('hyperliquid');
   const asterPrefs = useVenuePrefs('aster');
+  const favorites = usePerpsFavorites();
+  useEffect(() => { loadPerpsFavorites(); }, []);
 
   // Balance fetch runs once per fresh app open; later visits render instantly.
   const [loading, setLoading] = useState(!perpsSessionLoaded());
@@ -87,15 +91,34 @@ export default function PerpsScreen() {
 
   // "Show in markets" (Settings > Perps > venue): hidden venues drop out of
   // the lists; sections left empty hide completely.
-  const sections = useMemo(
-    () => PERP_SECTIONS.map((s) => ({
+  //
+  // Watchlist (Trust): every market starred anywhere (the star tab on Search,
+  // or the star on a market's page) is listed here, above Popular. With no
+  // favorites the section does not exist at all.
+  const sections = useMemo(() => {
+    const visible = (m: PerpMarket) =>
+      (m.venue ?? 'hyperliquid') === 'aster' ? asterPrefs.showInMarkets : hlPrefs.showInMarkets;
+    const base = PERP_SECTIONS.map((s) => ({
       ...s,
       rows: s.markets
-        .filter((m) => (m.venue ?? 'hyperliquid') === 'aster' ? asterPrefs.showInMarkets : hlPrefs.showInMarkets)
+        .filter(visible)
         .map((m) => ({ m, spark: perpSpark(`${s.key}:${m.symbol}`, m.change24h) })),
-    })).filter((s) => s.rows.length > 0),
-    [hlPrefs.showInMarkets, asterPrefs.showInMarkets],
-  );
+    })).filter((s) => s.rows.length > 0);
+
+    const seen = new Set<string>();
+    const watch: { m: PerpMarket; spark: number[] }[] = [];
+    for (const s of PERP_SECTIONS) {
+      for (const m of s.markets) {
+        const k = favKey(m);
+        if (!favorites.has(k) || seen.has(k) || !visible(m)) continue;
+        seen.add(k);
+        watch.push({ m, spark: perpSpark(`watchlist:${m.symbol}`, m.change24h) });
+      }
+    }
+    return watch.length > 0
+      ? [{ key: 'watchlist', title: 'Watchlist', markets: [] as PerpMarket[], rows: watch }, ...base]
+      : base;
+  }, [hlPrefs.showInMarkets, asterPrefs.showInMarkets, favorites]);
 
   const openDeposit = () => navigation.navigate('PerpsDeposit', { mode: 'deposit' });
   const openWithdraw = () => navigation.navigate('PerpsWithdraw');
@@ -223,7 +246,12 @@ export default function PerpsScreen() {
               const up = m.change24h >= 0;
               const col = up ? GREEN : RED;
               return (
-                <Pressable key={`${s.key}-${m.symbol}`} style={({ pressed }) => [styles.row, pressed && { backgroundColor: dark ? 'rgba(255,255,255,0.05)' : '#F1F1F4' }]}>
+                <Pressable
+                  key={`${s.key}-${m.symbol}`}
+                  accessibilityLabel={`Market ${m.symbol}`}
+                  onPress={() => navigation.navigate('PerpsMarket', { venue: m.venue ?? 'hyperliquid', symbol: m.symbol })}
+                  style={({ pressed }) => [styles.row, pressed && { backgroundColor: dark ? 'rgba(255,255,255,0.05)' : '#F1F1F4' }]}
+                >
                   <MarketLogo m={m} />
                   <View style={styles.rowLeft}>
                     <View style={styles.symbolLine}>
