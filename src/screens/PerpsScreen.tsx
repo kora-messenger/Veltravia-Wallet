@@ -134,7 +134,7 @@ export default function PerpsScreen() {
           <Pressable
             accessibilityLabel="Perps history"
             style={[styles.circle, { backgroundColor: headerChipBg }]}
-            onPress={() => navigation.navigate('Activity')}
+            onPress={() => navigation.navigate('PerpsActivity')}
           >
             <HistoryIcon size={22} color={headerIconColor} />
           </Pressable>

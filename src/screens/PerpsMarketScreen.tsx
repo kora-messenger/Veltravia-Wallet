@@ -156,7 +156,7 @@ export default function PerpsMarketScreen() {
             </Pressable>
             <Pressable
               accessibilityLabel="Market history"
-              onPress={() => navigation.navigate('Activity')}
+              onPress={() => navigation.navigate('PerpsActivity')}
               style={[styles.circle, { backgroundColor: chipBg }]}
             >
               <HistoryIcon size={20} color={theme.ink} />

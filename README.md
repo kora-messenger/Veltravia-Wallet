@@ -170,6 +170,10 @@ The "−" button on the Perps home opens a tall bottom sheet over the Perps scre
 - **Receive** opens **Select network** (Arbitrum, Ethereum, Base, Optimism, BNB Smart Chain, Polygon, Avalanche, Solana) with the "We'll deposit USDC to your wallet…" note.
 - Settlement through api.veltraviawallet.com arrives with the Wallet Core signing bridge; until then the slide updates the local Perps account.
 
+### Perps Activity screen (Trust 10:21 screenshot)
+
+The Perps history icon (home round-timer + market page history) now opens a **dedicated Perps Activity screen** (separate route `PerpsActivity`, not the wallet Activity). Built on the same pattern as the wallet screen: 36dp header circles with back / centred "Activity" / filter-lines button, shared skeleton on load, then the empty state with the existing Veltravia no-activity robot illustration, "No activity yet" and "Your transactions will appear here"; "Show older activity" pill with state-driven auto-hide; the Filters sheet. Offline (real NetInfo probe) shows the shared error state (satellite art, "Something went wrong", 288x59 Reload pill, "Request timed out") — to be refined against Ijezie's upcoming offline recording. 205 tests.
+
 ### Perps market page: trend chart, candle illustration, real candle view (Trust 10:08 recording)
 
 The normal market view now has the same three-step chart flow as Trust:
