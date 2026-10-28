@@ -30,7 +30,7 @@ const VENUE_INFO: Record<PerpsVenue, {
   hyperliquid: {
     name: 'Hyperliquid',
     feesUrl: 'https://hyperliquid.gitbook.io/hyperliquid-docs/trading/fees',
-    rulesUrl: 'https://hyperliquid.gitbook.io/hyperliquid-docs',
+    rulesUrl: 'https://hyperliquid.gitbook.io/hyperliquid-docs/trading',
   },
   aster: {
     name: 'Aster',
