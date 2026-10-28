@@ -170,6 +170,16 @@ The "−" button on the Perps home opens a tall bottom sheet over the Perps scre
 - **Receive** opens **Select network** (Arbitrum, Ethereum, Base, Optimism, BNB Smart Chain, Polygon, Avalanche, Solana) with the "We'll deposit USDC to your wallet…" note.
 - Settlement through api.veltraviawallet.com arrives with the Wallet Core signing bridge; until then the slide updates the local Perps account.
 
+### Perps market page: trend chart, candle illustration, real candle view (Trust 10:08 recording)
+
+The normal market view now has the same three-step chart flow as Trust:
+
+1. **Trend chart (default).** A line + pale-gradient area chart with the **trend-arrow** icon and the ranges `1H 1D 1W 1M 1Y YTD ALL` (ALL spans ~4 years; no interval picker here). Colour follows the range: green when up, red when down. A solid dot sits on the newest point.
+2. **Scrub.** Touch-down scrubs immediately (no long-press): the area fill disappears, the line stays coloured up to the finger and turns **grey after it**, a haloed dot follows the finger with a light haptic tick per point, and the **header changes** to that point's price, its change since the start of the range and the date ("+$1,579.0 (1.98%) Oct 27, 2:30 PM"; multi-year ranges show "Mar 3, 2024"). Release snaps everything back to the live price.
+3. **Tap the arrow** -> the compact **candle illustration** (non-interactive) and the icon **switches to the candle icon**; the six candle ranges and the `30m` interval picker appear. **Tap the candle icon** -> the **real candle view** (the TradingView Advanced screen with Indicators / Volume / Return). The "Advanced" pill on the illustration is a second route into the same view. Inside the real view the arrow still toggles candle <-> line on the TradingView chart.
+
+Files: `src/services/trendEngine.ts` (series, scrub math, stamp/change formatting), `src/components/TrendChart.tsx`, `CandlesIcon` in `icons.tsx`, screen wiring in `PerpsMarketScreen.tsx`. 199 tests. The scrub behavior was derived from pixel analysis of the recording (fill vanishes, grey tail, dot tracking) because Trust's Hermes bundle keeps names (`ChartScrubDot`, `ScrubOverlay`, `isMarketChartMode`) but not readable logic.
+
 ### Perps: market navigation is a proper back-stack (Trust 09:42 flow)
 
 Every market tap PUSHES a new market page instead of replacing the current one (related markets used to `replace`). Back walks the full history in order: open BTC from the list -> tap ZEC in Related markets -> back returns to the BTC page -> back again returns to the list/home the first market was opened from. Each visited page keeps its own state (Advanced mode, favorites) because it stays mounted in the stack. 183 tests.

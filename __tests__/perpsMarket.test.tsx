@@ -188,13 +188,13 @@ describe('Advanced chart mode (Trust recording 2026-10-28 09:33)', () => {
     expect(all).toContain('About Bitcoin');
     expect(all).toContain('Related markets');
     expect(all).not.toContain('Indicators');
-    expect(has(t, 'Advanced chart')).toBe(true);
     expect(has(t, 'Return')).toBe(false);
     await act(async () => { t.unmount(); });
   });
 
   it('Advanced: hides About/Stats/Related, shows Indicators (Volume + Manage), TradingView logo, Return; keeps Long/Short', async () => {
     const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    await press(t, 'Show candles');
     await press(t, 'Advanced chart');
     const all = texts(t);
     expect(all).not.toContain('About Bitcoin');
@@ -213,6 +213,7 @@ describe('Advanced chart mode (Trust recording 2026-10-28 09:33)', () => {
 
   it('Return goes back to the normal page', async () => {
     const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    await press(t, 'Show candles');
     await press(t, 'Advanced chart');
     await press(t, 'Return');
     expect(texts(t)).toContain('About Bitcoin');
@@ -224,6 +225,7 @@ describe('Advanced chart mode (Trust recording 2026-10-28 09:33)', () => {
     const { Linking } = require('react-native');
     const spy = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
     const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    await press(t, 'Show candles');
     await press(t, 'Advanced chart');
     await press(t, 'TradingView');
     expect(spy).toHaveBeenCalledTimes(1);
@@ -234,6 +236,7 @@ describe('Advanced chart mode (Trust recording 2026-10-28 09:33)', () => {
 
   it('Manage toggles the Volume indicator (Volume <-> None)', async () => {
     const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    await press(t, 'Show candles');
     await press(t, 'Advanced chart');
     expect(texts(t)).toContain('Volume');
     await press(t, 'Manage indicators');
@@ -243,8 +246,72 @@ describe('Advanced chart mode (Trust recording 2026-10-28 09:33)', () => {
     await act(async () => { t.unmount(); });
   });
 
-  it('interval picker: opens, lists intervals, picking one updates the chip', async () => {
+  // ---- the new normal-view model (Trust 10:08 recording) ------------------
+  const inst = (t: renderer.ReactTestRenderer, path: string) => {
+    const Cmp = require(path).default;
+    return t.root.findAll((x) => x.type === Cmp).length;
+  };
+  const C = '../src/components/CandleChart';
+  const TV = '../src/components/TradingViewChart';
+  const TR = '../src/components/TrendChart';
+  const toCandles = (t: renderer.ReactTestRenderer) => press(t, 'Show candles');
+
+  it('default normal view is the TREND chart with the seven ranges and no interval picker', async () => {
     const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    expect(inst(t, TR)).toBe(1);
+    expect(inst(t, C)).toBe(0);
+    expect(inst(t, TV)).toBe(0);
+    for (const r of ['1H', '1D', '1W', '1M', '1Y', 'YTD', 'ALL']) expect(has(t, `Timeframe ${r}`)).toBe(true);
+    expect(has(t, 'Candle interval')).toBe(false);
+    expect(has(t, 'Show candles')).toBe(true);   // the arrow icon
+    expect(has(t, 'Open candle view')).toBe(false);
+    await act(async () => { t.unmount(); });
+  });
+
+  it('tapping the arrow shows the candle illustration and the icon becomes the candle icon', async () => {
+    const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    await toCandles(t);
+    expect(inst(t, C)).toBe(1);
+    expect(inst(t, TR)).toBe(0);
+    expect(inst(t, TV)).toBe(0);                  // not the real view yet
+    expect(has(t, 'Open candle view')).toBe(true); // candle icon
+    expect(has(t, 'Show candles')).toBe(false);
+    expect(has(t, 'Candle interval')).toBe(true);  // candle ranges + interval now
+    await act(async () => { t.unmount(); });
+  });
+
+  it('tapping the candle icon opens the REAL candle view (TradingView)', async () => {
+    const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    await toCandles(t);
+    await press(t, 'Open candle view');
+    expect(inst(t, TV)).toBe(1);
+    expect(inst(t, C)).toBe(0);
+    expect(inst(t, TR)).toBe(0);
+    expect(texts(t)).toContain('Indicators');
+    expect(texts(t)).toContain('Return');
+    await act(async () => { t.unmount(); });
+  });
+
+  it('the Advanced pill still jumps straight to the real candle view', async () => {
+    const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    await toCandles(t);
+    await press(t, 'Advanced chart');
+    expect(inst(t, TV)).toBe(1);
+    await act(async () => { t.unmount(); });
+  });
+
+  it('trend ranges are selectable, including ALL', async () => {
+    const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    await press(t, 'Timeframe ALL');
+    expect(inst(t, TR)).toBe(1);
+    await press(t, 'Timeframe 1W');
+    expect(inst(t, TR)).toBe(1);
+    await act(async () => { t.unmount(); });
+  });
+
+  it('interval picker (candle illustration): opens, lists intervals, picking one updates the chip', async () => {
+    const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    await toCandles(t);
     expect(texts(t)).toContain('30m');
     await press(t, 'Candle interval');
     expect(texts(t)).toContain('Candle interval');
@@ -254,8 +321,9 @@ describe('Advanced chart mode (Trust recording 2026-10-28 09:33)', () => {
     await act(async () => { t.unmount(); });
   });
 
-  it('choosing a range resets the interval to that range\'s default (1W -> 4h, 1H -> 1m)', async () => {
+  it("choosing a candle range resets the interval to that range's default (1W -> 4h, 1H -> 1m)", async () => {
     const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    await toCandles(t);
     await press(t, 'Timeframe 1H');
     expect(texts(t)).toContain('1m');
     await press(t, 'Timeframe 1Y');
@@ -263,26 +331,36 @@ describe('Advanced chart mode (Trust recording 2026-10-28 09:33)', () => {
     await act(async () => { t.unmount(); });
   });
 
-  it('Advanced mode renders the REAL TradingView chart (WebView) instead of the lightweight one', async () => {
-    const CandleChartCmp = require('../src/components/CandleChart').default;
-    const TradingViewCmp = require('../src/components/TradingViewChart').default;
-    const instances = (t: renderer.ReactTestRenderer, Cmp: any) =>
-      t.root.findAll((x) => x.type === Cmp).length;
+  it('scrubbing the trend chart drives the header (price, change, date) and release restores it', async () => {
     const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
-    expect(instances(t, CandleChartCmp)).toBe(1);   // lightweight preview
-    expect(instances(t, TradingViewCmp)).toBe(0);   // no WebView chart yet
-    await press(t, 'Advanced chart');
-    expect(instances(t, TradingViewCmp)).toBe(1);   // the real TradingView chart
-    expect(instances(t, CandleChartCmp)).toBe(0);  // preview swapped out
+    const before = texts(t).filter((x) => /^\$[\d,.]+$/.test(x));
+    const chart = t.root.find((x) => x.props.accessibilityLabel === 'Trend chart');
+    await act(async () => { chart.props.onLayout({ nativeEvent: { layout: { width: 340 } } }); });
+    await act(async () => { chart.props.onResponderGrant({ nativeEvent: { locationX: 40 } }); });
+    const during = texts(t);
+    expect(during.some((x) => /^[+-]\$[\d,.]+ \([\d.]+%\) [A-Z][a-z]{2} \d{1,2}, /.test(x))).toBe(true);
+    await act(async () => { chart.props.onResponderRelease(); });
+    const after = texts(t);
+    expect(after.some((x) => /^[+-]\$[\d,.]+ \([\d.]+%\) [A-Z][a-z]{2} \d{1,2}, /.test(x))).toBe(false);
+    expect(after.filter((x) => /^\$[\d,.]+$/.test(x))).toEqual(before);
     await act(async () => { t.unmount(); });
   });
 
-  it('the normal (non-Advanced) chart ignores gestures', async () => {
-    jest.useFakeTimers();
+  it('Return from the real candle view lands back on the normal page', async () => {
     const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
-    const chart = t.root.find((x) => x.props.accessibilityLabel === 'Candle chart');
-    expect(chart.props.onStartShouldSetResponder()).toBe(false);
-    jest.useRealTimers();
+    await toCandles(t);
+    await press(t, 'Open candle view');
+    await press(t, 'Return');
+    expect(inst(t, TV)).toBe(0);
+    expect(texts(t)).toContain('About Bitcoin');
+    await act(async () => { t.unmount(); });
+  });
+
+  it('the candle illustration ignores gestures; the trend chart takes them', async () => {
+    const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    expect(t.root.find((x) => x.props.accessibilityLabel === 'Trend chart').props.onStartShouldSetResponder()).toBe(true);
+    await toCandles(t);
+    expect(t.root.find((x) => x.props.accessibilityLabel === 'Candle chart').props.onStartShouldSetResponder()).toBe(false);
     await act(async () => { t.unmount(); });
   });
 });

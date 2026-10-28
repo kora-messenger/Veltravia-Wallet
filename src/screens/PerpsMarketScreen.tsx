@@ -14,7 +14,7 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, Pressable, ScrollView, useWindowDimensions, Linking, Modal,
+  View, Text, StyleSheet, Pressable, ScrollView, useWindowDimensions, Linking, Modal, Vibration,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -23,10 +23,12 @@ import CandleChart from '../components/CandleChart';
 import { showToast } from '../components/Toast';
 import {
   BackIcon, StarIcon, BellIcon, HistoryIcon, ChevronRight, ChevronDownIcon,
-  ArrowUpRightTx, ArrowDownRightIcon, COIN_ICONS, SparkleIcon, ShareSquareIcon, TrendIcon, ArrowLeftUpIcon, HexSettingsIcon, TradingViewMark, ChevronsUpDownIcon, CheckIcon,
+  ArrowUpRightTx, ArrowDownRightIcon, COIN_ICONS, SparkleIcon, ShareSquareIcon, TrendIcon, CandlesIcon, ArrowLeftUpIcon, HexSettingsIcon, TradingViewMark, ChevronsUpDownIcon, CheckIcon,
 } from '../components/icons';
 import { RANGES, INTERVALS, defaultInterval, type Range, type Interval } from '../services/candleEngine';
 import TradingViewChart from '../components/TradingViewChart';
+import TrendChart from '../components/TrendChart';
+import { TREND_RANGES, formatScrubStamp, formatScrubChange, type TrendRange, type TrendScrub } from '../services/trendEngine';
 import { intervalToResolution } from '../services/tvBridge';
 import { PERP_SECTIONS, formatPerpPrice, formatChange, type PerpMarket } from '../services/perpsMarkets';
 import { getMarketInfo, getMarketStats, relatedMarkets, marketName } from '../services/perpsMarketInfo';
@@ -85,7 +87,14 @@ export default function PerpsMarketScreen() {
   const [advanced, setAdvanced] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [volumeOn, setVolumeOn] = useState(true);
-  const [lineMode, setLineMode] = useState(false);
+  // Normal view has two faces (Trust 10:08): the TREND (line/area) chart with
+  // the arrow icon, and the compact CANDLE illustration with the candle icon.
+  // Tapping the arrow shows the candles; tapping the candle icon opens the
+  // real candle view (Advanced). Advanced itself is always candles.
+  const [chartView, setChartView] = useState<'trend' | 'candles'>('trend');
+  const [trendRange, setTrendRange] = useState<TrendRange>('1D');
+  const [scrub, setScrub] = useState<TrendScrub | null>(null);
+  const [lineMode, setLineMode] = useState(false); // Advanced: candle <-> line on TradingView
   const pickRange = (r: Range) => { setRange(r); setIntervalState(defaultInterval(r)); };
 
   // opening a market records it in Recents
@@ -170,10 +179,16 @@ export default function PerpsMarketScreen() {
             </View>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={[styles.price, { color: theme.ink }]}>{formatPerpPrice(market.price)}</Text>
-            <Text style={[styles.change, { color: market.change24h >= 0 ? GREEN : RED }]}>
-              {formatChange(market.change24h)}
-            </Text>
+            <Text style={[styles.price, { color: theme.ink }]}>{formatPerpPrice(scrub ? scrub.price : market.price)}</Text>
+            {scrub ? (
+              <Text style={[styles.change, { color: scrub.delta >= 0 ? GREEN : RED }]}>
+                {`${formatScrubChange(scrub.delta, scrub.pct)} ${formatScrubStamp(scrub.t, trendRange)}`}
+              </Text>
+            ) : (
+              <Text style={[styles.change, { color: market.change24h >= 0 ? GREEN : RED }]}>
+                {formatChange(market.change24h)}
+              </Text>
+            )}
           </View>
         </View>
 
@@ -201,6 +216,16 @@ export default function PerpsMarketScreen() {
                 }}
               />
             </View>
+          ) : chartView === 'trend' ? (
+            <TrendChart
+              seedKey={`${venue}:${symbol}`}
+              last={market.price}
+              range={trendRange}
+              height={300}
+              dark={dark}
+              onScrub={(sc) => setScrub(sc)}
+              onTick={() => Vibration.vibrate(6)}
+            />
           ) : (
             <CandleChart
               seedKey={`${venue}:${symbol}`}
@@ -210,7 +235,6 @@ export default function PerpsMarketScreen() {
               height={240}
               dark={dark}
               brand={theme.brand}
-              line={lineMode}
             />
           )}
           {!advanced && (
@@ -251,27 +275,55 @@ export default function PerpsMarketScreen() {
           )}
         </View>
 
-        {/* timeframes: line/candle toggle, ranges, interval picker */}
+        {/* timeframes. Normal view: trend (arrow icon, 1H..ALL) or the candle
+            illustration (candle icon, six ranges + interval). The icon is the
+            toggle: arrow -> candle illustration; candle icon -> real candle
+            view (Advanced). */}
         <View style={styles.tfRow}>
-          <Pressable accessibilityLabel="Chart type" onPress={() => setLineMode((v) => !v)} style={styles.tfIcon}>
-            <TrendIcon size={20} color={theme.ink} />
-          </Pressable>
-          {RANGES.map((x) => (
-            <Pressable
-              key={x}
-              accessibilityLabel={`Timeframe ${x}`}
-              onPress={() => pickRange(x)}
-              style={[styles.tf, x === range ? { backgroundColor: dark ? '#2A2D3E' : '#EEEEF0' } : null]}
-            >
-              <Text style={[styles.tfText, { color: x === range ? theme.ink : theme.inkMuted }]}>{x}</Text>
+          {advanced ? (
+            <Pressable accessibilityLabel="Chart type" onPress={() => setLineMode((v) => !v)} style={styles.tfIcon}>
+              <TrendIcon size={20} color={theme.ink} />
             </Pressable>
-          ))}
-          <Pressable accessibilityLabel="Candle interval" onPress={() => setPickerOpen(true)} style={styles.tf}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Text style={[styles.tfText, { color: theme.ink }]}>{interval}</Text>
-              <ChevronsUpDownIcon size={14} color={theme.ink} />
-            </View>
-          </Pressable>
+          ) : chartView === 'trend' ? (
+            <Pressable accessibilityLabel="Show candles" onPress={() => { setScrub(null); setChartView('candles'); }} style={styles.tfIcon}>
+              <TrendIcon size={20} color={theme.ink} />
+            </Pressable>
+          ) : (
+            <Pressable accessibilityLabel="Open candle view" onPress={() => { setScrub(null); setAdvanced(true); }} style={styles.tfIcon}>
+              <CandlesIcon size={20} color={theme.ink} />
+            </Pressable>
+          )}
+          {!advanced && chartView === 'trend' ? (
+            TREND_RANGES.map((x) => (
+              <Pressable
+                key={x}
+                accessibilityLabel={`Timeframe ${x}`}
+                onPress={() => { setScrub(null); setTrendRange(x); }}
+                style={[styles.tf, x === trendRange ? { backgroundColor: dark ? '#2A2D3E' : '#EEEEF0' } : null]}
+              >
+                <Text style={[styles.tfText, { color: x === trendRange ? theme.ink : theme.inkMuted }]}>{x}</Text>
+              </Pressable>
+            ))
+          ) : (
+            <>
+              {RANGES.map((x) => (
+                <Pressable
+                  key={x}
+                  accessibilityLabel={`Timeframe ${x}`}
+                  onPress={() => pickRange(x)}
+                  style={[styles.tf, x === range ? { backgroundColor: dark ? '#2A2D3E' : '#EEEEF0' } : null]}
+                >
+                  <Text style={[styles.tfText, { color: x === range ? theme.ink : theme.inkMuted }]}>{x}</Text>
+                </Pressable>
+              ))}
+              <Pressable accessibilityLabel="Candle interval" onPress={() => setPickerOpen(true)} style={styles.tf}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Text style={[styles.tfText, { color: theme.ink }]}>{interval}</Text>
+                  <ChevronsUpDownIcon size={14} color={theme.ink} />
+                </View>
+              </Pressable>
+            </>
+          )}
         </View>
 
         {advanced && (

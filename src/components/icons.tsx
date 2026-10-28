@@ -789,6 +789,15 @@ export const ShieldLockIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: I
   </Svg>
 );
 
+/** Two candles with wicks: the "show candles" toggle glyph (Trust 10:08). */
+export const CandlesIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M7 4v3M7 15v4M17 6v2M17 17v3" {...stroke(color, strokeWidth)} />
+    <Rect x="4.5" y="7" width="5" height="8" rx="1.2" {...stroke(color, strokeWidth)} />
+    <Rect x="14.5" y="8" width="5" height="9" rx="1.2" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
 export const TrendIcon = ({ size = 24, color = '#000', strokeWidth = 2.2 }: IconProps) => (
   <Svg {...base(size)}>
     <Path d="M4 17l5-5 4 4 7-8" {...stroke(color, strokeWidth)} />
