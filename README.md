@@ -141,7 +141,7 @@ Settings > Perps > **How perps work?** opens a six-step swipeable guide (Trust p
 - **Next** (deep violet `#5147E6`) advances; on the last step it reads **Got it** and closes. **Skip** closes from any step. Swiping sideways also moves between steps.
 - All six steps are illustrated with the generated art in `src/assets/perps-guide/` (filenames are documented in that folder's README).
 - Step 6 uses Veltravia's own token names (USDT, BNB, VWT).
-- The Perps home gear icon now opens the Perps settings menu; the history icon is inert until real trade history exists.
+- The Perps home gear icon opens the Perps settings menu; the history (timer) icon opens the Activity screen.
 
 ## VWT token (new)
 
