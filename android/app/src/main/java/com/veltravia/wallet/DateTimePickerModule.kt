@@ -6,6 +6,7 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.UiThreadUtil
 import java.util.Calendar
 
 /**
@@ -21,12 +22,12 @@ class DateTimePickerModule(reactContext: ReactApplicationContext) :
 
   @ReactMethod
   fun pick(initialMillis: Double, minMillis: Double, maxMillis: Double, promise: Promise) {
-    val activity = currentActivity
+    val activity = reactApplicationContext.currentActivity
     if (activity == null) {
       promise.resolve(null)
       return
     }
-    activity.runOnUiThread {
+    UiThreadUtil.runOnUiThread {
       val cal = Calendar.getInstance().apply { timeInMillis = initialMillis.toLong() }
       var settled = false
       fun settle(v: Double?) {
