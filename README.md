@@ -170,6 +170,14 @@ The "−" button on the Perps home opens a tall bottom sheet over the Perps scre
 - **Receive** opens **Select network** (Arbitrum, Ethereum, Base, Optimism, BNB Smart Chain, Polygon, Avalanche, Solana) with the "We'll deposit USDC to your wallet…" note.
 - Settlement through api.veltraviawallet.com arrives with the Wallet Core signing bridge; until then the slide updates the local Perps account.
 
+### Activity loading/failure states unified (Trust 10:22 screenshot)
+
+Both Activity screens (wallet + Perps) now share one loading/failure pattern:
+
+- **Failure state:** Trust's cog illustration is replaced everywhere with Ijezie's sad no-Wi-Fi robot (`src/assets/activity-error-robot.png`, transparent background so one asset serves light and dark). Copy matches Trust 10:22 exactly: a single grey line "Failed to load activity" and a 288x59 **Retry** pill (no headline, no error caption). Retry re-runs the full load.
+- **Skeleton:** the shared `Skeleton` primitives (used by both Activity screens, Perps home session load, Discover search, ReceiveSheet) carry Trust's two-part animation: the 700/600ms opacity pulse plus the moving light band sweeping every block every 0.8s.
+- **Pull-to-refresh:** dragging the list pops the native spinner AND swaps the screen to the shimmering skeleton "searching for any activity" until the fetch settles, then returns the list (or the failure view if the phone is offline). The skeleton branch keeps the RefreshControl attached so the spinner survives the swap.
+
 ### Perps Activity screen (Trust 10:21 screenshot)
 
 The Perps history icon (home round-timer + market page history) now opens a **dedicated Perps Activity screen** (separate route `PerpsActivity`, not the wallet Activity). Built on the same pattern as the wallet screen: 36dp header circles with back / centred "Activity" / filter-lines button, shared skeleton on load, then the empty state with the existing Veltravia no-activity robot illustration, "No activity yet" and "Your transactions will appear here"; "Show older activity" pill with state-driven auto-hide; the Filters sheet. Offline (real NetInfo probe) shows the shared error state (satellite art, "Something went wrong", 288x59 Reload pill, "Request timed out") — to be refined against Ijezie's upcoming offline recording. 205 tests.

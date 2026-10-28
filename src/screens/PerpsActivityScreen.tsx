@@ -10,18 +10,17 @@
  *   - empty state: the Veltravia no-activity robot illustration,
  *     "No activity yet" (24 Bold) / "Your transactions will appear here"
  *   - "Show older activity" pill, state-driven auto-hide
- *   - offline: "Something went wrong" state (satellite art, Reload pill)
- *     driven by a real NetInfo probe — Ijezie's offline recording will
- *     refine this state.
+ *   - offline (Trust 10:22): the Veltravia sad no-Wi-Fi robot illustration,
+ *     "Failed to load activity", a "Retry" pill — same as the wallet screen.
+ *   - pull-to-refresh: native spinner + the shimmer skeleton search.
  * No perps history source yet (live trading comes after Wallet Core
  * signing), so the list settles empty.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, Pressable, ScrollView, Image, Animated,
-  StatusBar, RefreshControl, Easing,
+  StatusBar, RefreshControl,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
 import { BackIcon, FilterLinesIcon } from '../components/icons';
@@ -41,9 +40,6 @@ export default function PerpsActivityScreen({ navigation }: { navigation: any })
   const [isFetchingOlder, setIsFetchingOlder] = useState(false);
   const [pillOpacity, setPillOpacity] = useState(() => new Animated.Value(1));
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [retrying, setRetrying] = useState(false);
-  const barX = useRef(new Animated.Value(0)).current;
-  const [barW, setBarW] = useState(0);
 
   const [filters, setFilters] = useState<ActivityFilters>(DEFAULT_ACTIVITY_FILTERS);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -51,16 +47,6 @@ export default function PerpsActivityScreen({ navigation }: { navigation: any })
   const chipBg = dark ? 'rgba(255,255,255,0.12)' : 'rgba(60,64,90,0.08)';
   const pageBg = dark ? theme.background : '#FFFFFF';
   const tertiary = theme.surfaceAlt;
-
-  useEffect(() => {
-    if (!retrying || barW === 0) return;
-    barX.setValue(0);
-    const loop = Animated.loop(
-      Animated.timing(barX, { toValue: 1, duration: 1100, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [retrying, barW, barX]);
 
   const hidePill = useCallback(() => {
     Animated.timing(pillOpacity, { toValue: 0, duration: 220, useNativeDriver: true }).start();
@@ -74,7 +60,7 @@ export default function PerpsActivityScreen({ navigation }: { navigation: any })
     const state = await NetInfo.fetch();
     const online = state.isConnected === true && state.isInternetReachable !== false;
     await new Promise<void>(r => setTimeout(r, 900));
-    if (!online) setLoadError('Request timed out');
+    if (!online) setLoadError('offline');
     setIsLoading(false);
   }, []);
 
@@ -86,25 +72,24 @@ export default function PerpsActivityScreen({ navigation }: { navigation: any })
     return () => clearTimeout(t);
   }, [isLoading, loadError, hidePill]);
 
+  // Retry (button or drag on the error view): a full reload — the native
+  // spinner cycles on the pull and the skeleton re-runs its shimmer search.
   const retry = useCallback(async () => {
-    if (retrying) return;
-    setRetrying(true);
-    const [state] = await Promise.all([
-      NetInfo.fetch(),
-      new Promise<void>(r => setTimeout(r, 1800)),
-    ]);
-    const online = state.isConnected === true && state.isInternetReachable !== false;
-    setLoadError(online ? null : 'Request timed out');
-    setRetrying(false);
-  }, [retrying]);
+    await loadActivity();
+  }, [loadActivity]);
 
+  // Pull-to-refresh on the list: the native spinner cycles AND the screen
+  // swaps to the shimmering skeleton "searching for any activity" until the
+  // fetch settles (Trust 10:22 recording).
   const onRefresh = useCallback(async () => {
+    if (refreshing || isLoading) return;
     setRefreshing(true);
     const state = await NetInfo.fetch();
     const online = state.isConnected === true && state.isInternetReachable !== false;
+    await new Promise<void>(r => setTimeout(r, 1200)); // the skeleton's visible search
     setRefreshing(false);
-    setLoadError(online ? null : 'Request timed out');
-  }, []);
+    setLoadError(online ? null : 'offline');
+  }, [refreshing, isLoading]);
 
   const canLoadOlder = hasNextPage && !isFetchingOlder && !refreshing && !isLoading && !loadError;
 
@@ -133,22 +118,21 @@ export default function PerpsActivityScreen({ navigation }: { navigation: any })
         </Pressable>
       </View>
 
-      {retrying && (
-        <View style={[styles.barTrack, { top: insets.top + 8 + TOUCH.headerCircle + SP.xs }]} onLayout={e => setBarW(e.nativeEvent.layout.width)}>
-          <Animated.View
-            style={{
-              width: barW * 0.4,
-              height: 3,
-              transform: [{ translateX: barX.interpolate({ inputRange: [0, 1], outputRange: [-barW * 0.4, barW] }) }],
-            }}
-          >
-            <LinearGradient colors={[...theme.brandGradient]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flex: 1, borderRadius: 2 }} />
-          </Animated.View>
-        </View>
-      )}
-
       {showSkeleton ? (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: SP.xl }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: SP.xl }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={theme.ink}
+              colors={[theme.brandGradient[0]]}
+              progressBackgroundColor={dark ? theme.surface : '#FFFFFF'}
+              progressViewOffset={insets.top + 56}
+            />
+          }
+        >
           <ActivitySkeleton />
         </ScrollView>
       ) : loadError ? (
@@ -157,8 +141,8 @@ export default function PerpsActivityScreen({ navigation }: { navigation: any })
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
-              refreshing={retrying}
-              onRefresh={retry}
+              refreshing={refreshing}
+              onRefresh={onRefresh}
               tintColor={theme.ink}
               colors={[theme.brandGradient[0]]}
               progressBackgroundColor={dark ? theme.surface : '#FFFFFF'}
@@ -167,20 +151,17 @@ export default function PerpsActivityScreen({ navigation }: { navigation: any })
           }
         >
           <Image
-            source={dark ? require('../assets/activity-error-dark.png') : require('../assets/activity-error.png')}
+            source={require('../assets/activity-error-robot.png')}
             style={styles.errorArt}
             resizeMode="contain"
           />
-          <Text style={[styles.headline, { color: theme.ink }]}>Something went wrong</Text>
-          <Text style={[styles.sub, { color: theme.inkMuted }]}>We couldn't load your activity</Text>
+          <Text style={[styles.errorLine, { color: theme.inkMuted }]}>Failed to load activity</Text>
           <Pressable
             onPress={retry}
-            disabled={retrying}
-            style={({ pressed }) => [styles.reloadBtn, { backgroundColor: tertiary, opacity: pressed || retrying ? 0.7 : 1 }]}
+            style={({ pressed }) => [styles.retryBtn, { backgroundColor: tertiary, opacity: pressed ? 0.7 : 1 }]}
           >
-            <Text style={[T.buttonLarge, { color: theme.ink }]}>Reload</Text>
+            <Text style={[T.buttonLarge, { color: theme.ink }]}>Retry</Text>
           </Pressable>
-          <Text style={[T.caption1, styles.errorText, { color: theme.inkMuted }]}>{loadError}</Text>
         </ScrollView>
       ) : (
         <ScrollView
@@ -254,10 +235,12 @@ const styles = StyleSheet.create({
   headline: { ...T.title2, textAlign: 'center' },
   sub: { ...T.subtitle, marginTop: 8, textAlign: 'center' },
 
-  barTrack: { position: 'absolute', left: 0, right: 0, height: 3, overflow: 'hidden', zIndex: 5 },
   errorBody: { alignItems: 'center', paddingHorizontal: SP.xxl, paddingTop: SP.sm },
-  errorArt: { width: 112, height: 100, marginTop: 25, marginBottom: 24 },
-  reloadBtn: {
+  // the sad no-Wi-Fi robot (Ijezie's illustration, 566x929) — transparent art,
+  // so the same asset serves light and dark.
+  errorArt: { width: 96, height: 158, marginTop: 20, marginBottom: 28 },
+  errorLine: { ...T.subtitle, textAlign: 'center' },
+  retryBtn: {
     width: 288,
     height: 59,
     borderRadius: 12,
@@ -265,7 +248,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: SP.xl,
   },
-  errorText: { marginTop: SP.mdlg - 1, textAlign: 'center' },
   olderPill: {
     width: 288,
     height: 59,

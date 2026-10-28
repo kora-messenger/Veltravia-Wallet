@@ -72,18 +72,36 @@ describe('Perps Activity screen (Trust 10:21 screenshot)', () => {
     await act(async () => { t.unmount(); });
   });
 
-  it('offline load shows the error state with Reload, and recovering clears it', async () => {
+  it('offline load: sad-robot illustration, "Failed to load activity", Retry; recovering clears it', async () => {
     mockOnline = false;
     const t = await mountScreen(PerpsActivityScreen, 'PerpsActivity');
     const all = texts(t);
-    expect(all).toContain('Something went wrong');
-    expect(all).toContain('Reload');
-    // back online
+    expect(all).toContain('Failed to load activity');
+    expect(all).toContain('Retry');
+    expect(all).not.toContain('Something went wrong');
+    const robot = t.root.findAll((n) => JSON.stringify(n.props.source ?? '').includes('activity-error-robot'));
+    expect(robot.length).toBeGreaterThanOrEqual(1);
+    // back online -> Retry reloads to the empty list
     mockOnline = true;
-    const btn = t.root.find((n) => texts(t).includes('Reload') && n.props.children?.props?.children === 'Reload');
-    await act(async () => { jest.advanceTimersByTime(2500); });
+    const btn = t.root.find((n) => n.props.children?.props?.children === 'Retry');
     await act(async () => { btn.props.onPress(); });
-    await act(async () => { jest.advanceTimersByTime(2500); });
+    await act(async () => { jest.advanceTimersByTime(1500); });
+    expect(texts(t)).toContain('No activity yet');
+    await act(async () => { t.unmount(); });
+  });
+
+  it('drag-down refresh: the spinner drives a skeleton search, then the list returns', async () => {
+    const { ActivitySkeleton } = require('../src/components/Skeleton');
+    const t = await mountScreen(PerpsActivityScreen, 'PerpsActivity');
+    const ctl = t.root.findAll((n) => typeof n.props.onRefresh === 'function');
+    expect(ctl.length).toBe(1); // the empty list's RefreshControl
+    const p = ctl[0].props.onRefresh();
+    await act(async () => {});  // flush NetInfo -> refreshing=true, skeleton up
+    expect(t.root.findAll((n) => n.type === ActivitySkeleton).length).toBeGreaterThanOrEqual(1);
+    expect(texts(t)).not.toContain('No activity yet'); // list swapped out for the search
+    await act(async () => { jest.advanceTimersByTime(1300); });
+    await p;
+    await act(async () => {});
     expect(texts(t)).toContain('No activity yet');
     await act(async () => { t.unmount(); });
   });
