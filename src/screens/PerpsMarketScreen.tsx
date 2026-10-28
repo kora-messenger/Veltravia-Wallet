@@ -26,6 +26,8 @@ import {
   ArrowUpRightTx, ArrowDownRightIcon, COIN_ICONS, SparkleIcon, ShareSquareIcon, TrendIcon, ArrowLeftUpIcon, HexSettingsIcon, TradingViewMark, ChevronsUpDownIcon, CheckIcon,
 } from '../components/icons';
 import { RANGES, INTERVALS, defaultInterval, type Range, type Interval } from '../services/candleEngine';
+import TradingViewChart from '../components/TradingViewChart';
+import { intervalToResolution } from '../services/tvBridge';
 import { PERP_SECTIONS, formatPerpPrice, formatChange, type PerpMarket } from '../services/perpsMarkets';
 import { getMarketInfo, getMarketStats, relatedMarkets, marketName } from '../services/perpsMarketInfo';
 import { usePerpsFavorites, toggleFavorite, loadPerpsFavorites } from '../services/perpsFavorites';
@@ -173,18 +175,40 @@ export default function PerpsMarketScreen() {
 
         {/* chart (+ Advanced button in the normal view) */}
         <View style={styles.chartWrap}>
-          <CandleChart
-            seedKey={`${venue}:${symbol}`}
-            last={market.price}
-            range={range}
-            interval={interval}
-            height={advanced ? 400 : 240}
-            interactive={advanced}
-            showVolume={advanced && volumeOn}
-            dark={dark}
-            brand={theme.brand}
-            line={lineMode}
-          />
+          {advanced ? (
+            <View style={{ height: Math.round((W || 390) * 1.05) }}>
+              <TradingViewChart
+                symbol={`VELTRAVIA:${symbol}`}
+                seed={`${venue}:${symbol}`}
+                description={`${info.name} (${symbol})`}
+                exchange={venue === 'aster' ? 'Aster' : 'Hyperliquid'}
+                last={market.price}
+                resolution={intervalToResolution[interval]}
+                chartType={lineMode ? 'line' : 'candle'}
+                theme={dark ? 'dark' : 'light'}
+                showVolume={volumeOn}
+                colors={{
+                  backgroundPrimary: theme.background,
+                  brandPrimary: theme.brand,
+                  successMain: GREEN,
+                  errorMain: RED,
+                  textSecondary: theme.inkMuted,
+                  axisText: theme.inkMuted,
+                }}
+              />
+            </View>
+          ) : (
+            <CandleChart
+              seedKey={`${venue}:${symbol}`}
+              last={market.price}
+              range={range}
+              interval={interval}
+              height={240}
+              dark={dark}
+              brand={theme.brand}
+              line={lineMode}
+            />
+          )}
           {!advanced && (
             <Pressable
               accessibilityLabel="Advanced chart"

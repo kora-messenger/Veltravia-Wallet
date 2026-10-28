@@ -260,18 +260,17 @@ describe('Advanced chart mode (Trust recording 2026-10-28 09:33)', () => {
     await act(async () => { t.unmount(); });
   });
 
-  it('long-pressing the chart in Advanced mode shows the crosshair readout; releasing hides it', async () => {
-    jest.useFakeTimers();
+  it('Advanced mode renders the REAL TradingView chart (WebView) instead of the lightweight one', async () => {
+    const CandleChartCmp = require('../src/components/CandleChart').default;
+    const TradingViewCmp = require('../src/components/TradingViewChart').default;
+    const instances = (t: renderer.ReactTestRenderer, Cmp: any) =>
+      t.root.findAll((x) => x.type === Cmp).length;
     const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    expect(instances(t, CandleChartCmp)).toBe(1);   // lightweight preview
+    expect(instances(t, TradingViewCmp)).toBe(0);   // no WebView chart yet
     await press(t, 'Advanced chart');
-    const chart = t.root.find((x) => x.props.accessibilityLabel === 'Candle chart');
-    const touch = (x: number) => ({ nativeEvent: { touches: [{ pageX: x, pageY: 100 }], locationX: x, pageX: x } });
-    await act(async () => { chart.props.onResponderGrant(touch(150)); });
-    await act(async () => { jest.advanceTimersByTime(400); });
-    expect(texts(t).some((x) => x.startsWith('O '))).toBe(true);
-    await act(async () => { chart.props.onResponderRelease(); });
-    expect(texts(t).some((x) => x.startsWith('O '))).toBe(false);
-    jest.useRealTimers();
+    expect(instances(t, TradingViewCmp)).toBe(1);   // the real TradingView chart
+    expect(instances(t, CandleChartCmp)).toBe(0);  // preview swapped out
     await act(async () => { t.unmount(); });
   });
 

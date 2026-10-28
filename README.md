@@ -170,6 +170,17 @@ The "−" button on the Perps home opens a tall bottom sheet over the Perps scre
 - **Receive** opens **Select network** (Arbitrum, Ethereum, Base, Optimism, BNB Smart Chain, Polygon, Avalanche, Solana) with the "We'll deposit USDC to your wallet…" note.
 - Settlement through api.veltraviawallet.com arrives with the Wallet Core signing bridge; until then the slide updates the local Perps account.
 
+### Perps market page: the REAL TradingView chart (step 2, part 2)
+
+The Advanced chart is now the genuine **TradingView Advanced Charts library (CL v32.1.0)**, exactly as Trust Wallet ships it:
+
+- **Extracted from Trust's APK** (404 files, 10.2 MB) into `android/app/src/main/assets/charting_library/` — the same path Trust stages it at, so the WebView loads `file:///android_asset/charting_library/index.html` (Trust's own host page, copied verbatim).
+- **`src/services/tvBridge.ts`** (pure logic, 15 tests) implements Trust's bridge protocol: the page announces `ready`, RN answers `init` (symbol, exchange, interval, theme, pricescale, volume, Veltravia colors), the library pulls history through `barsRequest`/`barsResponse` (ids matched one-to-one), and RN pushes `setResolution`, `setChartType`, `theme` and `updateTick` as the control bar and live price move. One series per interval with a frozen clock, so panning back pages a consistent walk; `meta.noData` marks the end of history.
+- **`src/components/TradingViewChart.tsx`** is the thin RN WebView wrapper: file access + universal access enabled (the library's same-origin iframe needs it), `onShouldStartLoadWithRequest` keeps the WebView on file:// only, remote navigation is impossible.
+- **Market page**: the normal view keeps the lightweight preview chart; Advanced swaps it for the real chart (height ~1.05x width). The timeframe chips, interval picker, line/candle toggle, volume Manage and theme all drive the library live. TradingView's own pan/zoom/crosshair/gestures are native inside the WebView.
+- The TradingView logo button still opens tradingview.com in the system browser (Trust does this too), and the library's attribution stays in-pane as required.
+- Bars still come from `candleEngine` (deterministic, ends at the live price) until api.veltraviawallet.com serves real OHLC.
+
 ### Perps market page: candle chart and Advanced mode (step 2)
 
 The chart is now a real interactive candlestick chart (`CandleChart` + pure maths in `services/candleEngine.ts`, 21 + 7 tests):

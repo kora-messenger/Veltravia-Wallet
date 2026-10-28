@@ -1,0 +1,1181 @@
+<!doctype html>
+<!--
+  WebView host page for the TradingView Advanced Charts widget.
+
+  Unlike the lightweight-charts templates in ../../LightweightChart/web/, this
+  file is NOT code-generated into a .ts string. It cannot be: the library is a
+  webpack runtime that resolves `library_path + 'bundles/<chunk>.js'` by URL,
+  spawns a Web Worker from a URL, and renders into an iframe (sameorigin.html).
+  So this page is copied verbatim next to the library by
+  react-native/scripts/stage-charting-library.js, and `library_path: './'`
+  resolves the bundles/ subtree sitting beside it. Edit this file and re-run
+  `pnpm stage:charting-library` — there is no codegen step to forget.
+
+  Data flows the opposite way from the lightweight chart too. That one is
+  push-only (RN posts SET_ALL_DATA). TradingView's datafeed is pull-based: it
+  ASKS for bars, so getBars() posts a request with an id and parks the resolver
+  until RN answers with the matching id. RN is the single source of candle
+  truth — the same useHyperliquidCandles/useAsterCandles hooks that feed the
+  lightweight chart.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>chart</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        background: transparent;
+        /* The library owns all gestures inside the chart; without this the
+           WebView's own selection/callout UI fires on long-press. */
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #chart {
+        width: 100%;
+        height: 100%;
+      }
+      /* Edge pills for out-of-view markers — the same affordance as the
+         lightweight chart's arrow labels pinned to the pane edge. Drawn by
+         the OUTER page above the library's iframe (position: fixed +
+         pointer-events: none), because the library itself has no concept of
+         an off-screen marker indicator.
+
+         The values here are only the FALLBACK geometry: `applyEdgeGeometry`
+         re-pins both containers to the PRICE pane's top/bottom and into its
+         price-axis column (beside the current-price label) every time the
+         edge markers refresh. Without that, indicator sub-panes (RSI/MACD)
+         put the "↓ SL" pill over the RSI pane and "↑ TP" over the header. */
+      #edge-top,
+      #edge-bottom {
+        position: fixed;
+        /* Fallback: right-anchored, inset to clear the price scale so the
+           pills sit just inboard of the axis labels. */
+        right: 64px;
+        z-index: 500;
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        align-items: flex-end;
+      }
+      #edge-top {
+        top: 8px;
+      }
+      #edge-bottom {
+        /* Fallback: clear of the time axis at the WebView's bottom. */
+        bottom: 40px;
+      }
+      .edge-pill {
+        border-radius: 40px;
+        padding: 2px 8px;
+        font:
+          600 10px Inter,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="chart"></div>
+    <div id="edge-top"></div>
+    <div id="edge-bottom"></div>
+    <script src="./charting_library.standalone.js"></script>
+    <script>
+      (function () {
+        'use strict';
+
+        // Bumped on every behavioral change to this page. Posted with READY
+        // so the RN side can tell WHICH page the installed app actually runs
+        // — the staged copy is a native asset, and a stale build otherwise
+        // produces ghost bugs that look like code regressions.
+        var PAGE_VERSION = 18;
+
+        var MSG = {
+          READY: 'ready',
+          INIT: 'init',
+          ERROR: 'error',
+          BARS_REQUEST: 'barsRequest',
+          BARS_RESPONSE: 'barsResponse',
+          UPDATE_TICK: 'updateTick',
+          SET_SYMBOL: 'setSymbol',
+          SET_RESOLUTION: 'setResolution',
+          SET_CHART_TYPE: 'setChartType',
+          SET_VISIBLE_RANGE: 'setVisibleRange',
+          SET_PRICE_LINES: 'setPriceLines',
+          SET_STUDIES: 'setStudies',
+          THEME: 'theme',
+          CHART_READY: 'chartReady',
+          GESTURE: 'gesture',
+          DATA_STATE: 'dataState',
+        };
+
+        var post = function (type, payload) {
+          if (!window.ReactNativeWebView) return;
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: type, payload: payload }));
+        };
+
+        var fail = function (where, err) {
+          post(MSG.ERROR, {
+            where: where,
+            message: err && err.message ? err.message : String(err),
+          });
+        };
+
+        // --- pull-based datafeed bridge -------------------------------------
+        // getBars() cannot resolve locally, so each call posts a request keyed
+        // by an incrementing id and stores its resolver here. RN replies with
+        // the same id. A dropped reply would leak a pending entry, so the
+        // library's own onError path is wired to clear it.
+        var pending = {};
+        var nextRequestId = 1;
+
+        var requestBars = function (params) {
+          return new Promise(function (resolve, reject) {
+            var id = String(nextRequestId++);
+            pending[id] = { resolve: resolve, reject: reject };
+            post(MSG.BARS_REQUEST, {
+              id: id,
+              symbol: params.symbol,
+              resolution: params.resolution,
+              from: params.from,
+              to: params.to,
+              countBack: params.countBack,
+              firstRequest: params.firstRequest,
+            });
+          });
+        };
+
+        var config = {
+          // Mirrors the timeframes our own control bar offers, so switching
+          // between the lightweight and advanced chart doesn't change the
+          // available granularities.
+          supported_resolutions: ['1', '5', '15', '30', '60', '240', '1D', '1W'],
+          supports_marks: false,
+          supports_timescale_marks: false,
+          supports_time: true,
+        };
+
+        var symbolInfo = null;
+        var realtimeSubscriber = null;
+
+        // Whether ANY bar has been served since the last (re)build / resolution
+        // change. While none has, the library shows its own "No data here" hint
+        // — centred in the PANE (left of the price axis, above the time axis),
+        // so it reads off-centre against the chart footprint, and its copy is
+        // the library's, not ours. RN is told so it can draw a centred empty
+        // state over the WebView instead; posted only on change.
+        var sessionHasBars = false;
+        var lastReportedEmpty = null;
+        // Generation counter, bumped by every reset. `getBars` is async and the
+        // library does NOT cancel the in-flight request for the resolution you
+        // just left: without this, a late response from the OLD resolution
+        // lands after the reset, flips `sessionHasBars` to true and reports
+        // `empty:false` — and the new resolution's own empty response can never
+        // undo that, because it only ever SETS the flag. The empty state would
+        // then stay hidden for a resolution that genuinely has no bars. Each
+        // request captures the generation it was issued under and a stale one
+        // is dropped on arrival.
+        var dataGeneration = 0;
+        var resetDataState = function () {
+          sessionHasBars = false;
+          lastReportedEmpty = null;
+          dataGeneration++;
+        };
+        var reportDataState = function () {
+          var empty = !sessionHasBars;
+          if (empty === lastReportedEmpty) return;
+          lastReportedEmpty = empty;
+          post(MSG.DATA_STATE, { empty: empty });
+        };
+
+        var datafeed = {
+          onReady: function (cb) {
+            setTimeout(function () {
+              cb(config);
+            }, 0);
+          },
+          searchSymbols: function (_u, _e, _t, onResult) {
+            // The chart is always opened on one market; there is no in-chart
+            // symbol search (the header search widget is disabled below).
+            onResult([]);
+          },
+          resolveSymbol: function (symbolName, onResolve, onError) {
+            if (!symbolInfo) {
+              onError('symbol not initialised');
+              return;
+            }
+            setTimeout(function () {
+              onResolve(symbolInfo);
+            }, 0);
+          },
+          getBars: function (info, resolution, periodParams, onResult, onError) {
+            var generation = dataGeneration;
+            requestBars({
+              symbol: info.name,
+              resolution: resolution,
+              from: periodParams.from,
+              to: periodParams.to,
+              countBack: periodParams.countBack,
+              firstRequest: periodParams.firstDataRequest,
+            })
+              .then(function (res) {
+                var bars = res && res.bars ? res.bars : [];
+                // Still hand the bars to the library — they are the answer to
+                // the request IT made, and dropping them would strand the pane.
+                // Only the empty-state bookkeeping is generation-scoped.
+                if (generation === dataGeneration) {
+                  if (bars.length > 0) sessionHasBars = true;
+                  reportDataState();
+                }
+                onResult(bars, { noData: bars.length === 0 });
+              })
+              .catch(function (err) {
+                // A failed FIRST request leaves the pane with nothing, so the
+                // host's empty state is the right cover for it too; without
+                // this the flag stays stale and only the library's own
+                // off-centre hint shows.
+                if (generation === dataGeneration && periodParams.firstDataRequest) {
+                  reportDataState();
+                }
+                onError(err && err.message ? err.message : String(err));
+              });
+          },
+          subscribeBars: function (_info, _resolution, onTick) {
+            // One market, one subscription — RN streams ticks unconditionally
+            // and we forward the latest to whoever is listening.
+            realtimeSubscriber = onTick;
+          },
+          unsubscribeBars: function () {
+            realtimeSubscriber = null;
+          },
+        };
+
+        // --- widget ---------------------------------------------------------
+        var widget = null;
+        var lastColors = {};
+        var wantVolume = false;
+        var volumeStudyId = null;
+        var currentChartType = 'candle';
+        // RN's control bar starts posting SET_* right after the READY
+        // handshake, but `widget.activeChart()` throws until onChartReady —
+        // so every message records desired state here and the apply helpers
+        // below run it once (and whenever) the chart can take it.
+        var chartIsReady = false;
+        var lastResolution = null;
+        var lastRange = null;
+        var lastPriceLines = [];
+        var priceLineAdapters = [];
+        // EntityIds from the horizontal_line fallback (removed via
+        // chart.removeEntity, unlike adapters which carry .remove()).
+        var priceLineShapes = [];
+        // Host-toggled indicators. `lastStudies` is the desired set (from
+        // SET_STUDIES); `activeStudies` maps key -> EntityId of what's on the
+        // chart (or STUDY_PENDING while createStudy is in flight). 'vol' is
+        // special-cased onto the built-in volume overlay via `volEnabled`.
+        var lastStudies = null;
+        var activeStudies = {};
+        var STUDY_PENDING = '__pending__';
+        var volEnabled = true;
+
+        // Same axis/grid constants the v3 lightweight template hardcodes —
+        // its gridlines deliberately ignore the passed-in divider token
+        // (ChartSection maps lineDivider to full-opacity textSecondary, which
+        // would read far heavier than the regular chart).
+        var FONT_FAMILY =
+          "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+        var GRID_LINE_COLOR = 'rgba(160, 161, 173, 0.32)';
+        var VOLUME_FALLBACK_COLOR = 'rgba(160, 161, 173, 0.16)';
+
+        /** `#rrggbb` → rgba at the given alpha; non-hex input passes through
+         *  (mirrors the lightweight template's helper of the same name). */
+        var withAlpha = function (color, alpha) {
+          var m = /^#([0-9a-f]{6})$/i.exec(color || '');
+          if (!m) return color;
+          var n = parseInt(m[1], 16);
+          return (
+            'rgba(' +
+            ((n >> 16) & 255) +
+            ', ' +
+            ((n >> 8) & 255) +
+            ', ' +
+            (n & 255) +
+            ', ' +
+            alpha +
+            ')'
+          );
+        };
+
+        // The lightweight chart labels its time axis in device-local time;
+        // pinning TradingView to UTC would shift every axis label the moment
+        // the user switches charts. NOTE: the library validates `timezone`
+        // against its own list and can THROW at construction on an unlisted
+        // zone — which is why the widget construction below retries in safe
+        // mode (UTC) when the first attempt fails.
+        var deviceTimezone = function () {
+          try {
+            var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            return tz || 'Etc/UTC';
+          } catch (err) {
+            return 'Etc/UTC';
+          }
+        };
+
+        var overridesFor = function (colors) {
+          // Match the v3 lightweight chart's look so the two charts read as
+          // the same product. Rounded candle bodies are not expressible in
+          // TradingView, so bodies are the one deliberate visual divergence.
+          var axis = colors.axisText || colors.textSecondary;
+          return {
+            'paneProperties.background': colors.backgroundPrimary,
+            'paneProperties.backgroundType': 'solid',
+            // Dashed grid (style 2 = dashed) in the same #A0A1AD @ 32% the
+            // lightweight template hardcodes for both themes.
+            'paneProperties.vertGridProperties.color': GRID_LINE_COLOR,
+            'paneProperties.vertGridProperties.style': 2,
+            'paneProperties.horzGridProperties.color': GRID_LINE_COLOR,
+            'paneProperties.horzGridProperties.style': 2,
+            // Lightweight scaleMargins are 10% top and bottom.
+            'paneProperties.topMargin': 10,
+            'paneProperties.bottomMargin': 10,
+            // The lightweight hover crosshair dashes in textSecondary.
+            'paneProperties.crossHairProperties.color': colors.textSecondary || axis,
+            'paneProperties.crossHairProperties.style': 2,
+            // Our chrome carries the symbol + OHLC, so the in-pane legend is
+            // duplicate ink.
+            'paneProperties.legendProperties.showLegend': false,
+            'paneProperties.legendProperties.showStudyValues': false,
+            'scalesProperties.textColor': axis,
+            // The lightweight chart draws no scale borders (borderVisible:
+            // false on both axes).
+            'scalesProperties.lineColor': 'rgba(0, 0, 0, 0)',
+            'scalesProperties.fontSize': 10,
+            'scalesProperties.showStudyLastValue': false,
+            'mainSeriesProperties.candleStyle.upColor': colors.successMain,
+            'mainSeriesProperties.candleStyle.downColor': colors.errorMain,
+            'mainSeriesProperties.candleStyle.borderUpColor': colors.successMain,
+            'mainSeriesProperties.candleStyle.borderDownColor': colors.errorMain,
+            'mainSeriesProperties.candleStyle.wickUpColor': colors.successMain,
+            'mainSeriesProperties.candleStyle.wickDownColor': colors.errorMain,
+            // The live-price line: brand at 35% like the lightweight chart's
+            // .live-line (1px brand rule under the floating price pill).
+            'mainSeriesProperties.showPriceLine': true,
+            'mainSeriesProperties.priceLineColor': withAlpha(colors.brandPrimary, 0.35),
+            'mainSeriesProperties.priceLineWidth': 1,
+            // Line mode on the lightweight chart is a success-coloured area
+            // with a 20% → 0 gradient fill, not a brand-coloured plain line.
+            'mainSeriesProperties.lineStyle.color': colors.successMain,
+            'mainSeriesProperties.lineStyle.linewidth': 2,
+            'mainSeriesProperties.areaStyle.color1': withAlpha(colors.successMain, 0.2),
+            'mainSeriesProperties.areaStyle.color2': withAlpha(colors.successMain, 0),
+            'mainSeriesProperties.areaStyle.linecolor': colors.successMain,
+            'mainSeriesProperties.areaStyle.linewidth': 2,
+          };
+        };
+
+        // Volume study colours can't go through `overrides` (that only reaches
+        // the main series), so they ride the createStudy call instead. The
+        // lightweight chart paints volume as ONE neutral tone (#A0A1AD @ 16%
+        // — the background/tertiary token). Solid hex + the study's own
+        // transparency, NOT an rgba colour: versions that ignore rgba alpha
+        // in study overrides would paint an opaque grey wall.
+        var volumeOverridesFor = function () {
+          return {
+            'volume.color.0': '#A0A1AD',
+            'volume.color.1': '#A0A1AD',
+            'volume.transparency': 84,
+          };
+        };
+
+        // The lightweight chart hides volume in line view (the design carries
+        // none there); mirror that. The host's VOL indicator toggle rides the
+        // same visibility (volEnabled) instead of creating a second study.
+        var applyVolumeVisibility = function () {
+          if (!widget || volumeStudyId == null) return;
+          try {
+            widget
+              .activeChart()
+              .getStudyById(volumeStudyId)
+              .setVisible(volEnabled && currentChartType !== 'line');
+          } catch (err) {
+            // Older library builds without getStudyById: volume just stays.
+          }
+        };
+
+        // Diff the desired indicator set against what's on the chart: create
+        // newcomers, remove leavers. A toggle-off racing an in-flight
+        // createStudy is handled by the resolve callback noticing its key
+        // vanished and removing the fresh study immediately.
+        var applyStudies = function () {
+          if (!widget || !chartIsReady || lastStudies == null) return;
+          var chart;
+          try {
+            chart = widget.activeChart();
+          } catch (err) {
+            return;
+          }
+          var want = {};
+          var wantVol = false;
+          var i;
+          for (i = 0; i < lastStudies.length; i++) {
+            var s = lastStudies[i];
+            if (!s || !s.key || !s.study) continue;
+            if (s.key === 'vol') {
+              wantVol = true;
+              continue;
+            }
+            want[s.key] = s;
+          }
+          if (wantVol !== volEnabled) {
+            volEnabled = wantVol;
+            applyVolumeVisibility();
+          }
+          Object.keys(activeStudies).forEach(function (key) {
+            if (want[key]) return;
+            var id = activeStudies[key];
+            delete activeStudies[key];
+            if (id && id !== STUDY_PENDING) {
+              try {
+                chart.removeEntity(id);
+              } catch (err) {
+                // Already gone.
+              }
+            }
+          });
+          Object.keys(want).forEach(function (key) {
+            if (activeStudies[key]) return;
+            activeStudies[key] = STUDY_PENDING;
+            var cfg = want[key];
+            try {
+              Promise.resolve(chart.createStudy(cfg.study, cfg.overlay === true, false))
+                .then(function (id) {
+                  if (activeStudies[key] === STUDY_PENDING) {
+                    activeStudies[key] = id;
+                  } else if (id) {
+                    // Toggled off while creating.
+                    try {
+                      chart.removeEntity(id);
+                    } catch (err) {
+                      // Already gone.
+                    }
+                  }
+                })
+                .catch(function (err) {
+                  delete activeStudies[key];
+                  fail('createStudy ' + cfg.study, err);
+                });
+            } catch (err) {
+              delete activeStudies[key];
+              fail('createStudy ' + cfg.study, err);
+            }
+          });
+        };
+
+        // A pinch/axis-drag flips the price scale into MANUAL mode, and
+        // TradingView keeps that scale across later range changes — so every
+        // timeframe press after a manual zoom lands with the candles squished
+        // into whatever price band the user left behind. A timeframe press is
+        // an explicit "new view" (the lightweight chart resets too), so
+        // re-assert auto-scale whenever a range lands.
+        var assertAutoScale = function () {
+          if (!widget || !chartIsReady) return;
+          try {
+            var priceScale = widget.activeChart().getPanes()[0].getMainSourcePriceScale();
+            if (priceScale && !priceScale.isAutoScale()) priceScale.setAutoScale(true);
+          } catch (err) {
+            // Builds without the panes API keep whatever scale mode is set.
+          }
+        };
+
+        var applyRange = function () {
+          if (!widget || !chartIsReady || !lastRange) return;
+          // Rejects when the range holds no bars (a young market on a long
+          // timeframe); leaving the current view is the right fallback, so
+          // swallow rather than surface it.
+          Promise.resolve(
+            widget.activeChart().setVisibleRange({ from: lastRange.from, to: lastRange.to })
+          )
+            .then(assertAutoScale)
+            .catch(function () {});
+        };
+
+        var applyResolution = function () {
+          if (!widget || !chartIsReady || !lastResolution) return;
+          widget.activeChart().setResolution(String(lastResolution), function () {
+            // A timeframe press changes resolution + viewport together, and
+            // the range RN posts alongside is rejected while the new
+            // resolution's bars are still loading — land it again now that
+            // they exist. Auto-scale is asserted here too because a rejected
+            // range (young market) skips applyRange's own assert.
+            applyRange();
+            assertAutoScale();
+          });
+        };
+
+        var applyChartType = function () {
+          if (!widget || !chartIsReady) return;
+          // TradingView's SeriesType enum: 1 = candles, 3 = area. Area, not
+          // plain line (2): the lightweight chart's line view is an area
+          // series with a gradient fill.
+          widget.activeChart().setChartType(currentChartType === 'line' ? 3 : 1);
+          applyVolumeVisibility();
+        };
+
+        /** Call an optional adapter setter — the order-line adapter surface
+         *  varies across library versions, and one missing setter must not
+         *  cost the whole marker. */
+        var callIf = function (obj, method, arg) {
+          if (obj && typeof obj[method] === 'function') obj[method](arg);
+        };
+
+        // Entry/TP/SL/LIQ markers, mirroring the lightweight chart's price
+        // lines: dashed line in the marker color with the label at the left,
+        // like the lightweight chart's left type label. Order lines are the
+        // richest primitive (styled body pill), but some Advanced Charts
+        // builds ship the method and THROW on call (they're Trading-Terminal
+        // flavored) — those fall back to a locked horizontal_line drawing,
+        // which is core drawings API everywhere. Neither affects autoscale,
+        // matching the perps config (`inScale: false` on every marker).
+        var lineStyleFor = function (line) {
+          return line.lineStyle === 'solid' ? 0 : line.lineStyle === 'dotted' ? 1 : 2;
+        };
+
+        var createMarkerOrderLine = function (chart, line) {
+          var adapter = chart.createOrderLine({ disableUndo: true });
+          var isOutline = line.fill === 'outline';
+          var bg = lastColors.backgroundPrimary || '#1b1b1c';
+          callIf(adapter, 'setPrice', line.price);
+          callIf(adapter, 'setText', line.label || '');
+          // No quantity box — the lightweight markers carry label + price
+          // only. An empty quantity also hides the modify/cancel chrome.
+          callIf(adapter, 'setQuantity', '');
+          callIf(adapter, 'setEditable', false);
+          callIf(adapter, 'setLineColor', line.color);
+          callIf(adapter, 'setLineStyle', lineStyleFor(line));
+          // Body pill on the RIGHT, line still spanning the pane.
+          // `setLineLength` is measured from the RIGHT edge (default unit
+          // 'percentage') and the body sits at the line's left end — so 100
+          // put the pill at the far left. 0 pins the pill to the right edge,
+          // and setExtendLeft re-extends the line back to the left edge so we
+          // keep the full-width dashed marker.
+          callIf(adapter, 'setLineLength', 0);
+          callIf(adapter, 'setExtendLeft', true);
+          callIf(adapter, 'setBodyFont', 'bold 10px ' + FONT_FAMILY);
+          callIf(adapter, 'setBodyTextColor', isOutline ? line.color : bg);
+          callIf(adapter, 'setBodyBackgroundColor', isOutline ? bg : line.color);
+          callIf(
+            adapter,
+            'setBodyBorderColor',
+            isOutline ? 'rgba(160, 161, 173, 0.32)' : line.color
+          );
+          priceLineAdapters.push(adapter);
+        };
+
+        var createMarkerShape = function (chart, line) {
+          // PricedPoint: horizontal lines only need a price, but some builds
+          // validate `time` presence — send a harmless one.
+          var id = chart.createShape(
+            { price: line.price, time: Math.floor(Date.now() / 1000) },
+            {
+              shape: 'horizontal_line',
+              text: line.label || '',
+              lock: true,
+              disableSelection: true,
+              disableSave: true,
+              disableUndo: true,
+              overrides: {
+                linecolor: line.color,
+                linestyle: lineStyleFor(line),
+                linewidth: 1,
+                showLabel: true,
+                textcolor: line.color,
+                fontsize: 10,
+                horzLabelsAlign: 'right',
+                vertLabelsAlign: 'middle',
+              },
+            }
+          );
+          // Newer builds return a Promise<EntityId>, older ones the id itself.
+          Promise.resolve(id).then(function (resolved) {
+            if (resolved) priceLineShapes.push(resolved);
+          });
+        };
+
+        // Out-of-view markers get an arrow pill pinned to the pane edge,
+        // matching the lightweight chart. Polled rather than event-driven:
+        // the library emits no event covering every way the visible PRICE
+        // band changes (pan, pinch, axis drag, autoscale on new bars), and a
+        // 600ms cadence is imperceptible for an indicator.
+        var edgeTimer = null;
+        var renderEdgePills = function (el, items, arrow) {
+          el.innerHTML = '';
+          for (var i = 0; i < items.length; i++) {
+            var line = items[i];
+            var pill = document.createElement('div');
+            pill.className = 'edge-pill';
+            var bg = lastColors.backgroundPrimary || '#1b1b1c';
+            if (line.fill === 'outline') {
+              pill.style.background = bg;
+              pill.style.color = line.color;
+              pill.style.border = '1px solid rgba(160, 161, 173, 0.32)';
+            } else {
+              pill.style.background = line.color;
+              pill.style.color = bg;
+            }
+            pill.textContent = arrow + ' ' + (line.label || '');
+            el.appendChild(pill);
+          }
+        };
+        // Where the PRICE pane and its axis column sit, in page px. Indicator
+        // studies add sub-panes UNDER the main pane, so "the bottom of the
+        // chart" is not the bottom of the candles — an SL pill pinned to the
+        // WebView edge landed on the RSI pane. Measured, not assumed: the pane
+        // count and heights change with every study toggle / pane drag.
+        //
+        // Sources, most exact first:
+        //  1. The library's iframe is same-origin (the gesture relay already
+        //     reads its document), so the first `.pane` cell and the
+        //     `.price-axis` column can be measured directly.
+        //  2. The panes API — `getPanes()[0].getHeight()` — for the pane
+        //     bottom when the markup isn't there (the main pane starts at the
+        //     chart's top; header/legend/toolbars are all disabled).
+        //  3. Nulls fall back to the CSS defaults above.
+        var EDGE_INSET_PX = 8;
+        var EDGE_FALLBACK_RIGHT_PX = 64;
+        var EDGE_FALLBACK_BOTTOM_PX = 40;
+        var lastEdgeGeometry = null;
+        var measureEdgeGeometry = function () {
+          var geometry = { paneTop: null, paneBottom: null, axisLeft: null, axisWidth: null };
+          var frameRect = null;
+          try {
+            var frame = document.querySelector('#chart iframe');
+            var doc = frame && frame.contentDocument;
+            frameRect = frame ? frame.getBoundingClientRect() : null;
+            if (doc && frameRect) {
+              var pane = doc.querySelector('.chart-markup-table .pane');
+              var paneRect = pane ? pane.getBoundingClientRect() : null;
+              if (paneRect && paneRect.height > 0) {
+                geometry.paneTop = frameRect.top + paneRect.top;
+                geometry.paneBottom = frameRect.top + paneRect.bottom;
+              }
+              var axis = doc.querySelector('.chart-markup-table .price-axis');
+              var axisRect = axis ? axis.getBoundingClientRect() : null;
+              if (axisRect && axisRect.width > 0) {
+                geometry.axisLeft = frameRect.left + axisRect.left;
+                geometry.axisWidth = axisRect.width;
+              }
+            }
+          } catch (err) {
+            // Cross-origin or not-yet-built markup: try the API below.
+          }
+          if (geometry.paneBottom == null && widget && chartIsReady) {
+            try {
+              var panes = widget.activeChart().getPanes();
+              var main = panes && panes[0];
+              var height = main && typeof main.getHeight === 'function' ? main.getHeight() : 0;
+              if (height > 0) {
+                geometry.paneTop = frameRect ? frameRect.top : 0;
+                geometry.paneBottom = geometry.paneTop + height;
+              }
+            } catch (err) {
+              // Builds without the panes API: CSS fallback.
+            }
+          }
+          return geometry;
+        };
+        var sameEdgeGeometry = function (a, b) {
+          return (
+            !!a &&
+            !!b &&
+            a.paneTop === b.paneTop &&
+            a.paneBottom === b.paneBottom &&
+            a.axisLeft === b.axisLeft &&
+            a.axisWidth === b.axisWidth
+          );
+        };
+        var applyEdgeGeometry = function (top, bottom) {
+          var geometry = measureEdgeGeometry();
+          // Only touch styles on a change — this runs on the 600ms edge poll.
+          if (sameEdgeGeometry(lastEdgeGeometry, geometry)) return;
+          lastEdgeGeometry = geometry;
+          top.style.top =
+            (geometry.paneTop != null ? geometry.paneTop + EDGE_INSET_PX : EDGE_INSET_PX) + 'px';
+          bottom.style.bottom =
+            (geometry.paneBottom != null
+              ? window.innerHeight - geometry.paneBottom + EDGE_INSET_PX
+              : EDGE_FALLBACK_BOTTOM_PX) + 'px';
+          var containers = [top, bottom];
+          for (var i = 0; i < containers.length; i++) {
+            var el = containers[i];
+            if (geometry.axisLeft != null) {
+              // In the price-axis column, centred like the current-price label.
+              el.style.left = geometry.axisLeft + 'px';
+              el.style.width = geometry.axisWidth + 'px';
+              el.style.right = 'auto';
+              el.style.alignItems = 'center';
+            } else {
+              el.style.left = 'auto';
+              el.style.width = 'auto';
+              el.style.right = EDGE_FALLBACK_RIGHT_PX + 'px';
+              el.style.alignItems = 'flex-end';
+            }
+          }
+        };
+
+        var updateEdgeMarkers = function () {
+          var top = document.getElementById('edge-top');
+          var bottom = document.getElementById('edge-bottom');
+          if (!top || !bottom) return;
+          applyEdgeGeometry(top, bottom);
+          var above = [];
+          var below = [];
+          if (widget && chartIsReady && lastPriceLines.length > 0) {
+            var range = null;
+            try {
+              range = widget.activeChart().getVisiblePriceRange();
+            } catch (err) {
+              // Builds without getVisiblePriceRange: no edge indicators.
+            }
+            if (range) {
+              for (var i = 0; i < lastPriceLines.length; i++) {
+                var line = lastPriceLines[i];
+                if (!line || typeof line.price !== 'number') continue;
+                if (line.price > range.to) above.push(line);
+                else if (line.price < range.from) below.push(line);
+              }
+            }
+          }
+          renderEdgePills(top, above, '↑');
+          renderEdgePills(bottom, below, '↓');
+        };
+        var ensureEdgeTimer = function () {
+          if (edgeTimer || !window.setInterval) return;
+          edgeTimer = setInterval(updateEdgeMarkers, 600);
+        };
+
+        var applyPriceLines = function () {
+          if (!widget || !chartIsReady) return;
+          var i;
+          for (i = 0; i < priceLineAdapters.length; i++) {
+            try {
+              priceLineAdapters[i].remove();
+            } catch (err) {
+              // Already gone (e.g. the chart was rebuilt underneath).
+            }
+          }
+          priceLineAdapters = [];
+          var chart;
+          try {
+            chart = widget.activeChart();
+          } catch (err) {
+            return;
+          }
+          for (i = 0; i < priceLineShapes.length; i++) {
+            try {
+              chart.removeEntity(priceLineShapes[i]);
+            } catch (err) {
+              // Already gone.
+            }
+          }
+          priceLineShapes = [];
+          var failed = 0;
+          var firstError = null;
+          for (i = 0; i < lastPriceLines.length; i++) {
+            var line = lastPriceLines[i];
+            if (!line || typeof line.price !== 'number' || !isFinite(line.price)) continue;
+            try {
+              if (typeof chart.createOrderLine !== 'function') {
+                throw new Error('createOrderLine unavailable');
+              }
+              createMarkerOrderLine(chart, line);
+            } catch (orderErr) {
+              try {
+                createMarkerShape(chart, line);
+              } catch (shapeErr) {
+                failed++;
+                if (!firstError) firstError = orderErr || shapeErr;
+              }
+            }
+          }
+          if (failed > 0) {
+            fail(
+              'priceLines',
+              failed +
+                ' of ' +
+                lastPriceLines.length +
+                ' markers failed: ' +
+                (firstError && firstError.message ? firstError.message : String(firstError))
+            );
+          }
+          ensureEdgeTimer();
+          updateEdgeMarkers();
+        };
+
+        // Report touch activity so the RN host can pause its ScrollView while
+        // the chart owns the gesture (and release it on lift). The library
+        // renders inside a same-origin iframe, so listeners on THIS document
+        // never see the chart's touches — they must attach to the iframe's
+        // document. touchend/touchcancel report `active` from the remaining
+        // touch count, so a pinch only releases when the last finger lifts.
+        var gestureRelayAttached = false;
+        var attachGestureRelay = function () {
+          if (gestureRelayAttached) return;
+          try {
+            var frame = document.querySelector('#chart iframe');
+            var doc = frame && frame.contentDocument;
+            if (!doc) return;
+            var report = function (e) {
+              post(MSG.GESTURE, { active: !!(e.touches && e.touches.length > 0) });
+            };
+            doc.addEventListener('touchstart', report, { capture: true, passive: true });
+            doc.addEventListener('touchend', report, { capture: true, passive: true });
+            doc.addEventListener('touchcancel', report, { capture: true, passive: true });
+            gestureRelayAttached = true;
+          } catch (err) {
+            // Relay unattached: the RN side's failsafe timer still re-enables
+            // scrolling, and its own touch pre-arm still pauses it.
+          }
+        };
+
+        // NOTE on the TradingView attribution (bottom-left of the pane):
+        // it is registered via addCustomSource('branding', …, Topmost) and
+        // PAINTED ONTO THE PANE CANVAS — there is no DOM node for it, so no
+        // CSS, inline style or querySelector can reposition it, and none of the
+        // shipped logo featuresets (move_logo_to_main_pane,
+        // logo_always_maximized, adaptive_logo, logo_without_link) choose a
+        // corner. Keeping it clear is therefore the HOST's job: ChartSection
+        // insets its chartActions slot above the attribution band whenever the
+        // advanced chart is mounted. Don't re-attempt a DOM/CSS fix here.
+        var create = function (init) {
+          lastColors = init.colors || {};
+          // The page's own ground: without it, any gap while the library
+          // boots shows the WebView's default white against a dark app.
+          if (lastColors.backgroundPrimary) {
+            document.body.style.background = lastColors.backgroundPrimary;
+          }
+          wantVolume = init.showVolume !== false;
+          symbolInfo = {
+            name: init.symbol,
+            ticker: init.symbol,
+            description: init.description || init.symbol,
+            type: 'crypto',
+            session: '24x7',
+            timezone: 'Etc/UTC',
+            exchange: init.exchange || '',
+            listed_exchange: init.exchange || '',
+            format: 'price',
+            minmov: 1,
+            pricescale: init.pricescale || 100,
+            has_intraday: true,
+            // Every advertised resolution is served NATIVELY by the datafeed.
+            // Without explicit multipliers the library may decide to BUILD a
+            // resolution out of smaller bars instead — it then pages history
+            // requests for the building resolution and never paints the
+            // switched one (the timeframe bar looks dead while requests flow).
+            intraday_multipliers: ['1', '5', '15', '30', '60', '240'],
+            has_daily: true,
+            daily_multipliers: ['1'],
+            has_weekly_and_monthly: true,
+            weekly_multipliers: ['1'],
+            supported_resolutions: config.supported_resolutions,
+            volume_precision: 2,
+            data_status: 'streaming',
+          };
+
+          var widgetOptions = function (safeMode) {
+            var options = {
+              container: 'chart',
+              // Beside this page, which the staging script guarantees.
+              library_path: './',
+              datafeed: datafeed,
+              symbol: init.symbol,
+              interval: init.interval || '60',
+              // ENGLISH ONLY, deliberately. The library fetches
+              // `bundles/<locale>.*.js` by URL and stage-charting-library.js
+              // stages just `en` (18 MB of the package is the other 21
+              // locales), so any other value here is a missing-file fetch and
+              // a boot hung on a WHITE pane. Every piece of library chrome
+              // that carries translated copy is in `disabled_features` below,
+              // which leaves the price and time axes — numbers plus month
+              // abbreviations — as the entire translated surface.
+              // Widening this means widening KEEP_LOCALES in the same commit.
+              locale: 'en',
+              theme: init.theme === 'dark' ? 'dark' : 'light',
+              autosize: true,
+              // Paint the theme background while bundles load instead of the
+              // library's default flash.
+              loading_screen: {
+                backgroundColor: (init.colors && init.colors.backgroundPrimary) || 'transparent',
+                foregroundColor: init.colors && init.colors.brandPrimary,
+              },
+              overrides: overridesFor(init.colors || {}),
+              enabled_features: [
+                // Required under file:// — the library loads its iframe from
+                // sameorigin.html instead of about:blank, which an opaque file
+                // origin refuses to script into.
+                'iframe_loading_same_origin',
+              ],
+              disabled_features: [
+                // We render our own header (price, timeframe bar) in RN, so
+                // the library's chrome would duplicate it.
+                'header_widget',
+                'timeframes_toolbar',
+                'legend_widget',
+                'symbol_info',
+                'context_menus',
+                // `context_menus` covers the pane; the price/time SCALES keep
+                // their own long-press menu (Auto / Lock / Invert / Percent /
+                // Log…). On a phone-height pane it opened as a cut-off list
+                // under the RN chart chrome and duplicated the app's own chart
+                // settings, so it goes too.
+                'scales_context_menu',
+                'display_market_status',
+                // The drawing toolbar eats ~60px of a phone-width pane and
+                // has no counterpart on the lightweight chart.
+                'left_toolbar',
+                // One market per chart — the search dialog (reachable through
+                // chart interactions even with the header hidden) only offers
+                // "No symbols match".
+                'header_symbol_search',
+                'symbol_search_hot_key',
+                // The attribution glyph is an <a> to tradingview.com. This
+                // WebView runs with file + universal access (the same-origin
+                // iframe needs it), so it must never navigate to a remote
+                // origin — RN blocks that too (onShouldStartLoadWithRequest),
+                // this just stops the tap from looking broken.
+                'logo_without_link',
+                // No localStorage under an opaque origin — persisting settings
+                // there throws rather than degrading.
+                'use_localstorage_for_settings',
+                'save_chart_properties_to_local_storage',
+              ],
+            };
+            // The cosmetic options ride outside safe mode: the library
+            // VALIDATES `timezone` against its own list and an unlisted IANA
+            // zone (e.g. Europe/Kyiv on some builds) can throw at
+            // construction — which used to leave the whole widget blank.
+            if (!safeMode) {
+              // Device-local axis labels, matching the lightweight chart's
+              // tickMarkFormatter (which formats with local getters).
+              options.timezone = deviceTimezone();
+              // Same stack the lightweight template renders its axes with —
+              // TradingView's own default is a visibly different font.
+              options.custom_font_family = FONT_FAMILY;
+            }
+            return options;
+          };
+
+          try {
+            widget = new TradingView.widget(widgetOptions(false));
+          } catch (err) {
+            fail('widget', err);
+            // Retry without the optional cosmetics (UTC labels, default
+            // font) — a worse-looking chart beats a blank pane. A failed
+            // first attempt can leave a dead iframe mounted; clear it or the
+            // retry renders UNDER the corpse.
+            document.getElementById('chart').innerHTML = '';
+            widget = new TradingView.widget(widgetOptions(true));
+          }
+
+          widget.onChartReady(function () {
+            chartIsReady = true;
+            // The `theme` constructor option is applied asynchronously and
+            // stomps the constructor `overrides` when it lands after them —
+            // re-assert ours now that the theme has settled, or the pane
+            // keeps TradingView's stock palette.
+            try {
+              widget.applyOverrides(overridesFor(lastColors));
+            } catch (err) {
+              fail('applyOverrides', err);
+            }
+            // Figma shows a volume histogram under the candles, and the
+            // advanced view's indicators row names it ("24-hour Volume").
+            // forceOverlay = true: the lightweight chart draws volume INSIDE
+            // the price pane's bottom band, not in a separate sub-pane.
+            if (wantVolume) {
+              try {
+                Promise.resolve(
+                  widget
+                    .activeChart()
+                    .createStudy('Volume', true, false, undefined, volumeOverridesFor())
+                )
+                  .then(function (id) {
+                    volumeStudyId = id;
+                    // CRITICAL: detach the overlay from the price scale. An
+                    // overlay study that lands on the MAIN scale autoscales
+                    // it to volume's range (millions) — the candles compress
+                    // into a sub-pixel sliver and the pane reads as empty,
+                    // while line mode (volume hidden) renders fine.
+                    try {
+                      widget.activeChart().getStudyById(id).changePriceScale('no-scale');
+                    } catch (err) {
+                      // Builds without changePriceScale keep the overlay on
+                      // whatever scale createStudy picked.
+                    }
+                    // A SET_CHART_TYPE('line') may have landed while the study
+                    // was being created.
+                    applyVolumeVisibility();
+                  })
+                  .catch(function (err) {
+                    fail('createStudy', err);
+                  });
+              } catch (err) {
+                fail('createStudy', err);
+              }
+            }
+            // Flush whatever the host posted between INIT and now — the seed
+            // resolution/type/range effects fire on the READY handshake, well
+            // before the chart could accept them. Range goes first: a
+            // setResolution to the already-active resolution may never invoke
+            // its callback, which is the only other place the range lands.
+            // One failing step must not strand the handshake: CHART_READY is
+            // what unlocks every RN-side effect (controls, ticks, markers),
+            // so it goes out no matter what.
+            try {
+              applyChartType();
+              applyRange();
+              applyResolution();
+              applyPriceLines();
+              applyStudies();
+              attachGestureRelay();
+            } catch (err) {
+              fail('readyFlush', err);
+            }
+            post(MSG.CHART_READY, {});
+          });
+        };
+
+        // --- RN -> web ------------------------------------------------------
+        var handleMessage = function (event) {
+          var msg;
+          try {
+            msg = JSON.parse(event.data);
+          } catch (e) {
+            return;
+          }
+          if (!msg || !msg.type) return;
+
+          try {
+            switch (msg.type) {
+              case MSG.INIT:
+                resetDataState();
+                create(msg.payload || {});
+                return;
+              case MSG.BARS_RESPONSE: {
+                var entry = pending[msg.payload.id];
+                if (!entry) return;
+                delete pending[msg.payload.id];
+                entry.resolve(msg.payload);
+                return;
+              }
+              case MSG.UPDATE_TICK:
+                if (realtimeSubscriber && msg.payload && msg.payload.bar) {
+                  // Drop ticks tagged with a different resolution than the
+                  // chart is currently on. Around a timeframe switch, a tick
+                  // from the other interval has a bar time that violates the
+                  // active series' alignment — TradingView throws a "time
+                  // violation" and the chart stops updating permanently.
+                  if (msg.payload.resolution && widget && chartIsReady) {
+                    try {
+                      var active = String(widget.activeChart().resolution());
+                      if (active !== String(msg.payload.resolution)) return;
+                    } catch (err) {
+                      // Resolution unreadable — forward rather than starve.
+                    }
+                  }
+                  realtimeSubscriber(msg.payload.bar);
+                }
+                return;
+              case MSG.THEME:
+                if (msg.payload && msg.payload.colors) {
+                  lastColors = msg.payload.colors;
+                  // Pre-ready the onChartReady flush re-asserts these colors;
+                  // applying now would throw into the catch below for nothing.
+                  if (!widget || !chartIsReady) return;
+                  widget.applyOverrides(overridesFor(lastColors));
+                  // applyOverrides only reaches the main series — the volume
+                  // study keeps its construction-time tone unless re-skinned.
+                  if (volumeStudyId != null) {
+                    try {
+                      widget
+                        .activeChart()
+                        .getStudyById(volumeStudyId)
+                        .applyOverrides(volumeOverridesFor());
+                    } catch (err) {
+                      // Non-fatal: volume keeps the previous theme's tone.
+                    }
+                  }
+                  // Outline (Entry) marker bodies fill with the theme
+                  // background — rebuild them against the new palette.
+                  applyPriceLines();
+                }
+                return;
+              // The three below are what make our own control bar drive the
+              // widget. Without them the bar renders but does nothing, because
+              // TradingView owns resolution / style / range internally once
+              // constructed — seeding them at INIT is not enough.
+              case MSG.SET_RESOLUTION:
+                if (msg.payload && msg.payload.resolution) {
+                  lastResolution = String(msg.payload.resolution);
+                  // A new resolution re-requests history from scratch.
+                  resetDataState();
+                  applyResolution();
+                }
+                return;
+              case MSG.SET_CHART_TYPE:
+                if (msg.payload) {
+                  currentChartType = msg.payload.chartType === 'line' ? 'line' : 'candle';
+                  applyChartType();
+                }
+                return;
+              case MSG.SET_VISIBLE_RANGE:
+                if (msg.payload && msg.payload.from && msg.payload.to) {
+                  lastRange = { from: msg.payload.from, to: msg.payload.to };
+                  applyRange();
+                }
+                return;
+              case MSG.SET_STUDIES:
+                lastStudies =
+                  msg.payload && Array.isArray(msg.payload.studies) ? msg.payload.studies : [];
+                applyStudies();
+                return;
+              case MSG.SET_PRICE_LINES:
+                lastPriceLines =
+                  msg.payload && Array.isArray(msg.payload.lines) ? msg.payload.lines : [];
+                applyPriceLines();
+                return;
+              default:
+                return;
+            }
+          } catch (err) {
+            fail(msg.type, err);
+          }
+        };
+
+        // Both listeners: iOS delivers on window, older Android on document.
+        window.addEventListener('message', handleMessage);
+        document.addEventListener('message', handleMessage);
+
+        window.addEventListener('error', function (e) {
+          fail('window', e.error || e.message);
+        });
+
+        // RN answers READY with INIT — the widget is only constructed then, so
+        // it never starts before the theme/symbol are known.
+        post(MSG.READY, { pageVersion: PAGE_VERSION });
+      })();
+    </script>
+  </body>
+</html>
