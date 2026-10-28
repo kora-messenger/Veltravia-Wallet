@@ -170,6 +170,24 @@ The "−" button on the Perps home opens a tall bottom sheet over the Perps scre
 - **Receive** opens **Select network** (Arbitrum, Ethereum, Base, Optimism, BNB Smart Chain, Polygon, Avalanche, Solana) with the "We'll deposit USDC to your wallet…" note.
 - Settlement through api.veltraviawallet.com arrives with the Wallet Core signing bridge; until then the slide updates the local Perps account.
 
+### dApp disclaimer (removed, pending rebuild)
+
+The disclaimer modal was deleted (2026-10-28): the current look didn't match what Veltravia wants, so dApps open directly with no disclaimer while the screen is redesigned from scratch. The approved body copy is preserved here for the rebuild:
+
+> We do not own, operate, or endorse any third-party dApps or websites. Your use of these platforms is entirely at your own risk. We are not responsible for any losses, damages, or issues arising from interactions with third-party services, including disputed transactions. By using Veltravia wallet, you agree to our Terms of Service. Always verify the legitimacy of dApps and conduct your own research before interacting with them.
+
+The book illustration stays in `src/assets/dapp-disclaimer-book.png` in case the new design wants it.
+
+### Perps Withdraw sheet (Trust parity)
+
+The "−" button on the Perps home opens a tall bottom sheet over the Perps screen: X + "Withdraw", the typed amount (with "≈ $" below), a **Withdraw from** row (provider + its balance), a **Receive** row (USDC + network), a percent slider (0/25/50/75/100 stops, drag shows a % bubble), an in-sheet keypad, and a **Slide to Withdraw** control.
+
+- **Balances are per provider** (Hyperliquid, Aster). Deposits credit Hyperliquid by default; the Perps home still shows the combined total.
+- **Not enough balance**: as soon as the typed amount is above the *selected provider's* balance, a red "Not enough balance" appears and the slide stays locked. A provider holding $0 trips it on the first digit.
+- **Money at the other provider doesn't count.** The user taps *Withdraw from* → **Select provider** (Hyperliquid / Aster, each with its balance) and picks the one that has funds. The sheet opens on a funded provider automatically.
+- **Receive** opens **Select network** (Arbitrum, Ethereum, Base, Optimism, BNB Smart Chain, Polygon, Avalanche, Solana) with the "We'll deposit USDC to your wallet…" note.
+- Settlement through api.veltraviawallet.com arrives with the Wallet Core signing bridge; until then the slide updates the local Perps account.
+
 ### dApp disclaimer gate (Trust parity)
 
 Opening a dApp shows the disclaimer BEFORE anything loads: until the user ticks "I accept the Terms of Use" and taps Confirm, the WebView stays unmounted, so no request to the dApp leaves the device. Cancel or X closes the tab. Cancel is a filled light-grey pill with violet text; Confirm is a filled violet pill (disabled until the checkbox is ticked), matching Trust's layout.

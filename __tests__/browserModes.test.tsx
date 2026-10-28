@@ -9,7 +9,6 @@ jest.mock('../src/theme/ThemeProvider', () => ({
 jest.mock('../src/components/Toast', () => ({ showToast: jest.fn() }));
 
 import BrowserScreen from '../src/screens/BrowserScreen';
-import { WebView } from 'react-native-webview';
 
 const renderBrowser = async (params: Record<string, unknown>) => {
   const Stack = createNativeStackNavigator<Record<string, object>>();
@@ -44,29 +43,5 @@ describe('browser modes', () => {
     expect(labels()).toContain('Favorite');
     expect(labels()).toContain('Close browser');
     expect(labels()).toContain('Reload');
-  });
-});
-
-describe('dApp disclaimer gate', () => {
-  it('web mode: page loads with no disclaimer', async () => {
-    const { tree, labels } = await renderBrowser({ tabId: 'w1', url: 'https://trustwallet.com' });
-    expect(labels()).not.toContain('Confirm');
-    expect(tree.root.findAllByType(WebView).length).toBe(1);
-  });
-
-  it('dApp mode: nothing loads until the disclaimer is confirmed', async () => {
-    const { tree, labels } = await renderBrowser({ tabId: 'd1', url: 'https://pancakeswap.finance', dapp: true });
-    // disclaimer is up and the WebView is NOT mounted yet
-    expect(labels()).toContain('Confirm');
-    expect(tree.root.findAllByType(WebView).length).toBe(0);
-
-    // Confirm is disabled until the checkbox is ticked
-    const check = tree.root.find((n) => n.props.accessibilityLabel === 'I accept the Terms of Use' && typeof n.props.onPress === 'function');
-    await act(async () => { check.props.onPress(); });
-    const confirm = tree.root.find((n) => n.props.accessibilityLabel === 'Confirm' && typeof n.props.onPress === 'function');
-    await act(async () => { confirm.props.onPress(); });
-
-    // disclaimer passed, the dApp finally loads
-    expect(tree.root.findAllByType(WebView).length).toBe(1);
   });
 });
