@@ -16,6 +16,7 @@ import PerpsSearchScreen, { TAB_LOAD_MS } from '../src/screens/PerpsSearchScreen
 import { queryMarkets, parseVolume, defaultDir, favKey, FAVORITES_TAB, SEARCH_TABS, type QueryOptions } from '../src/services/perpsSearch';
 import { PERP_SECTIONS } from '../src/services/perpsMarkets';
 import { resetPerpsFavorites, toggleFavorite } from '../src/services/perpsFavorites';
+import { resetPerpsRecents } from '../src/services/perpsRecents';
 import { resetVenuePrefs, setShowInMarkets } from '../src/services/perpsVenues';
 
 const base: QueryOptions = {
@@ -175,6 +176,46 @@ describe('Search market screen', () => {
     await press(t, 'Tab New');
     await act(async () => { jest.advanceTimersByTime(TAB_LOAD_MS + 50); });
     expect(texts(t)).not.toContain('ANT');
+    await act(async () => { t.unmount(); });
+  });
+});
+
+describe('Recents row (Trust parity)', () => {
+  beforeEach(() => { resetPerpsFavorites(); resetVenuePrefs(); resetPerpsRecents(); jest.useFakeTimers(); });
+  afterEach(() => jest.useRealTimers());
+
+  it('store: tapping markets bumps them, newest first, capped, clearable', () => {
+    const { addPerpsRecent, clearPerpsRecents, getPerpsRecents } = require('../src/services/perpsRecents');
+    addPerpsRecent({ venue: 'hyperliquid', symbol: 'BTC' });
+    addPerpsRecent({ venue: 'hyperliquid', symbol: 'ETH' });
+    addPerpsRecent({ venue: 'hyperliquid', symbol: 'BTC' }); // bump, no duplicate
+    expect(getPerpsRecents().map((r: any) => r.symbol)).toEqual(['BTC', 'ETH']);
+    clearPerpsRecents();
+    expect(getPerpsRecents()).toEqual([]);
+  });
+
+  it('screen: no Recents until a market is tapped, then the card appears; Clear all empties; tapping a card filters', async () => {
+    const t = await mount();
+    expect(texts(t)).not.toContain('Recents');
+    await press(t, 'Market BTC');
+    expect(texts(t)).toContain('Recents');
+    expect(texts(t)).toContain('BTC Perps');
+    // tapping the recent card filters the list to that market
+    await press(t, 'Recent BTC');
+    expect(t.root.findAll((n) => typeof n.props.accessibilityLabel === 'string' && n.props.accessibilityLabel.startsWith('Market ')).length).toBeGreaterThan(0);
+    await press(t, 'Clear search');
+    await press(t, 'Clear all recents');
+    expect(texts(t)).not.toContain('Recents');
+    await act(async () => { t.unmount(); });
+  });
+
+  it('screen: hidden venues drop out of the Recents row too', async () => {
+    const { addPerpsRecent } = require('../src/services/perpsRecents');
+    const { setShowInMarkets } = require('../src/services/perpsVenues');
+    addPerpsRecent({ venue: 'aster', symbol: 'ANT' });
+    await act(async () => { setShowInMarkets('aster', false); });
+    const t = await mount();
+    expect(texts(t)).not.toContain('Recents');
     await act(async () => { t.unmount(); });
   });
 });

@@ -28,6 +28,8 @@ import {
 import { formatPerpPrice, formatChange, perpSpark, type PerpMarket } from '../services/perpsMarkets';
 import { useVenuePrefs } from '../services/perpsVenues';
 import { usePerpsFavorites, toggleFavorite, loadPerpsFavorites } from '../services/perpsFavorites';
+import { usePerpsRecents, addPerpsRecent, clearPerpsRecents, loadPerpsRecents } from '../services/perpsRecents';
+import { PERP_SECTIONS } from '../services/perpsMarkets';
 import {
   SEARCH_TABS, FAVORITES_TAB, SORT_OPTIONS, queryMarkets, favKey, defaultDir,
   type ProviderFilter, type SortKey, type SortDir,
@@ -60,6 +62,7 @@ export default function PerpsSearchScreen() {
   const hl = useVenuePrefs('hyperliquid');
   const aster = useVenuePrefs('aster');
   const favorites = usePerpsFavorites();
+  const recents = usePerpsRecents();
 
   const [tab, setTab] = useState<string>('popular');
   const [provider, setProvider] = useState<ProviderFilter>('all');
@@ -70,7 +73,7 @@ export default function PerpsSearchScreen() {
   const [loading, setLoading] = useState(false);
   const first = useRef(true);
 
-  useEffect(() => { loadPerpsFavorites(); }, []);
+  useEffect(() => { loadPerpsFavorites(); loadPerpsRecents(); }, []);
 
   // brief spinner when switching tab (not on first paint)
   useEffect(() => {
@@ -88,6 +91,15 @@ export default function PerpsSearchScreen() {
     [tab, provider, query, sort, dir, favorites, hl.showInMarkets, aster.showInMarkets],
   );
 
+  // Recents resolve against the dataset; hidden venues drop out of the row.
+  const recentMarkets = useMemo(
+    () => recents
+      .map((r) => PERP_SECTIONS.flatMap((s) => s.markets).find((m) => m.symbol === r.symbol && (m.venue ?? 'hyperliquid') === r.venue))
+      .filter((m): m is PerpMarket => !!m)
+      .filter((m) => (m.venue ?? 'hyperliquid') === 'aster' ? aster.showInMarkets : hl.showInMarkets),
+    [recents, hl.showInMarkets, aster.showInMarkets],
+  );
+
   const close = () => { Keyboard.dismiss(); navigation.goBack(); };
   const onX = () => (query ? setQuery('') : close());
 
@@ -103,6 +115,31 @@ export default function PerpsSearchScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: theme.background, paddingTop: insets.top + 6 }]}>
+      {/* Recents: recently viewed markets (Trust parity) */}
+      {recentMarkets.length > 0 ? (
+        <View style={styles.recentsWrap}>
+          <View style={styles.recentsHead}>
+            <Text style={[styles.recentsTitle, { color: theme.ink }]}>Recents</Text>
+            <Pressable accessibilityLabel="Clear all recents" onPress={clearPerpsRecents} hitSlop={8}>
+              <Text style={[styles.clearAll, { color: theme.brand }]}>Clear all</Text>
+            </Pressable>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recentsRow}>
+            {recentMarkets.map((m) => (
+              <Pressable
+                key={`${m.venue ?? 'hyperliquid'}:${m.symbol}`}
+                accessibilityLabel={`Recent ${m.symbol}`}
+                style={[styles.recentCard, { backgroundColor: chipBg }]}
+                onPress={() => setQuery(m.symbol)}
+              >
+                <MarketLogo m={m} />
+                <Text style={[styles.recentName, { color: theme.ink }]} numberOfLines={1}>{`${m.symbol} Perps`}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
+
       {/* tab strip */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
         <Pressable
@@ -167,6 +204,7 @@ export default function PerpsSearchScreen() {
               <Pressable
                 accessibilityLabel={`Market ${m.symbol}`}
                 onLongPress={() => toggleFavorite(favKey(m))}
+                onPress={() => addPerpsRecent({ venue: m.venue ?? 'hyperliquid', symbol: m.symbol })}
                 style={({ pressed }) => [styles.row, pressed && { backgroundColor: dark ? 'rgba(255,255,255,0.05)' : '#F1F1F4' }]}
               >
                 <MarketLogo m={m} />
@@ -268,6 +306,13 @@ export default function PerpsSearchScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  recentsWrap: { paddingBottom: 12 },
+  recentsHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 10 },
+  recentsTitle: { fontSize: 18, fontFamily: 'Inter-700', fontWeight: '700' },
+  clearAll: { fontSize: 14, fontFamily: 'Inter-600', fontWeight: '600' },
+  recentsRow: { paddingHorizontal: 16, gap: 8 },
+  recentCard: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, minWidth: 118 },
+  recentName: { fontSize: 14, fontFamily: 'Inter-600', fontWeight: '600' },
   tabs: { paddingHorizontal: 16, alignItems: 'center', gap: 6, paddingBottom: 10 },
   tab: { height: 40, minWidth: 44, paddingHorizontal: 16, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   tabText: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
