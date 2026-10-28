@@ -26,6 +26,7 @@ import { CloseIcon, SearchIcon } from '../components/icons';
 import { pasteFromClipboard } from '../core/clipboard';
 import { showToast } from '../components/Toast';
 import { openInBrowser } from '../services/browserState';
+import DappDisclaimerModal from '../components/DappDisclaimerModal';
 import {
   TRENDING_TOKENS, DAPPS, CHAIN_LABEL, CHAIN_COLOR, searchDiscover, fmtPrice, fmtVol, fmtChange,
   type TrendingToken, type Dapp, type Prediction, type DiscoverSearchResult,
@@ -250,10 +251,19 @@ export default function DiscoverScreen() {
     showToast(`${t.name} details arrive with live market data`, { kind: 'info' });
   }, []);
 
-  const openDapp = useCallback((d: Dapp) => {
+  // Trust parity: tapping a dApp first shows the disclaimer ON THIS SCREEN.
+  // Nothing opens until the terms are accepted and Confirm is tapped.
+  const [pending, setPending] = useState<Dapp | null>(null);
+
+  const openDapp = useCallback((d: Dapp) => setPending(d), []);
+
+  const confirmDapp = useCallback(() => {
+    const d = pending;
+    setPending(null);
+    if (!d) return;
     addRecent({ id: d.id, kind: 'dapp', label: d.name, caption: 'dApp', color: d.color });
     if (!openInBrowser(d.url, { dapp: true })) showToast("Couldn't open that dApp. Try again later.", { kind: 'error' });
-  }, []);
+  }, [pending]);
 
   const onRecentTap = useCallback((r: RecentItem) => {
     if (r.kind === 'dapp') {
@@ -446,6 +456,12 @@ export default function DiscoverScreen() {
           <CloseIcon size={22} color={theme.ink} />
         </Pressable>
       </View>
+
+      <DappDisclaimerModal
+        visible={pending !== null}
+        onCancel={() => setPending(null)}
+        onConfirm={confirmDapp}
+      />
     </SafeAreaView>
   );
 }

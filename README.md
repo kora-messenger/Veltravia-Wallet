@@ -170,6 +170,14 @@ The "−" button on the Perps home opens a tall bottom sheet over the Perps scre
 - **Receive** opens **Select network** (Arbitrum, Ethereum, Base, Optimism, BNB Smart Chain, Polygon, Avalanche, Solana) with the "We'll deposit USDC to your wallet…" note.
 - Settlement through api.veltraviawallet.com arrives with the Wallet Core signing bridge; until then the slide updates the local Perps account.
 
+### dApp disclaimer (rebuilt, Trust parity)
+
+Tapping a dApp in Discover (e.g. Aave) pops the disclaimer **on the Discover screen** — the dApp does NOT open behind it and nothing loads until the user accepts:
+
+1. Tap a dApp row → centered white popup over a dimmed backdrop: X top-right, book illustration, bold "Disclaimer", the approved Veltravia body copy, a circular "I accept the Terms of Use" checkbox, and Cancel / Confirm pills.
+2. Confirm is disabled until the box is ticked. Cancel or X dismisses the popup and opens nothing.
+3. With the box ticked, Confirm dismisses the popup and only then opens the dApp in the in-app browser.
+
 ### dApp disclaimer (removed, pending rebuild)
 
 The disclaimer modal was deleted (2026-10-28): the current look didn't match what Veltravia wants, so dApps open directly with no disclaimer while the screen is redesigned from scratch. The approved body copy is preserved here for the rebuild:
