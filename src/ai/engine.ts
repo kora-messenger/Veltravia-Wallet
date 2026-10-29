@@ -20,6 +20,7 @@ import { TOOL_LABEL } from './protocol';
 import { looksLikeTransfer, parseTransfer, prepareTransfer, type ParsedTransfer } from './transfer';
 import { MARKET_COINS } from '../services/marketData';
 import { walletLocked } from '../core/security/walletLock';
+import { lockIntent, lockCapabilityAnswer, unlockCapabilityAnswer } from './intent';
 
 type Emit = (e: AiEvent) => void;
 type Signal = { aborted: boolean };
@@ -183,13 +184,34 @@ export const localBrain: AiBrain = {
         return emit({ type: 'done' });
       }
 
-      // 2. AI-initiated wallet lock / unlock
-      if (/\bunlock\b[^.]*\bwallet\b|\bwallet\b[^.]*\bunlock\b/i.test(lower)) {
+      // 2. AI-initiated wallet lock / unlock.
+      //
+      // A lock is consequential, so it follows a REQUEST only. A question
+      // ("do you have the ability to lock my wallet?") gets an honest answer
+      // and an offer — never an approval card. A refusal ("don't lock it")
+      // is honoured without a word of argument.
+      const lockAsk = lockIntent(text);
+      if (lockAsk === 'decline') {
+        emit({ type: 'THINKING_STOPPED' });
+        await say("Understood — I won't lock it. Your wallet stays as it is.", emit, signal);
+        return emit({ type: 'done' });
+      }
+      if (lockAsk === 'ask-lock') {
+        emit({ type: 'THINKING_STOPPED' });
+        await say(lockCapabilityAnswer(walletLocked(ctx.walletId)), emit, signal);
+        return emit({ type: 'done' });
+      }
+      if (lockAsk === 'ask-unlock') {
+        emit({ type: 'THINKING_STOPPED' });
+        await say(unlockCapabilityAnswer(walletLocked(ctx.walletId)), emit, signal);
+        return emit({ type: 'done' });
+      }
+      if (lockAsk === 'unlock') {
         emit({ type: 'THINKING_STOPPED' });
         await handleWalletLock(false, ctx, emit, signal);
         return emit({ type: 'done' });
       }
-      if (/\b(lock|freeze)\b[^.]*\bwallet\b|\bwallet\b[^.]*\b(lock|freeze)\b/i.test(lower)) {
+      if (lockAsk === 'lock') {
         emit({ type: 'THINKING_STOPPED' });
         await handleWalletLock(true, ctx, emit, signal);
         return emit({ type: 'done' });

@@ -436,6 +436,16 @@ The first-use card now matches how the Settings screen teaches the same secret:
 - **Security password** and **Re-enter password**, each with its own hide/unhide eye (`EyeIcon` / new `EyeOffIcon`), and a red border on the confirm field when the two differ.
 - **Use passcode** in the card's top-right corner, in both the create and the verify state. It opens the same 6-dot, auto-verify `PasscodeConfirmSheet` the Settings → Wallet Lock screen uses, so the 6-digit passcode can confirm the lock instead of the text password when the user prefers that. That is VELTRAVIA'S OWN passcode (`com.veltravia.wallet.passcode`, digest only, set at onboarding) — never the device PIN/pattern, which only the OS itself ever asks for. The sheet's copy is now passed per job, so a lock says "Confirm wallet lock" instead of "Confirm transfer".
 
+#### Questions are answered, not executed (2026-10-29)
+
+Ijezie asked the AI "Do you have the ability to lock my wallet to avoid others to send coin" and got a **Lock your wallet** approval card. A lock freezes someone's funds, so it may only follow a request.
+
+- `src/ai/intent.ts` classifies a message as `lock`, `unlock`, `ask-lock`, `ask-unlock`, `decline` or nothing. A question mark or an interrogative opener (`do/can/how/what/…`) makes it a question; "don't lock it / never lock / no lock" makes it a refusal.
+- The offline brain answers questions with `lockCapabilityAnswer`. The answer is honest about the limit: the lock freezes sending, swapping and AI transfers **in this app on this device**, it is **not on-chain**, and anyone with the recovery phrase or private key can still move the funds from another wallet app — only moving funds to a fresh wallet protects against that. It ends by offering ("say \"lock my wallet\"") instead of acting, and offers the unlock wording instead when the wallet is already locked.
+- A refusal gets "Understood — I won't lock it" and nothing else. Previously "don't lock my wallet" matched the lock regex and would have locked it.
+- **Two independent gates** for the hosted model: the prompt now forbids a directive for a question or a refusal, and `handleDirective` re-checks `lockIntent(userText)` in code and swaps the card for the honest answer. A model can ignore instructions; the code cannot be talked out of it.
+- Tests: `__tests__/lockIntent.test.ts` (8) and `__tests__/lockQuestionAnswered.test.ts` (3, driving the real offline brain with the exact reported message).
+
 #### Cross-device lock enforcement (2026-10-29)
 
 A locked wallet is never "active": value movement is refused on every surface, and a wallet recovered on a new device knows it is locked on the older one.

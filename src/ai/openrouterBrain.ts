@@ -20,6 +20,7 @@ import { MARKET_COINS } from '../services/marketData';
 import { APP_CONFIG } from '../config/env';
 import { runThinking } from './thinking';
 import { walletLocked } from '../core/security/walletLock';
+import { lockIntent, lockCapabilityAnswer, unlockCapabilityAnswer } from './intent';
 
 type Emit = (e: any) => void;
 type Signal = { aborted: boolean };
@@ -91,6 +92,15 @@ GUARDRAILS (silent):
 - If the user's message is unclear, ask ONE short follow-up question instead of guessing.
 
 WALLET LOCK — follow exactly:
+- A QUESTION is not a request. If they ask whether you CAN lock the wallet, or what locking does, or whether it
+  stops other people sending their coin, do NOT emit a directive. Answer honestly in plain words, then end with
+  one line offering to do it ("say lock my wallet and I'll show the approval card"). Freezing someone's funds
+  without being asked is a failure, not helpfulness.
+- Be honest about the limit: the lock freezes sending, swapping and AI transfers in this app on this device.
+  It is NOT an on-chain lock — anyone holding the recovery phrase or private key can still move the funds from
+  another wallet app, and only moving funds to a fresh wallet protects against that. Never imply the lock makes
+  the wallet safe from a leaked phrase.
+- If they decline ("don't lock it", "no lock"), accept in one short line and do nothing.
 - If they ask to lock / freeze their wallet, reply with ONLY this directive block and no other text:
 \`\`\`veltravia_action
 {"action":"wallet_lock"}
@@ -293,11 +303,28 @@ async function handleDirective(
   json: Record<string, any> | null,
   ctx: ChatContext,
   emit: Emit,
-  signal: Signal
+  signal: Signal,
+  userText = ''
 ): Promise<void> {
   const action = json?.action;
   if ((action === 'wallet_lock' || action === 'wallet_unlock') && json) {
     const lock = action === 'wallet_lock';
+
+    // Code-level gate, independent of the prompt: the model may not freeze a
+    // wallet on the strength of a question or against an explicit refusal.
+    // The user asked "do you have the ability to lock my wallet?" — answer it.
+    if (lockIntent(userText) === 'ask-lock') {
+      emit({ type: 'text_delta', text: lockCapabilityAnswer(walletLocked(ctx.walletId)) });
+      return;
+    }
+    if (lockIntent(userText) === 'ask-unlock') {
+      emit({ type: 'text_delta', text: unlockCapabilityAnswer(walletLocked(ctx.walletId)) });
+      return;
+    }
+    if (lockIntent(userText) === 'decline') {
+      emit({ type: 'text_delta', text: "Understood — I won't lock it. Your wallet stays as it is." });
+      return;
+    }
     // Same status choreography as the offline brain.
     emit({ type: 'tool_call', tool: 'wallet-lock', label: lock ? 'Requesting wallet lock...' : 'Requesting wallet unlock...' });
     await sleep(900);
@@ -415,7 +442,7 @@ export const openRouterBrain: AiBrain = {
       }
       await thinkingDone; // flushes any held text
       if (hasDirective(splitter) && !signal.aborted) {
-        await handleDirective(parseDirective(splitter.directive), ctx, emit, signal);
+        await handleDirective(parseDirective(splitter.directive), ctx, emit, signal, userText);
       }
       emit({ type: 'THINKING_STOPPED' });
       emit({ type: 'done' });
