@@ -20,7 +20,6 @@ import { useTheme } from '../theme/ThemeProvider';
 import FloatingTabBar from '../components/FloatingTabBar';
 import { showToast } from '../components/Toast';
 import { registerScanTarget } from '../services/scanTarget';
-import { pairFailureMessage, pairWithCode } from '../core/security/pairDevice';
 import type { NavigationContainerRef } from '@react-navigation/native';
 import WalletsScreen from '../screens/wallet/WalletsScreen';
 import NameWalletScreen from '../screens/wallet/NameWalletScreen';
@@ -42,6 +41,7 @@ import PerpsWithdrawScreen from '../screens/PerpsWithdrawScreen';
 import PerpsSearchScreen from '../screens/PerpsSearchScreen';
 import PerpsMarketScreen from '../screens/PerpsMarketScreen';
 import DevicesScreen from '../screens/wallet/DevicesScreen';
+import PairVerifyScreen from '../screens/wallet/PairVerifyScreen';
 import PerpsTradeScreen from '../screens/PerpsTradeScreen';
 import PerpsPayWithScreen from '../screens/PerpsPayWithScreen';
 import PerpsActivityScreen from '../screens/PerpsActivityScreen';
@@ -116,6 +116,7 @@ export type RootStackParamList = {
   PerpsPayWith: { venue: 'hyperliquid' | 'aster' };
   PerpsMarket: { venue: 'hyperliquid' | 'aster'; symbol: string };
   Devices: undefined;
+  PairVerify: { uri: string };
   PerpsActivity: undefined;
   PerpsVenue: { venue: 'hyperliquid' | 'aster' };
 };
@@ -294,16 +295,9 @@ export default function Navigation() {
               onPairDevice={() => {
                 const off = registerScanTarget(async (value) => {
                   off();
-                  const outcome = await pairWithCode(value, 'This device');
-                  if (!outcome.ok) {
-                    showToast(pairFailureMessage(outcome.reason), { kind: 'error', duration: 3200 });
-                    return;
-                  }
-                  const digits = `${outcome.safetyNumber.slice(0, 3)} ${outcome.safetyNumber.slice(3)}`;
-                  showToast(`Check ${digits} on the other device, then tap "They match".`, {
-                    kind: 'success',
-                    duration: 5000,
-                  });
+                  // Scanning only identifies the session. The six digits are typed
+                  // on the verify screen, and the wallet lands only after they match.
+                  navigationRef.current?.navigate('PairVerify', { uri: value });
                 });
                 navigationRef.current?.navigate('ScanQr');
               }}
@@ -333,6 +327,18 @@ export default function Navigation() {
       <Stack.Screen name="PerpsSearch" component={PerpsSearchScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="PerpsMarket" component={PerpsMarketScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Devices" component={DevicesScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="PairVerify" options={{ animation: 'slide_from_right', gestureEnabled: false }}>
+        {(props) => (
+          <PairVerifyScreen
+            uri={(props.route.params as { uri: string }).uri}
+            onCancel={() => navigationRef.current?.goBack()}
+            onOpenWallet={() => {
+              // The wallet exists on this device now: land on the wallets list.
+              navigationRef.current?.navigate('MainTabs');
+            }}
+          />
+        )}
+      </Stack.Screen>
       <Stack.Screen name="PerpsTrade" component={PerpsTradeScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PerpsPayWith" component={PerpsPayWithScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PerpsActivity" component={PerpsActivityScreen} options={{ animation: 'slide_from_right' }} />

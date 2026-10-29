@@ -44,7 +44,7 @@ export default function DevicesScreen() {
   const remove = (id: string, name: string) => {
     Alert.alert(
       'Remove this device?',
-      `${name} will stop seeing this wallet's lock state and will need to pair again. Your funds are not affected.`,
+      `${name} will lose this wallet's lock state and will have to pair again. Removing it does not delete the recovery phrase it already stored, so its funds access stays until you move the wallet to a new phrase.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -122,15 +122,16 @@ export default function DevicesScreen() {
         </Pressable>
 
         <Text style={[styles.fine, { color: theme.inkMuted }]}>
-          Pairing never sends your recovery phrase anywhere. The code carries only this wallet's group key, and lock
-          state is encrypted with it, so Veltravia Wallet's servers store something they cannot read — not even your
-          device names.
+          Pairing sends your recovery phrase to the new device so it becomes a full wallet of its own. It travels
+          sealed to a one-time key that device generates seconds earlier and throws away when pairing ends, so the
+          relay carries ciphertext it cannot open. Lock state stays encrypted the same way — our servers cannot read
+          it, or your device names.
         </Text>
         <Text style={[styles.fine, { color: theme.inkMuted }]}>
-          Removing a device rotates this wallet's lock key, so that phone can no longer read the lock state and
-          cannot rejoin by restoring the phrase alone; it has to be paired again. This is a lock between your
-          devices, not on the blockchain: anyone who has your recovery phrase can still move funds from another
-          wallet app.
+          Removing a device rotates the lock key, so that phone stops reading lock state and has to pair again. It
+          cannot take back the phrase it already holds: a removed device can still move funds, exactly like any copy
+          of your recovery phrase. If you lost a phone or think it was compromised, move the wallet to a new phrase
+          and abandon the old one. This list is a lock between your devices, not a lock on the blockchain.
         </Text>
       </ScrollView>
 

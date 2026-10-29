@@ -37,8 +37,18 @@ import { fromHex, randomBytes, toHex } from '../crypto/hash';
 import { wrapFor, unwrapWith } from './walletGroup';
 import { pairingRelay, type PairingRelayState } from './pairingRelay';
 import { captureProtections, restoreProtections } from './pairingPolicy';
+import { readSeed } from '../storage/secureStorage';
+import { walletManager, type WalletAccount } from '../wallet/walletManager';
 
 export const PAIR_V2_SCHEME = 'veltravia-pair://2';
+/**
+ * What the host seals for the joiner. v2 additionally carries the recovery
+ * phrase, which is what gives the new phone FULL access — signing, recovery,
+ * balances — instead of only a lock-sync group. The phrase only ever exists
+ * inside the nacl.box, encrypted to the joiner's ephemeral public key.
+ */
+const SEALED_KIND = 'veltravia-pair/2';
+const SEALED_KIND_GROUP_ONLY = 'veltravia-pair/1';
 /** Short by design: long enough to scan, short enough to be useless if leaked. */
 export const PAIRING_TTL_MS = 60_000;
 const SESSION_SERVICE = 'com.veltravia.wallet.pairsession';
@@ -68,6 +78,17 @@ interface ActiveHostSession extends HostSession {
 let active: ActiveHostSession | null = null;
 /** Session ids this device has already joined with — one-time use. */
 const usedCodes = new Set<string>();
+/**
+ * Sessions where the user proved the six digits match. `completePairingJoin`
+ * refuses to open anything for a session that is not in here, so the check
+ * cannot be skipped by calling the protocol directly instead of the screen.
+ */
+const verified = new Set<string>();
+
+/** Called by pairingVerify on a successful match. */
+export function markDigitsVerified(sessionId: string): void {
+  verified.add(sessionId);
+}
 
 const hex = (bytes: number) => toHex(randomBytes(bytes));
 
@@ -185,6 +206,7 @@ export function codeAlreadyUsed(sessionId: string): boolean {
 export function __resetPairingSessionsForTests(): void {
   active = null;
   usedCodes.clear();
+  verified.clear();
 }
 
 /** Waits `ms` unless the session is gone. */
@@ -246,12 +268,30 @@ export async function approveJoiner(
   // hand-off, so nothing can be loosened by the pairing itself.
   const before = await captureProtections();
   const { sessionId, secret, hostPub } = active;
+  // The phrase is what makes the new device a full wallet, so it travels — but
+  // only inside this box, sealed to the joiner's ephemeral key. The relay sees
+  // ciphertext; the ephemeral secret exists nowhere but on the new phone and is
+  // discarded when the session ends, so the blob cannot be opened later.
+  const seed = await readSeed().catch(() => null);
+  if (!seed) return false;
+  // Identity: the addresses this wallet actually controls, so the new device can
+  // prove it derived the SAME wallet instead of quietly creating a lookalike.
+  // Absent when the native derivation bridge is not in this build — then the
+  // joiner reports identity as unverified rather than pretending.
+  let accounts: WalletAccount[] | null = null;
+  try {
+    accounts = await walletManager.deriveAccounts();
+  } catch {
+    accounts = null;
+  }
   const sealed = wrapFor(fromHex(secret), joinerPub, JSON.stringify({
-    kind: 'veltravia-pair/1',
+    kind: SEALED_KIND,
     groupId: material.groupId,
     key: material.key,
     epoch: material.epoch,
     hostPub,
+    seed,
+    accounts,
     at: now,
   }));
   if (!sealed) return false;
@@ -268,12 +308,32 @@ export async function approveJoiner(
   return true;
 }
 
+/** BIP-39 counts only, plain words: a phrase that fails this is not a phrase. */
+export function isUsableSeed(seed: unknown): seed is string {
+  if (typeof seed !== 'string') return false;
+  const words = seed.trim().toLowerCase().split(/\s+/);
+  if (![12, 15, 18, 21, 24].includes(words.length)) return false;
+  return words.every((w) => /^[a-z]{3,8}$/.test(w));
+}
+
 export type JoinResult =
-  | { status: 'joined'; material: { groupId: string; key: string; epoch: number }; safetyNumber: string; hostPub: string }
+  | {
+      status: 'joined';
+      material: { groupId: string; key: string; epoch: number };
+      safetyNumber: string;
+      hostPub: string;
+      /** The recovery phrase, present from v2 hosts. Only in memory, sealed in transit. */
+      seed?: string;
+      /** Addresses the host says this wallet owns, when it could derive them. */
+      accounts?: WalletAccount[] | null;
+      /** Digits were proven before the box was opened. Always true on this path. */
+      digitsVerified: boolean;
+    }
   | { status: 'expired' }
   | { status: 'cancelled' }
   | { status: 'timeout' }
   | { status: 'used' }
+  | { status: 'unverified' }
   | { status: 'invalid' };
 
 /**
@@ -281,10 +341,32 @@ export type JoinResult =
  * over material sealed to it. Everything here can fail safely — a wrong key or a
  * tampered ciphertext just yields 'invalid'.
  */
-export async function joinPairingSession(
+export interface JoinHandle {
+  sessionId: string;
+  /** Kept in memory only: it dies with the screen, so the sealed box dies too. */
+  secretKey: Uint8Array;
+  joinerPub: string;
+  hostPub: string;
+  expiresAt: number;
+  /** The six digits this side computes; the user must match them to the host's. */
+  safetyNumber: string;
+}
+
+export type BeginJoinResult =
+  | { status: 'begun'; handle: JoinHandle }
+  | { status: 'used' }
+  | { status: 'expired' }
+  | { status: 'cancelled' };
+
+/**
+ * Joiner step 1: mint our ephemeral keypair and publish ONLY its public half.
+ * Nothing comes back yet, so a relay that lies here gains nothing — it cannot
+ * open what the host seals to a key it does not hold.
+ */
+export async function beginPairingJoin(
   code: PairingCode,
   now = () => Date.now(),
-): Promise<JoinResult> {
+): Promise<BeginJoinResult> {
   if (codeAlreadyUsed(code.sessionId)) return { status: 'used' };
   if (code.expiresAt <= now()) return { status: 'expired' };
 
@@ -293,7 +375,43 @@ export async function joinPairingSession(
   const declared = await pairingRelay.join(code.sessionId, joinerPub).then(() => true).catch(() => false);
   if (!declared) return { status: 'cancelled' };
 
-  while (now() < code.expiresAt) {
+  return {
+    status: 'begun',
+    handle: {
+      sessionId: code.sessionId,
+      secretKey: kp.secretKey,
+      joinerPub,
+      hostPub: code.hostPub,
+      expiresAt: code.expiresAt,
+      safetyNumber: safetyNumber(code.hostPub, joinerPub),
+    },
+  };
+}
+
+/**
+ * Joiner step 2: wait for the host to release the box, then open it. Call this
+ * only AFTER the user's typed six digits matched — the host does not release
+ * until its own user confirmed, and we do not ask for anything before that.
+ */
+export async function completePairingJoin(
+  handle: JoinHandle,
+  options: { requireVerifiedDigits?: boolean } = {},
+  now = () => Date.now(),
+): Promise<JoinResult> {
+  if (options.requireVerifiedDigits !== false && !verified.has(handle.sessionId)) {
+    // Nothing has been proven for this session, so we do not even poll: there is
+    // nothing we are entitled to ask for.
+    return { status: 'unverified' };
+  }
+  const code: PairingCode = {
+    sessionId: handle.sessionId,
+    hostPub: handle.hostPub,
+    expiresAt: handle.expiresAt,
+  };
+  const kp = { publicKey: fromHex(handle.joinerPub), secretKey: handle.secretKey };
+  const joinerPub = handle.joinerPub;
+
+  while (now() < handle.expiresAt) {
     const state = await pairingRelay.poll(code.sessionId).catch(() => null);
     // Delivery wins over cancellation: the host hands the material over and then
     // closes the session, so a late poll must still read what was sent.
@@ -301,17 +419,33 @@ export async function joinPairingSession(
       const plain = unwrapWith(kp.secretKey, code.hostPub, state.sealed);
       if (!plain) return { status: 'invalid' };
       try {
-        const material = JSON.parse(plain) as { kind?: string; groupId?: string; key?: string; epoch?: number; hostPub?: string };
-        if (material.kind !== 'veltravia-pair/1') return { status: 'invalid' };
+        const material = JSON.parse(plain) as {
+          kind?: string;
+          groupId?: string;
+          key?: string;
+          epoch?: number;
+          hostPub?: string;
+          seed?: string;
+          accounts?: WalletAccount[] | null;
+        };
+        if (material.kind !== SEALED_KIND && material.kind !== SEALED_KIND_GROUP_ONLY) return { status: 'invalid' };
         if (!material.groupId || !/^[0-9a-f]{32,64}$/i.test(material.groupId)) return { status: 'invalid' };
         if (!material.key || !/^[0-9a-f]{64}$/i.test(material.key)) return { status: 'invalid' };
         if (material.hostPub !== code.hostPub) return { status: 'invalid' };
+        if (material.kind === SEALED_KIND) {
+          // A v2 host must have sent a usable phrase; a mangled one is a failed
+          // pairing, never a half-paired wallet.
+          if (!isUsableSeed(material.seed)) return { status: 'invalid' };
+        }
         usedCodes.add(code.sessionId);
         return {
           status: 'joined',
           material: { groupId: material.groupId, key: material.key, epoch: material.epoch ?? 0 },
           safetyNumber: safetyNumber(code.hostPub, joinerPub),
           hostPub: code.hostPub,
+          seed: material.kind === SEALED_KIND ? material.seed : undefined,
+          accounts: Array.isArray(material.accounts) ? material.accounts : null,
+          digitsVerified: verified.has(code.sessionId),
         };
       } catch {
         return { status: 'invalid' };
@@ -321,4 +455,19 @@ export async function joinPairingSession(
     await sleep(POLL_MS);
   }
   return { status: 'expired' };
+}
+
+/**
+ * Back-compat composition of the two steps. New screens use begin/verify/complete
+ * so the six digits are checked before anything is released.
+ */
+export async function joinPairingSession(
+  code: PairingCode,
+  now = () => Date.now(),
+): Promise<JoinResult> {
+  const begun = await beginPairingJoin(code, now);
+  if (begun.status !== 'begun') return { status: begun.status };
+  // Compatibility path only (no screen uses it): the caller has no way to carry
+  // the digits, so it opts out explicitly. The UI path always proves them first.
+  return completePairingJoin(begun.handle, { requireVerifiedDigits: false }, now);
 }

@@ -26,7 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CloseIcon, GalleryIcon, FlashIcon } from '../components/icons';
 import { deliverScanResult, clearScanTarget, hasScanTarget } from '../services/scanTarget';
 import { parseQr, type ParsedQr } from '../services/qrParse';
-import { pairFailureMessage, pairWithCode } from '../core/security/pairDevice';
+import { parsePairingCode } from '../core/security/pairingSession';
 import ScanResultSheet from '../components/ScanResultSheet';
 import { copyToClipboard } from '../core/clipboard';
 import { codeTargetRect, morphDuration, type Rect } from '../services/scanFrame';
@@ -118,21 +118,14 @@ export default function ScanQrScreen() {
     }
     if (sheet.kind === 'pairing') {
       setSheet(null);
-      (async () => {
-        // Pairing hands over nothing until the other device confirms the six
-        // digits that both phones show here.
-        const outcome = await pairWithCode(sheet.value, 'This device');
-        if (!outcome.ok) {
-          showToast(pairFailureMessage(outcome.reason), { kind: 'error', duration: 3200 });
-          return;
-        }
-        const digits = `${outcome.safetyNumber.slice(0, 3)} ${outcome.safetyNumber.slice(3)}`;
-        showToast(`Check ${digits} on the other device, then tap "They match".`, {
-          kind: 'success',
-          duration: 5000,
-        });
-        navigation.navigate('Devices');
-      })();
+      // The code only identifies a session. Everything else — the six digits,
+      // the sealed handover — happens on the verify screen.
+      const parsed = parsePairingCode(sheet.value);
+      if (!parsed.ok) {
+        showToast("That pairing code can't be used. Ask for a new one.", { kind: 'error', duration: 3200 });
+        return;
+      }
+      navigation.navigate('PairVerify', { uri: sheet.value });
       return;
     }
     if (sheet.kind === 'walletconnect') {

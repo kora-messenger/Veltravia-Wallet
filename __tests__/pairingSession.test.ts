@@ -15,6 +15,7 @@ jest.mock('react-native-keychain', () => {
   const store = new Map<string, string>();
   return {
     __esModule: true,
+    ACCESS_CONTROL: { BIOMETRY_CURRENT_SET: 'bio' },
     ACCESSIBLE: { WHEN_UNLOCKED_THIS_DEVICE_ONLY: 'AccessibleWhenUnlockedThisDeviceOnly', WHEN_UNLOCKED: 'b' },
     setGenericPassword: jest.fn(async (_u: string, value: string, opts: any) => {
       store.set(opts?.service, value);
@@ -46,6 +47,7 @@ import {
   startPairingSession,
   waitForJoiner,
 } from '../src/core/security/pairingSession';
+import { storeSeed } from '../src/core/storage/secureStorage';
 
 /** One in-memory relay standing in for the server, shared by both "devices". */
 function memoryRelay() {
@@ -144,10 +146,15 @@ describe('pairing codes', () => {
   });
 });
 
+const PHRASE = 'legal winner thank year wave sausage worth useful legal winner thank yellow';
+
 describe('the handshake', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     __resetPairingSessionsForTests();
     setPairingRelay(memoryRelay());
+    // A device can only hand over a wallet it actually has: the host seals its
+    // phrase (plus the group) for the joining device.
+    await storeSeed(PHRASE);
   });
 
   it('hands the group over only after both devices agree on the six digits', async () => {

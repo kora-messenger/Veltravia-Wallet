@@ -513,7 +513,7 @@ Backend needs `rotate` on `PUT /v1/wallet-lock/state` and to return it on `GET` 
 "Can't the unlock on the old device still work?" — yes, and that is now the design. Same as Trust Wallet, the wallet's identity is the recovery phrase:
 
 - `deriveSeedGroup(seed)` → `groupId = digest(seed, 'veltravia-group-id-v1')[:32]`, `key = digest(seed, 'veltravia-group-key-v1')` (3000-round salted SHA-256). A wallet recovered on a second device lands on the same group with no ceremony, so **lock on phone A blocks phone B, and unlocking on either device clears both** (`__tests__/seedGroupSync.test.ts`, 5 tests).
-- **Pairing is also there**, for adding a device without retyping the phrase: `veltravia-pair://join?g=…&k=…&e=…&d=…`, shown as a QR on Settings → Paired devices (5-minute TTL, single use), scanned by the new device. The code is read optically device-to-device; it never passes through our servers.
+- **Pairing is also there**, for adding a device without retyping the phrase. *(Superseded 2026-10-29: the `veltravia-pair://join?g=…&k=…` format is refused outright now. See "A paired device is a whole wallet" at the end of this file for the current protocol.)*
 - The pairing code carries the group key **and the device list**, so a newly paired device immediately shows "this wallet is on these devices".
 
 **Privacy of device names — the specific question:** the backend never sees a device name. The only network body is `{ groupId, blob }` where `blob = seal(groupKey, { deviceId, locked, at, devices })`. Names live inside that sealed box, so they sync between devices while the server stores ciphertext. Names are also never harvested from the OS: the default is the literal string "This device". Tests assert it: `Object.keys(body) === ['blob','groupId']` and the raw body does not match `/Pixel|Tablet/`.
@@ -543,3 +543,28 @@ A locked wallet is never "active": value movement is refused on every surface, a
 - Tests: `__tests__/walletLockCrossDevice.test.tsx` (9) — key derivation, publish payload privacy, offline queueing, elsewhere-block copy, AI transfer refusal, own-lock handling, cache survival and clearing, and the warning's Learn more.
 - While the keychain read is in flight the card shows "Checking this wallet…" instead of guessing which form to show.
 - Approve / Set password & Approve now carry accessibility labels.
+
+### A paired device is a whole wallet, not a lock subscriber (Oct 29)
+
+Pairing used to hand over only the group key, so a "paired" phone could never receive, send or recover: it was a spectator. It now provisions the wallet itself.
+
+**What crosses the wire, in order**
+
+1. Host shows `veltravia-pair://2?s=…&p=…&e=…` — a session id, an **ephemeral** public key and a 60-second expiry. No phrase, no key, no device name.
+2. New device scans it, generates its **own** ephemeral X25519 pair, and publishes only the public half (`beginPairingJoin`).
+3. Both sides derive the same six digits from the two public keys (`safetyNumber`). The host displays them; the new device asks the user to **type** them. Typing is the check: a relay that swapped a key produces different digits on each phone, so the human sees a mismatch and cancels.
+4. `verifyPairingDigits` compares in constant time, allows **five** attempts, then cancels the relay row and burns the code. `completePairingJoin` refuses to even poll for a session whose digits were never proven, so the gate cannot be skipped by calling the protocol directly.
+5. Host seals `{kind: veltravia-pair/2, groupId, key, epoch, seed, accounts}` to that ephemeral key (`nacl.box`) and consumes the session.
+6. New device opens it, writes the phrase through `storeSeed` — the same keystore path every other import uses — then adopts the group and lands on the wallets list.
+
+**Why this is still non-custodial.** The backend relays ciphertext it cannot open: the box is sealed to a key generated on the new phone seconds earlier, never persisted, discarded when the flow ends. There is no endpoint that returns a phrase, no server-side unwrap, and no path by which our infrastructure can sign. Same code, same derivation, same keystore as a manual restore — pairing is a faster phrase entry, not a second custody model.
+
+**Same wallet, proven, not assumed.** The host sends the addresses it derives; the new device derives from the delivered phrase and compares (`checkIdentity`). They must match on every chain the host listed. A mismatch wipes what was just stored and fails with "this phone derived different addresses" rather than presenting a lookalike wallet. When the native derivation bridge is missing from a build, the result says `identity: 'unavailable'` — reported, never faked.
+
+**Revocation, stated plainly.** Removing a device rotates the group key, so that phone stops reading lock state and must pair again. It does **not** delete the recovery phrase already written to that phone's keystore, and it cannot: the phrase works in any wallet app. The confirmation dialog and the Paired devices footer both say so, and point at the only remedy that actually works — move the wallet to a new phrase and abandon the old one.
+
+**Honest gap: nothing signs yet.** `WalletCoreNative` in `src/core/wallet/walletManager.ts` exposes mnemonic import, phrase export and address derivation only — there is no `sign` call, and `src/ai/signer.ts` returns `unavailable` by design. So "sign independently on the paired device" is not something this change can deliver, because no device can sign today. What pairing now guarantees is the *provisioning* half: both phones hold the same phrase, derive the same addresses, and will sign identically the moment the WalletCore signing bridge and the broadcast relay land. No send, swap or dApp transaction is claimed as working anywhere in the app until then.
+
+**Tests** — `__tests__/pairingFullAccess.test.ts` (8): phrase released only after the digits match; the phrase never appears in anything the relay carries (the mock records every byte); a wrong code cannot open the box (`unverified`); five wrong guesses kill the session and the correct code no longer rescues it; a five-digit entry costs no attempt; the phrase reaches the keystore through `storeSeed`; a mismatched code never reaches storage; a derived-address disagreement wipes and fails. Full suite: 404 passing, `tsc --noEmit` clean.
+
+**Still needed on the backend:** `POST/GET /v1/pairing-relay/*` (open, join, poll, deliver, cancel) and `/v1/wallet-lock/state`. Until they exist, pairing works only against the in-memory relay used by tests, and cross-device lock sync stays off (`LOCK_REGISTRY_ENABLED = false`).

@@ -39,6 +39,7 @@ import {
   startPairingSession,
   waitForJoiner,
 } from '../src/core/security/pairingSession';
+import { storeSeed } from '../src/core/storage/secureStorage';
 import { captureProtections, protectionsIntact, restoreProtections } from '../src/core/security/pairingPolicy';
 import { allWalletLocks, refreshWalletLocks, setWalletLocked } from '../src/core/security/walletLock';
 
@@ -74,6 +75,8 @@ describe('pairing does not weaken the device that starts it', () => {
     relay();
     await setWalletLocked('default', false);
     await setWalletLocked('trading', false);
+    // Pairing needs a real wallet to hand over, so this device has a phrase.
+    await storeSeed('legal winner thank year wave sausage worth useful legal winner thank yellow');
   });
 
   it('leaves a locked wallet locked, and still hands the code over', async () => {

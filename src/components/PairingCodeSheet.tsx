@@ -224,8 +224,8 @@ export default function PairingCodeSheet({
 
           <Text style={[styles.fine, { color: theme.inkMuted }]}>
             {phase === 'confirm'
-              ? 'Nothing has been shared yet. Confirming sends this wallet’s lock key, encrypted for that device only.'
-              : 'This code never contains your recovery phrase or any private key. It works once, and it expires on its own.'}
+              ? 'Nothing has been shared yet. Confirming sends this wallet’s recovery phrase and lock key, sealed for that device only.'
+              : 'This code contains no keys at all. It works once, expires on its own, and the wallet only moves after you approve these digits.'}
           </Text>
 
           <View style={styles.actions}>
