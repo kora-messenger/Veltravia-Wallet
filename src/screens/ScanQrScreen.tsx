@@ -22,16 +22,24 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import jpeg from 'jpeg-js';
 import jsQR from 'jsqr';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CloseIcon, GalleryIcon, FlashIcon } from '../components/icons';
 import { deliverScanResult, clearScanTarget } from '../services/scanTarget';
 import { showToast } from '../components/Toast';
 
-const FRAME = 250;      // side of the clear scan window
-const BRACKET = 9;      // thickness of the corner brackets
-const BTN = 44;         // header button size
+// Every value below is measured off Trust's scanner screenshot (461px wide =
+// 411dp, so 1dp = 1.1216px) — see the README note.
+const FRAME = 277;      // outer side of the bracket square
+const ARM = 55;         // length of each bracket arm
+const THICK = 10;       // bracket line thickness
+const RADIUS = 18;      // outer corner radius of each bracket
+const BTN = 47;         // header button diameter
+const EDGE = 18;        // header side margin
+const GAP = 9;          // gap between the gallery and torch buttons
 
 export default function ScanQrScreen() {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice('back', { physicalDevices: ['wide-angle-camera'] });
@@ -82,7 +90,7 @@ export default function ScanQrScreen() {
   // Left/top/right/bottom masks leave a clear window exactly at the center.
   const winX = (width - FRAME) / 2;
   const winY = (height - FRAME) / 2;
-  const mask = (extra: object) => [styles.mask, { backgroundColor: 'rgba(10,10,14,0.62)' }, extra];
+  const mask = (extra: object) => [styles.mask, { backgroundColor: 'rgba(0,0,0,0.66)' }, extra];
 
   if (!hasPermission) {
     return (
@@ -134,25 +142,28 @@ export default function ScanQrScreen() {
 
         {/* corner brackets */}
         <View style={{ position: 'absolute', left: winX, top: winY, width: FRAME, height: FRAME }}>
-          <View style={[styles.bracket, styles.tl, { borderTopLeftRadius: 12 }]} />
-          <View style={[styles.bracket, styles.tr, { borderTopRightRadius: 12 }]} />
-          <View style={[styles.bracket, styles.bl, { borderBottomLeftRadius: 12 }]} />
-          <View style={[styles.bracket, styles.br, { borderBottomRightRadius: 12 }]} />
+          <View style={[styles.bracket, styles.tl, { borderTopLeftRadius: RADIUS }]} />
+          <View style={[styles.bracket, styles.tr, { borderTopRightRadius: RADIUS }]} />
+          <View style={[styles.bracket, styles.bl, { borderBottomLeftRadius: RADIUS }]} />
+          <View style={[styles.bracket, styles.br, { borderBottomRightRadius: RADIUS }]} />
         </View>
       </View>
 
-      {/* header */}
-      <View style={styles.header}>
-        <Pressable style={styles.btn} onPress={close} hitSlop={10}>
-          <CloseIcon size={16} color="#FFFFFF" strokeWidth={2.4} />
+      {/* header: close on the left, gallery + torch on the right, title centred on the
+          screen itself (not in the leftover space, which would push it left) */}
+      <View style={[styles.header, { top: insets.top + 12 }]}>
+        <Pressable style={styles.btn} onPress={close} hitSlop={10} accessibilityLabel="Close scanner">
+          <CloseIcon size={15} color="#FFFFFF" strokeWidth={2.6} />
         </Pressable>
-        <Text style={styles.title}>Scan QR code</Text>
-        <Pressable style={styles.btn} onPress={openGallery} disabled={decoding} hitSlop={10}>
-          {decoding ? <ActivityIndicator size="small" color="#FFFFFF" /> : <GalleryIcon size={22} color="#FFFFFF" />}
-        </Pressable>
-        <Pressable style={styles.btn} onPress={() => setTorch((v) => !v)} hitSlop={10}>
-          <FlashIcon size={22} color="#FFFFFF" />
-        </Pressable>
+        <View style={styles.headerRight}>
+          <Pressable style={styles.btn} onPress={openGallery} disabled={decoding} hitSlop={10} accessibilityLabel="Pick a QR image">
+            {decoding ? <ActivityIndicator size="small" color="#FFFFFF" /> : <GalleryIcon size={21} color="#FFFFFF" />}
+          </Pressable>
+          <Pressable style={styles.btn} onPress={() => setTorch((v) => !v)} hitSlop={10} accessibilityLabel="Torch">
+            <FlashIcon size={21} color={torch ? '#FFD24A' : '#FFFFFF'} />
+          </Pressable>
+        </View>
+        <Text style={[styles.title, { top: (BTN - 21) / 2 }]} pointerEvents="none">Scan QR code</Text>
       </View>
 
       {/* home gesture bar */}
@@ -162,14 +173,15 @@ export default function ScanQrScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0A0A0E' },
+  root: { flex: 1, backgroundColor: '#000000' },
   center: { alignItems: 'center', justifyContent: 'center' },
   maskLayer: StyleSheet.absoluteFill as object,
-  mask: { backgroundColor: 'rgba(10,10,14,0.62)' },
-  header: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingTop: 56, paddingHorizontal: 16, gap: 12 },
-  btn: { width: BTN, height: BTN, borderRadius: BTN / 2, backgroundColor: 'rgba(51,51,51,0.5)', alignItems: 'center', justifyContent: 'center' },
-  title: { flex: 1, textAlign: 'center', color: '#FFFFFF', fontSize: 17, fontFamily: 'Inter-500', fontWeight: '500' },
-  bracket: { position: 'absolute', width: 36, height: 36, borderColor: '#FFFFFF', borderWidth: BRACKET, opacity: 0.98 },
+  mask: { backgroundColor: 'rgba(0,0,0,0.66)' },
+  header: { position: 'absolute', left: EDGE, right: EDGE, height: BTN, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: GAP },
+  btn: { width: BTN, height: BTN, borderRadius: BTN / 2, backgroundColor: '#202020', alignItems: 'center', justifyContent: 'center' },
+  title: { position: 'absolute', left: -EDGE, right: -EDGE, textAlign: 'center', color: '#FFFFFF', fontSize: 17, fontFamily: 'Inter-500', fontWeight: '500', letterSpacing: 0.1 },
+  bracket: { position: 'absolute', width: ARM, height: ARM, borderColor: '#FFFFFF', borderWidth: THICK },
   tl: { left: 0, top: 0, borderRightWidth: 0, borderBottomWidth: 0 },
   tr: { right: 0, top: 0, borderLeftWidth: 0, borderBottomWidth: 0 },
   bl: { left: 0, bottom: 0, borderRightWidth: 0, borderTopWidth: 0 },

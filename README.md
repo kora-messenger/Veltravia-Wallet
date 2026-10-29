@@ -347,3 +347,24 @@ Scrolling the Home page down past the Total Balance card swaps the pill's text: 
 The swap is scroll-linked (`Animated.Value` fed by the ScrollView, native driver, so it runs on the UI thread) and starts at 80px, just before the card's own amount reaches the pill's line, finishing 34px later. The name fades a little faster than the amount arrives so the two never overlap. The pill reserves the width of the longer text, so it does not resize mid-swap. Logic and constants: `src/services/headerCollapse.ts`.
 
 Also fixed: the header chips are only 10% opaque, so scrolled content (e.g. "Back up your wallet") showed through the wallet name. A page-coloured strip now fades in behind the header between 4px and 28px of scroll, fully opaque before the swap begins.
+
+### QR scanner matched to Trust pixel-for-pixel (Oct 29)
+
+Measured off Trust's scanner screenshot (461px wide = 411dp, 1dp = 1.1216px) and applied as constants in `ScanQrScreen.tsx`:
+
+| element | Trust (measured) | value used |
+|---|---|---|
+| header button | 52-53px = 47dp, solid #202020 | `BTN = 47` |
+| header side margin | 20px = 18dp | `EDGE = 18` |
+| gallery/torch gap | 10px = 9dp | `GAP = 9` |
+| button centre from top | 68px = 61dp | `insets.top + 12` |
+| bracket square | 311px = 277dp | `FRAME = 277` |
+| bracket arm | 62px = 55dp | `ARM = 55` |
+| bracket line | 11px = 10dp | `THICK = 10` |
+| corner radius | ~20px = 18dp | `RADIUS = 18` |
+| X icon | 15.2dp | 15 |
+| gallery icon | 20.5dp | 21 |
+| torch icon | 21.4dp tall | 21 |
+| title | 15.2dp cap height, centred at x=230 (screen centre) | 17dp, absolutely centred |
+
+Also: the page is now pure black with a black scrim (it was a navy tint with a lighter grey mask), the header buttons are solid #202020 instead of translucent grey, and the title is centred on the screen rather than in the space left over between the buttons. The torch icon turns amber while lit.
