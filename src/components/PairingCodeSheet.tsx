@@ -2,58 +2,132 @@
  * Veltravia Wallet — the pairing code sheet.
  *
  * Shown on the device that already has the wallet (Manage account, and
- * Settings → Paired devices). The other device scans it from the recovery
- * screen or from Settings → Paired devices, and both then share one wallet
- * lock.
+ * Settings → Paired devices). Every time it opens it mints a NEW pairing
+ * session: a random session id, a fresh ephemeral keypair and a 60 second
+ * expiry. The QR carries `sessionId + ephemeral public key + expiry` and
+ * nothing else — no recovery phrase, no group key, no private key.
  *
- * The code carries the wallet-group id, the group key and the current device
- * list. It never carries the recovery phrase, and it is read camera-to-camera,
- * so nothing about the pairing passes through a server. It expires: a stale
- * screenshot is worthless after PAIRING_TTL_MS.
+ * The other device scans it and publishes its own ephemeral public key. Both
+ * sides then show the same six digits; the owner compares them and confirms
+ * here, which is the point at which the group key is sealed to the joiner's
+ * key. Closing the sheet cancels the session.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import QrCode from './QrCode';
 import AppModal from './AppModal';
-import { buildPairingPayload, ensureGroup, getGroup, PAIRING_TTL_MS } from '../core/security/walletGroup';
+import { ensureGroup, getGroup } from '../core/security/walletGroup';
+import {
+  approveJoiner,
+  cancelPairingSession,
+  currentPairingSession,
+  startPairingSession,
+  waitForJoiner,
+  type HostSession,
+} from '../core/security/pairingSession';
 
 function mmss(ms: number): string {
   const total = Math.max(0, Math.ceil(ms / 1000));
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+  const minutes = Math.floor(total / 60);
+  const seconds = total % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
-export default function PairingCodeSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+type Phase = 'showing' | 'waiting' | 'expired' | 'confirm' | 'done';
+
+export default function PairingCodeSheet({
+  visible,
+  onClose,
+  onPaired,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  /** Called after a device was paired, so the list can refresh. */
+  onPaired?: () => void;
+}) {
   const { theme } = useTheme();
-  const [uri, setUri] = useState<string | null>(null);
-  const [expires, setExpires] = useState(0);
+  const [session, setSession] = useState<HostSession | null>(null);
   const [now, setNow] = useState(Date.now());
+  const [phase, setPhase] = useState<Phase>('showing');
+  const [joiner, setJoiner] = useState<{ pub: string; code: string } | null>(null);
+  const cancelled = useRef(false);
 
   const mint = useCallback(async () => {
+    cancelled.current = false;
     await ensureGroup();
-    const group = await getGroup();
-    if (!group) {
-      setUri(null);
-      return;
-    }
-    const ttl = Date.now() + PAIRING_TTL_MS;
-    setUri(buildPairingPayload(group));
-    setExpires(ttl);
+    const s = await startPairingSession();
+    setSession(s);
+    setJoiner(null);
+    setPhase('waiting');
     setNow(Date.now());
+    // Wait for a joiner; ends on join, expiry or cancel.
+    const result = await waitForJoiner();
+    if (cancelled.current) return;
+    if (result.status === 'joined') {
+      setJoiner({ pub: result.joinerPub, code: result.safetyNumber });
+      setPhase('confirm');
+    } else if (result.status === 'expired') {
+      setPhase('expired');
+      setSession(null);
+    } else if (result.status === 'cancelled') {
+      setPhase('expired');
+      setSession(null);
+    }
   }, []);
 
   useEffect(() => {
-    if (visible) mint();
-    else setUri(null);
+    if (visible) {
+      mint();
+    } else {
+      cancelled.current = true;
+      cancelPairingSession();
+      setSession(null);
+      setPhase('showing');
+      setJoiner(null);
+    }
+    return () => {
+      cancelled.current = true;
+    };
   }, [visible, mint]);
 
   useEffect(() => {
-    if (!visible) return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
+    if (!visible || phase !== 'waiting') return;
+    const t = setInterval(() => {
+      const t0 = Date.now();
+      setNow(t0);
+      const live = currentPairingSession(t0);
+      if (!live) {
+        setPhase('expired');
+        setSession(null);
+      }
+    }, 500);
     return () => clearInterval(t);
-  }, [visible]);
+  }, [visible, phase]);
 
-  const expired = !!uri && expires - now <= 0;
+  const confirm = async () => {
+    if (!joiner) return;
+    const group = await getGroup();
+    if (!group) return;
+    const ok = await approveJoiner(joiner.pub, { groupId: group.groupId, key: group.key, epoch: group.epoch ?? 0 });
+    if (ok) {
+      setPhase('done');
+      onPaired?.();
+      setTimeout(() => onClose(), 1200);
+    } else {
+      setPhase('expired');
+      setSession(null);
+    }
+  };
+
+  const decline = async () => {
+    await cancelPairingSession();
+    setJoiner(null);
+    setPhase('expired');
+    setSession(null);
+  };
+
+  const remaining = session ? session.expiresAt - now : 0;
 
   return (
     <AppModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -65,40 +139,75 @@ export default function PairingCodeSheet({ visible, onClose }: { visible: boolea
           </Text>
 
           <View style={styles.qrWrap}>
-            {uri ? (
+            {phase === 'confirm' && joiner ? (
+              <View style={styles.confirmBox} testID="pairingConfirm">
+                <Text style={[styles.sub, { color: theme.inkMuted }]}>
+                  Check that the other device shows the same six digits. If it does not, tap Cancel — someone may be
+                  intercepting the pairing.
+                </Text>
+                <Text style={[styles.safety, { color: theme.ink }]} testID="safetyNumber">
+                  {joiner.code.slice(0, 3)} {joiner.code.slice(3)}
+                </Text>
+              </View>
+            ) : session && phase !== 'expired' && phase !== 'done' ? (
               <>
-                <QrCode value={uri} size={210} />
+                <QrCode value={session.uri} size={210} />
                 <Text style={[styles.timer, { color: theme.inkMuted }]} testID="pairingTimer">
-                  {expired ? 'Code expired' : `Expires in ${mmss(expires - now)}`}
+                  Expires in {mmss(remaining)}
                 </Text>
               </>
             ) : (
-              <Text style={[styles.sub, { color: theme.inkMuted }]}>Preparing this wallet's code…</Text>
+              <Text style={[styles.sub, { color: theme.inkMuted }]} testID="pairingExpired">
+                {phase === 'done' ? 'Device paired' : 'That code has expired.'}
+              </Text>
             )}
           </View>
 
           <Text style={[styles.fine, { color: theme.inkMuted }]}>
-            This code never contains your recovery phrase. It shares this wallet's lock, and it only works once.
+            {phase === 'confirm'
+              ? 'Nothing has been shared yet. Confirming sends this wallet’s lock key, encrypted for that device only.'
+              : 'This code never contains your recovery phrase or any private key. It works once, and it expires on its own.'}
           </Text>
 
           <View style={styles.actions}>
-            <Pressable
-              onPress={mint}
-              style={({ pressed }) => [
-                styles.btn,
-                { backgroundColor: theme.surfaceAlt, opacity: pressed ? 0.8 : 1 },
-              ]}
-              accessibilityLabel="Show a new code"
-            >
-              <Text style={[styles.btnText, { color: theme.ink }]}>New code</Text>
-            </Pressable>
-            <Pressable
-              onPress={onClose}
-              style={({ pressed }) => [styles.btn, { backgroundColor: theme.brand, opacity: pressed ? 0.85 : 1 }]}
-              accessibilityLabel="Done"
-            >
-              <Text style={[styles.btnText, { color: '#FFFFFF' }]}>Done</Text>
-            </Pressable>
+            {phase === 'confirm' ? (
+              <>
+                <Pressable
+                  onPress={decline}
+                  style={({ pressed }) => [styles.btn, { backgroundColor: theme.surfaceAlt, opacity: pressed ? 0.8 : 1 }]}
+                  accessibilityLabel="Cancel pairing"
+                >
+                  <Text style={[styles.btnText, { color: theme.ink }]}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  onPress={confirm}
+                  style={({ pressed }) => [styles.btn, { backgroundColor: theme.brand, opacity: pressed ? 0.85 : 1 }]}
+                  accessibilityLabel="Confirm the digits match"
+                >
+                  <Text style={[styles.btnText, { color: '#FFFFFF' }]}>They match</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <Pressable
+                  onPress={() => {
+                    cancelPairingSession();
+                    onClose();
+                  }}
+                  style={({ pressed }) => [styles.btn, { backgroundColor: theme.surfaceAlt, opacity: pressed ? 0.8 : 1 }]}
+                  accessibilityLabel="Cancel pairing"
+                >
+                  <Text style={[styles.btnText, { color: theme.ink }]}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  onPress={mint}
+                  style={({ pressed }) => [styles.btn, { backgroundColor: theme.brand, opacity: pressed ? 0.85 : 1 }]}
+                  accessibilityLabel="Show a new code"
+                >
+                  <Text style={[styles.btnText, { color: '#FFFFFF' }]}>New code</Text>
+                </Pressable>
+              </>
+            )}
           </View>
         </View>
       </View>
@@ -111,7 +220,9 @@ const styles = StyleSheet.create({
   sheet: { borderRadius: 20, padding: 20, gap: 12 },
   title: { fontSize: 17, fontWeight: '700', textAlign: 'center' },
   sub: { fontSize: 13, lineHeight: 19, textAlign: 'center' },
-  qrWrap: { alignItems: 'center', gap: 8, paddingVertical: 6 },
+  qrWrap: { alignItems: 'center', gap: 8, paddingVertical: 6, minHeight: 240, justifyContent: 'center' },
+  confirmBox: { gap: 12, alignItems: 'center', paddingVertical: 8 },
+  safety: { fontSize: 34, fontWeight: '800', letterSpacing: 6 },
   timer: { fontSize: 12.5 },
   fine: { fontSize: 11.5, lineHeight: 16, textAlign: 'center' },
   actions: { flexDirection: 'row', gap: 10, marginTop: 2 },

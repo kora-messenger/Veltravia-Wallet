@@ -75,7 +75,7 @@ export interface WalletGroup {
 
 export type PairingResult =
   | { ok: true; groupId: string; key: string; devices: GroupDevice[]; epoch?: number; pub?: string }
-  | { ok: false; reason: 'malformed' | 'expired' | 'scheme' };
+  | { ok: false; reason: 'malformed' | 'expired' | 'scheme' | 'legacy' };
 
 let cache: WalletGroup | null = null;
 let deviceIdCache: string | null = null;
@@ -181,7 +181,7 @@ export async function deviceKeyPair(): Promise<{ secret: Uint8Array; public: str
 }
 
 /** Wrap `plaintext` for one device (host side). */
-function wrapFor(mySecret: Uint8Array, theirPubHex: string, plaintext: string): string | null {
+export function wrapFor(mySecret: Uint8Array, theirPubHex: string, plaintext: string): string | null {
   try {
     const nonce = nacl.randomBytes(nacl.box.nonceLength);
     const shared = nacl.box.before(fromHex(theirPubHex), mySecret);
@@ -193,7 +193,7 @@ function wrapFor(mySecret: Uint8Array, theirPubHex: string, plaintext: string): 
 }
 
 /** Unwrap one envelope addressed to this device, or null if it is not ours. */
-function unwrapWith(mySecret: Uint8Array, theirPubHex: string, payloadHex: string): string | null {
+export function unwrapWith(mySecret: Uint8Array, theirPubHex: string, payloadHex: string): string | null {
   try {
     const raw = fromHex(payloadHex);
     const nonce = raw.slice(0, nacl.box.nonceLength);
@@ -323,6 +323,32 @@ export async function joinGroup(payload: PairingResult, deviceName = 'This devic
   return group;
 }
 
+/**
+ * Adopt a group from a completed pairing handshake. The key never travelled in
+ * the code: it arrived sealed to this device's ephemeral key, after both sides
+ * confirmed the same safety number.
+ */
+export async function adoptPairingMaterial(
+  material: { groupId: string; key: string; epoch: number },
+  deviceName = 'This device',
+): Promise<WalletGroup | null> {
+  if (!/^[0-9a-f]{32,64}$/i.test(material.groupId)) return null;
+  if (!/^[0-9a-f]{64}$/i.test(material.key)) return null;
+  const id = await deviceId();
+  const pub = (await deviceKeyPair()).public;
+  const group: WalletGroup = {
+    groupId: material.groupId,
+    key: material.key,
+    createdAt: Date.now(),
+    devices: [{ id, name: deviceName, addedAt: Date.now(), pub }],
+    source: 'pairing',
+    epoch: material.epoch ?? 0,
+    pub,
+  };
+  await persist(group);
+  return group;
+}
+
 /** Register another device in the cached list (the old device does this). */
 export async function addDevice(name: string): Promise<WalletGroup | null> {
   const group = await getGroup();
@@ -422,6 +448,20 @@ export async function adoptRemoteDevices(incoming: GroupDevice[]): Promise<Walle
  * learns the list on its first sync. `d` is still PARSED for forward
  * compatibility, just never emitted.
  */
+/**
+ * The format earlier builds printed into the QR — wallet-group key included.
+ *
+ * KEPT on purpose. It is the shape existing installs produced, and the history
+ * of a wallet is not something to delete for tidiness. What changed is where it
+ * is used: the app no longer SHOWS a code like this. Pairing runs the
+ * short-lived handshake in pairingSession.ts, which seals the key to the other
+ * device instead of printing it on glass.
+ *
+ * Anyone who screenshotted an old code still holds the key that was inside it,
+ * so accepting this format back is a deliberate switch, not a default.
+ */
+export const LEGACY_PAIRING_ACCEPTED = false;
+
 export function buildPairingPayload(group: WalletGroup, now = Date.now()): string {
   const expires = now + PAIRING_TTL_MS;
   // Only what is needed to join. Public keys and the epoch arrive with the
@@ -430,6 +470,14 @@ export function buildPairingPayload(group: WalletGroup, now = Date.now()): strin
 }
 
 export function parsePairingPayload(uri: string, now = Date.now()): PairingResult {
+  const parsed = parseLegacyPairingPayload(uri, now);
+  if (!parsed.ok && parsed.reason === 'scheme') return parsed;
+  if (!LEGACY_PAIRING_ACCEPTED) return { ok: false, reason: 'legacy' };
+  return parsed;
+}
+
+/** The original parser, untouched, for the deliberate opt-in path above. */
+export function parseLegacyPairingPayload(uri: string, now = Date.now()): PairingResult {
   const text = uri.trim();
   if (!text.toLowerCase().startsWith(PAIR_SCHEME)) return { ok: false, reason: 'scheme' };
   const query = text.slice(text.indexOf('?') + 1);

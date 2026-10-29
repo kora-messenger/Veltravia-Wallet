@@ -454,6 +454,23 @@ Ijezie asked the AI "Do you have the ability to lock my wallet to avoid others t
 
 **The code is deliberately lean:** `veltravia-pair://join?g=<group>&k=<key>&e=<expiry>`, no device names. Two reasons: a QR has a hard size ceiling (the first version overflowed and threw "QR payload too long" — `QrCode` now grows to the smallest version that fits, up to v10, instead of dying), and names already sync inside the sealed blob via `adoptRemoteDevices`. Tests in `__tests__/pairingFlow.test.tsx` and `walletGroup.test.ts` pin both properties, including that the URI never contains the phrase.
 
+#### Pairing is a handshake, and the old format still parses (2026-10-29)
+
+Two things are true at once, and they were easy to confuse:
+
+1. **Nothing about the wallet was removed.** The recovery phrase, the private-key import path, the seed in secure storage, and the wallet-group key all still exist and still work. `buildPairingPayload`, the legacy parser, `joinGroup`, `seal`/`open`, key rotation and envelopes are all intact.
+2. **The pairing QR stopped printing the wallet key on screen.** What the app *shows* is now `veltravia-pair://2?s=<sessionId>&p=<ephemeral public key>&e=<expiry>`: 60 seconds, single use, unique per code, cancellable by either side, and nothing secret inside it.
+
+How they reconcile: `LEGACY_PAIRING_ACCEPTED = false` in `walletGroup.ts`. The old key-bearing format is still parsed (`parseLegacyPairingPayload`) and still produced by `buildPairingPayload` for compatibility, but `parsePairingPayload` returns `legacy` instead of trusting it, so a leaked screenshot cannot be replayed into a device group. Flip the constant to accept old codes again; the format was never deleted.
+
+#### Pairing handshake (files)
+
+- `src/core/security/pairingSession.ts` — session lifecycle (60s TTL, one per device at a time, one-time use via a consumed-id set), 6-digit safety number from both ephemeral public keys, sealing the group material to the joiner's ephemeral key, cancel/expire handling.
+- `src/core/security/pairingRelay.ts` — the four/five-route relay contract on `api.veltraviawallet.com` (`POST /v1/pair/session`, `POST .../:id/join`, `GET .../:id`, `POST .../:id/deliver`, `DELETE .../:id`). Only public keys, a session id and one ciphertext ever cross it. Transport is injectable (`setPairingRelay`) so tests run offline.
+- `src/core/security/pairDevice.ts` — the joining side in one call (`pairWithCode`) plus human-readable failure reasons.
+- `src/components/PairingCodeSheet.tsx` — shows the live code with a `0:59` countdown, switches to the six digits for confirmation, and cancels the session on close.
+- Tests: `__tests__/pairingSession.test.ts` (11) covering no-secrets-in-code, expiry, one-time use, cancel, relay leakage, MITM mismatch; `__tests__/pairingFlow.test.tsx` and `__tests__/walletGroup.test.ts` updated for the guarded legacy path.
+
 #### An unlinked device wipes itself and returns to Welcome (2026-10-29)
 
 Removing a device used to leave the removed phone working with its own local lock. That is now wrong: on removal the phone **deletes the wallet and goes back to the welcome screen**, like a fresh install.

@@ -26,7 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CloseIcon, GalleryIcon, FlashIcon } from '../components/icons';
 import { deliverScanResult, clearScanTarget, hasScanTarget } from '../services/scanTarget';
 import { parseQr, type ParsedQr } from '../services/qrParse';
-import { joinGroup, parsePairingPayload } from '../core/security/walletGroup';
+import { pairFailureMessage, pairWithCode } from '../core/security/pairDevice';
 import ScanResultSheet from '../components/ScanResultSheet';
 import { copyToClipboard } from '../core/clipboard';
 import { codeTargetRect, morphDuration, type Rect } from '../services/scanFrame';
@@ -119,20 +119,18 @@ export default function ScanQrScreen() {
     if (sheet.kind === 'pairing') {
       setSheet(null);
       (async () => {
-        const parsed = parsePairingPayload(sheet.value);
-        if (!parsed.ok) {
-          showToast(
-            parsed.reason === 'expired' ? 'That pairing code has expired' : "That pairing code didn't work",
-            { kind: 'error' },
-          );
+        // Pairing hands over nothing until the other device confirms the six
+        // digits that both phones show here.
+        const outcome = await pairWithCode(sheet.value, 'This device');
+        if (!outcome.ok) {
+          showToast(pairFailureMessage(outcome.reason), { kind: 'error', duration: 3200 });
           return;
         }
-        const group = await joinGroup(parsed);
-        if (!group) {
-          showToast("Couldn't pair this device", { kind: 'error' });
-          return;
-        }
-        showToast('Device paired', { kind: 'success' });
+        const digits = `${outcome.safetyNumber.slice(0, 3)} ${outcome.safetyNumber.slice(3)}`;
+        showToast(`Check ${digits} on the other device, then tap "They match".`, {
+          kind: 'success',
+          duration: 5000,
+        });
         navigation.navigate('Devices');
       })();
       return;

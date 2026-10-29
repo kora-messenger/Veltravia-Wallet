@@ -20,7 +20,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import FloatingTabBar from '../components/FloatingTabBar';
 import { showToast } from '../components/Toast';
 import { registerScanTarget } from '../services/scanTarget';
-import { joinGroup, parsePairingPayload } from '../core/security/walletGroup';
+import { pairFailureMessage, pairWithCode } from '../core/security/pairDevice';
 import type { NavigationContainerRef } from '@react-navigation/native';
 import WalletsScreen from '../screens/wallet/WalletsScreen';
 import NameWalletScreen from '../screens/wallet/NameWalletScreen';
@@ -294,19 +294,16 @@ export default function Navigation() {
               onPairDevice={() => {
                 const off = registerScanTarget(async (value) => {
                   off();
-                  const parsed = parsePairingPayload(value);
-                  if (!parsed.ok) {
-                    showToast(
-                      parsed.reason === 'expired' ? 'That pairing code has expired' : 'That code is not a pairing code',
-                      { kind: 'error' },
-                    );
+                  const outcome = await pairWithCode(value, 'This device');
+                  if (!outcome.ok) {
+                    showToast(pairFailureMessage(outcome.reason), { kind: 'error', duration: 3200 });
                     return;
                   }
-                  const group = await joinGroup(parsed);
-                  showToast(
-                    group ? 'Device paired. Now restore with your secret phrase.' : "Couldn't pair this device",
-                    { kind: group ? 'success' : 'error', duration: 3000 },
-                  );
+                  const digits = `${outcome.safetyNumber.slice(0, 3)} ${outcome.safetyNumber.slice(3)}`;
+                  showToast(`Check ${digits} on the other device, then tap "They match".`, {
+                    kind: 'success',
+                    duration: 5000,
+                  });
                 });
                 navigationRef.current?.navigate('ScanQr');
               }}

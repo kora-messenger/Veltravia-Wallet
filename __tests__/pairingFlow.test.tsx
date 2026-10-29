@@ -43,7 +43,9 @@ jest.mock('../src/components/AppModal', () => {
 import SelectRecoveryMethodScreen from '../src/screens/SelectRecoveryMethodScreen';
 import PairingCodeSheet from '../src/components/PairingCodeSheet';
 import { parseQr } from '../src/services/qrParse';
-import { buildPairingPayload, deriveSeedGroup } from '../src/core/security/walletGroup';
+import { deriveSeedGroup } from '../src/core/security/walletGroup';
+import { startPairingSession, __resetPairingSessionsForTests } from '../src/core/security/pairingSession';
+import { setPairingRelay } from '../src/core/security/pairingRelay';
 
 describe('recovery screen pairing entry', () => {
   it('lists "Pair device" and hands the tap to the scanner', async () => {
@@ -67,17 +69,37 @@ describe('recovery screen pairing entry', () => {
   });
 });
 
+/** No network in tests: a relay that just holds the row. */
+function stubRelay() {
+  setPairingRelay({
+    open: async () => {},
+    join: async () => {},
+    poll: async () => ({}),
+    deliver: async () => {},
+    cancel: async () => {},
+  });
+}
+
 describe('the code sheet an existing device shows', () => {
+  beforeEach(() => {
+    __resetPairingSessionsForTests();
+    stubRelay();
+  });
+
   it('renders a live code with a countdown, and never the phrase', async () => {
     let tree!: renderer.ReactTestRenderer;
     await act(async () => {
       tree = renderer.create(<PairingCodeSheet visible onClose={jest.fn()} />);
     });
+    // minting the session is async: let the effect settle
+    await act(async () => {
+      for (let i = 0; i < 20; i++) await Promise.resolve();
+    });
     expect(tree.root.findAll((n) => n.props.testID === 'pairingCodeSheet').length).toBeGreaterThan(0);
     const timer = tree.root.findAll((n) => n.props.testID === 'pairingTimer')[0];
-    expect(String(timer.props.children)).toMatch(/Expires in \d+:\d\d/);
+    expect([timer.props.children].flat().join('')).toMatch(/Expires in \d+:\d\d/);
 
-    // the QrCode receives the pairing URI, which carries the group but not the seed
+    // the QrCode receives a pairing URI: session id + one-time public key only
     const qr = tree.root.findAll((n) => typeof n.props.value === 'string' && n.props.value.startsWith('veltravia-pair://'));
     expect(qr.length).toBeGreaterThan(0);
     expect(String(qr[0].props.value)).not.toContain('legal winner');
@@ -86,19 +108,27 @@ describe('the code sheet an existing device shows', () => {
 });
 
 describe('the code itself', () => {
-  it('is classified as a pairing code, not a plain link', () => {
-    const { groupId, key } = deriveSeedGroup('some phrase');
-    const uri = buildPairingPayload({ groupId, key, createdAt: 1, devices: [{ id: 'aabbccdd', name: 'Pixel', addedAt: 1 }] });
-    const parsed = parseQr(uri);
+  it('is classified as a pairing code, not a plain link', async () => {
+    __resetPairingSessionsForTests();
+    const session = await startPairingSession();
+    const parsed = parseQr(session.uri);
     expect(parsed.kind).toBe('pairing');
     expect(parsed.label).toBe('Pair this device');
   });
 
-  it('never carries the seed', () => {
+  it('carries no wallet secrets now that pairing is a handshake', async () => {
+    __resetPairingSessionsForTests();
+    const { key } = deriveSeedGroup('some phrase');
+    const session = await startPairingSession();
+    expect(session.uri).not.toContain(key);
+    expect(session.uri.length).toBeLessThan(140);
+  });
+
+  it('never carries the seed', async () => {
+    __resetPairingSessionsForTests();
     const seed = 'legal winner thank year wave sausage worth useful legal winner thank yellow';
-    const { groupId, key } = deriveSeedGroup(seed);
-    const uri = buildPairingPayload({ groupId, key, createdAt: 1, devices: [] });
-    expect(uri).not.toContain(seed);
-    expect(uri).not.toContain('legal');
+    const session = await startPairingSession();
+    expect(session.uri).not.toContain(seed);
+    expect(session.uri.toLowerCase()).not.toContain('legal');
   });
 });
