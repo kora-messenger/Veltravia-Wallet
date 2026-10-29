@@ -16,8 +16,12 @@ jest.mock('react-native-vision-camera', () => {
 jest.mock('../src/theme/ThemeProvider', () => ({ useTheme: () => ({ theme: { mode: 'dark', ink: '#fff', background: '#000' } }) }));
 jest.mock('../src/components/Toast', () => ({ showToast: jest.fn() }));
 
+import { NativeModules } from 'react-native';
 import ScanQrScreen from '../src/screens/ScanQrScreen';
 import { registerScanTarget, clearScanTarget } from '../src/services/scanTarget';
+
+const mockFeedback = { capture: jest.fn(), bell: jest.fn() };
+beforeAll(() => { (NativeModules as any).VeltraviaScanFeedback = mockFeedback; });
 
 const mount = () => renderer.create(
   <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 411, height: 891 }, insets: { top: 24, left: 0, right: 0, bottom: 16 } }}>
@@ -26,7 +30,7 @@ const mount = () => renderer.create(
 );
 
 describe('scanner brackets chase the code before reading it', () => {
-  afterEach(() => { clearScanTarget(); jest.useRealTimers(); });
+  afterEach(() => { clearScanTarget(); jest.useRealTimers(); jest.clearAllMocks(); });
 
   it('does not report the code the instant it appears; it frames it first', async () => {
     jest.useFakeTimers();
@@ -68,6 +72,20 @@ describe('scanner brackets chase the code before reading it', () => {
     await act(async () => { t = mount(); });
     await act(async () => { captured.onCodeScanned([{ type: 'qr', value: 'no-geometry' }]); });
     expect(got).toEqual(['no-geometry']);
+    await act(async () => { t.unmount(); });
+  });
+
+  it('rings the capture bell at the moment the code is taken', async () => {
+    jest.useFakeTimers();
+    registerScanTarget(jest.fn());
+    let t: renderer.ReactTestRenderer;
+    await act(async () => { t = mount(); });
+    await act(async () => {
+      captured.onCodeScanned([{ type: 'qr', value: '0xabc', frame: { x: 150, y: 400, width: 90, height: 90 } }]);
+    });
+    expect(mockFeedback.capture).not.toHaveBeenCalled();     // still framing
+    await act(async () => { jest.advanceTimersByTime(600); });
+    expect(mockFeedback.capture).toHaveBeenCalledTimes(1);   // bell + tick as it is read
     await act(async () => { t.unmount(); });
   });
 });

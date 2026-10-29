@@ -377,3 +377,18 @@ A detected QR no longer pops the screen instantly. The brackets (and the clear w
 - Timing: 140-320ms, scaled by how far the box has to travel, cubic ease-out.
 - Lock-on: the first valid code claims the scan, so a second code in view cannot hijack the result mid-flight. A code with no reported position is still read immediately.
 - The brackets keep Trust's measurements (55dp arms, 10dp lines, 18dp radius); only the box they sit in moves and resizes.
+
+### Scanner capture sound (Oct 29)
+
+A code now rings when it is taken: a short two-note bell (E6 then B6, inharmonic partials, exponential decay) plus a 35ms haptic tick. Camera captures get bell + tick; codes read from a picked photo get the bell only, since nothing was "caught".
+
+The bell is a generated 45 KB WAV at `android/app/src/main/res/raw/scan_captured.wav`, played through `SoundPool` (low latency, never blocks the UI) by `ScanFeedbackModule.kt`. No audio dependency and no licensed sample. `src/core/scanFeedback.ts` is the JS side; it reads the native module at call time, falls back to a bare vibration when the module is absent, and never throws, so feedback can never break a scan.
+
+### What Trust's scanner actually does (from the APK, Oct 29)
+
+- No capture sound ships with Trust at all. The only audio assets are four support-chat clips (`intercom_*`). Its capture feedback is haptic: a `vibrateByPattern` native call.
+- Screen analytics show the flow: `QR_SCAN_VIEWED` on open, `QR_SCANNED` / `SCANNER_RESULT` on a read, plus `pay_qrcodescanner_clicked`, `pay_qrauth_viewed`, `pay_qrauth_completed` and `pay_invalid_qr_bottomsheet_viewed` — so the scanner is also reachable from the Pay flow, and an unrecognised code opens a bottom sheet rather than a toast.
+- Reads go through a `UniversalQRUriParser` (it understands chain-prefixed URIs like `eip155:`), so it decides what a code *means*, not just that it decoded.
+- Idle text is localised ("Escanea el QR", "Scannez", "Scansiona"), and the header keeps the same three controls we now match: close, gallery, torch.
+
+Still missing on our side: the invalid-QR bottom sheet (we show a toast) and that universal URI parsing.

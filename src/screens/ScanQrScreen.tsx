@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CloseIcon, GalleryIcon, FlashIcon } from '../components/icons';
 import { deliverScanResult, clearScanTarget } from '../services/scanTarget';
 import { codeTargetRect, morphDuration, type Rect } from '../services/scanFrame';
+import { captureFeedback, captureBell } from '../core/scanFeedback';
 import { showToast } from '../components/Toast';
 
 // Every value below is measured off Trust's scanner screenshot (461px wide =
@@ -52,6 +53,7 @@ export default function ScanQrScreen() {
   const deliver = useCallback((value: string) => {
     if (done.current) return;
     done.current = true;
+    captureFeedback();                 // bell + tick, exactly when the code is taken
     if (deliverScanResult(value)) navigation.goBack();
     else showToast('Scanned: ' + value, { kind: 'info' });
   }, [navigation]);
@@ -108,7 +110,7 @@ export default function ScanQrScreen() {
       const buf = (globalThis as any).Buffer;
       const img = jpeg.decode(buf.from(b64, 'base64'), { useTArray: true });
       const code = jsQR(new Uint8ClampedArray(img.data.buffer as ArrayBuffer, img.data.byteOffset, img.data.length), img.width, img.height, { inversionAttempts: 'dontInvert' });
-      if (code?.data) deliver(code.data);
+      if (code?.data) { captureBell(); deliver(code.data); }
       else showToast('No QR code found in that image', { kind: 'error' });
     } catch {
       showToast("Couldn't read that image", { kind: 'error' });
