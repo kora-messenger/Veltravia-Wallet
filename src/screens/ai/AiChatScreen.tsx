@@ -224,7 +224,8 @@ export default function AiChatScreen() {
   const [passcodeFor, setPasscodeFor] = useState<{ messageId: string; actionIdx: number; kind: 'transfer' | 'wallet_lock' } | null>(null);
   const [lockBusyMsg, setLockBusyMsg] = useState<string | null>(null);
   const [lockError, setLockError] = useState<{ msgId: string; text: string } | null>(null);
-  const [noSecurityPw, setNoSecurityPw] = useState(false);
+  // null = still reading the keychain (the card must not guess which form to show)
+  const [hasSecurityPw, setHasSecurityPw] = useState<boolean | null>(null);
   const [sending, setSending] = useState<string | null>(null);
 
   // Wallet context handed to the brain. Rebuilt each render so cross-chat
@@ -254,7 +255,7 @@ export default function AiChatScreen() {
   useEffect(() => {
     const check = () => {
       refreshWalletLock(walletId).catch(() => {});
-      hasSecurityPassword(walletId).then(setNoSecurityPw).catch(() => setNoSecurityPw(false));
+      hasSecurityPassword(walletId).then(setHasSecurityPw).catch(() => setHasSecurityPw(false));
     };
     check();
     // The user can set the security password in Settings while this screen
@@ -474,7 +475,7 @@ export default function AiChatScreen() {
     async (messageId: string, lock: boolean, password: string) => {
       if (lockBusyMsg || password.length < 6) return;
       await setSecurityPassword(walletId, password);
-      setNoSecurityPw(false);
+      setHasSecurityPw(true);
       showToast('Security password set', { kind: 'success' });
       setLockError(null);
       await finalizeLock(messageId, lock);
@@ -566,12 +567,14 @@ export default function AiChatScreen() {
               lock={a.lock}
               resolved={m.resolved}
               busy={lockBusyMsg === m.id}
-              noPassword={noSecurityPw}
+              noPassword={hasSecurityPw === false}
+              checking={hasSecurityPw === null}
               error={lockError?.msgId === m.id ? lockError.text : null}
               walletName={walletName}
               onApprove={(pw) => onLockApprove(m.id, a.lock, pw)}
               onSetup={(pw) => onLockSetup(m.id, a.lock, pw)}
               onReject={() => onLockReject(m.id)}
+              onUsePasscode={() => setPasscodeFor({ messageId: m.id, actionIdx: i, kind: 'wallet_lock' })}
               onOpenSettings={() => navigation.navigate('MainTabs', { screen: 'Settings' })}
             />
           );

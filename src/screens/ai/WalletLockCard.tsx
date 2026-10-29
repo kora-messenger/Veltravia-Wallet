@@ -12,7 +12,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator, TextInput, Animated, Easing } from 'react-native';
 import { useTheme } from '../../theme/ThemeProvider';
-import { CheckIcon, CloseIcon, ShieldLockIcon } from '../../components/icons';
+import { CheckIcon, CloseIcon, ShieldLockIcon, EyeIcon, EyeOffIcon } from '../../components/icons';
 import type { ChatMessage } from '../../ai/protocol';
 
 const GREEN = '#12915E';
@@ -23,19 +23,23 @@ export default function WalletLockCard({
   resolved,
   busy,
   noPassword,
+  checking,
   error,
   walletName,
   onApprove,
   onSetup,
   onReject,
+  onUsePasscode,
   onOpenSettings,
 }: {
   /** true = locking the wallet; false = unlocking it. */
   lock: boolean;
   resolved?: ChatMessage['resolved'];
   busy: boolean;
-  /** No security password set yet: card points the user to Settings. */
+  /** No security password set yet: the card creates one (password + confirm). */
   noPassword?: boolean;
+  /** Still reading the keychain: don't guess which form to show. */
+  checking?: boolean;
   /** Verification failed: shake + red line, card stays open for retry. */
   error?: string | null;
   /** Wallet this lock applies to (each wallet has its own AI + password). */
@@ -44,6 +48,8 @@ export default function WalletLockCard({
   /** First use: create the security password right here, then continue. */
   onSetup: (password: string) => void;
   onReject: () => void;
+  /** Optional route: confirm with the 6-digit wallet passcode instead. */
+  onUsePasscode?: () => void;
   onOpenSettings: () => void;
 }) {
   const { theme } = useTheme();
@@ -55,6 +61,8 @@ export default function WalletLockCard({
 
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [showPw2, setShowPw2] = useState(false);
   const [setupErr, setSetupErr] = useState<string | null>(null);
   const shake = useRef(new Animated.Value(0)).current;
 
@@ -86,6 +94,19 @@ export default function WalletLockCard({
           <Text style={[styles.kicker, { color: theme.inkMuted }]}>Veltravia AI wants to</Text>
           <Text style={[styles.title, { color: theme.ink }]}>{lock ? 'Lock your wallet' : 'Unlock your wallet'}</Text>
         </View>
+        {!state && onUsePasscode ? (
+          <Pressable
+            accessibilityLabel="Use passcode"
+            onPress={onUsePasscode}
+            disabled={busy}
+            style={({ pressed }) => [
+              styles.cornerBtn,
+              { backgroundColor: dark ? 'rgba(255,255,255,0.10)' : '#FFFFFF', opacity: pressed ? 0.7 : busy ? 0.5 : 1 },
+            ]}
+          >
+            <Text style={[styles.cornerText, { color: theme.brand }]}>Use passcode</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <View style={[styles.rule, { backgroundColor: rule }]} />
@@ -97,37 +118,61 @@ export default function WalletLockCard({
           : 'Unlocking re-enables sending, swapping and AI transfers. Your balances never changed while it was locked.'}
       </Text>
 
-      {noPassword && !state ? (
+      {!state && checking ? (
+        <Text style={[styles.body, { color: theme.inkMuted }]}>Checking this wallet…</Text>
+      ) : noPassword && !state ? (
         <>
           <Text style={[styles.body, { color: theme.ink }]}>
             You haven't set a security password for this wallet yet. Create one below — you'll use it every time you lock or unlock.
           </Text>
           <Animated.View style={{ transform: [{ translateX: shakeX }] }}>
-            <TextInput
-              value={pw}
-              onChangeText={setPw}
-              secureTextEntry
-              autoCorrect={false}
-              autoCapitalize="none"
-              placeholder="Security password (min 6 characters)"
-              placeholderTextColor={theme.inkMuted}
-              selectionColor={theme.brand}
-              style={[styles.input, { backgroundColor: fieldBg, color: theme.ink, borderColor: error ? RED : 'transparent' }]}
-              editable={!busy}
-            />
+            <View>
+              <TextInput
+                value={pw}
+                onChangeText={setPw}
+                secureTextEntry={!showPw}
+                autoCorrect={false}
+                autoCapitalize="none"
+                placeholder="Security password (min 6 characters)"
+                placeholderTextColor={theme.inkMuted}
+                selectionColor={theme.brand}
+                style={[styles.input, styles.inputWithEye, { backgroundColor: fieldBg, color: theme.ink, borderColor: error ? RED : 'transparent' }]}
+                editable={!busy}
+              />
+              <Pressable
+                accessibilityLabel={showPw ? 'Hide password' : 'Show password'}
+                onPress={() => setShowPw((v) => !v)}
+                hitSlop={8}
+                style={styles.eye}
+              >
+                {showPw ? <EyeOffIcon size={19} color={theme.inkMuted} /> : <EyeIcon size={19} color={theme.inkMuted} />}
+              </Pressable>
+            </View>
           </Animated.View>
-          <TextInput
-            value={pw2}
-            onChangeText={setPw2}
-            secureTextEntry
-            autoCorrect={false}
-            autoCapitalize="none"
-            placeholder="Confirm password"
-            placeholderTextColor={theme.inkMuted}
-            selectionColor={theme.brand}
-            style={[styles.input, { backgroundColor: fieldBg, color: theme.ink, borderColor: error ? RED : 'transparent' }]}
-            editable={!busy}
-          />
+          <Animated.View style={{ transform: [{ translateX: shakeX }] }}>
+            <View>
+              <TextInput
+                value={pw2}
+                onChangeText={setPw2}
+                secureTextEntry={!showPw2}
+                autoCorrect={false}
+                autoCapitalize="none"
+                placeholder="Re-enter password"
+                placeholderTextColor={theme.inkMuted}
+                selectionColor={theme.brand}
+                style={[styles.input, styles.inputWithEye, { backgroundColor: fieldBg, color: theme.ink, borderColor: setupErr === 'Passwords do not match.' ? RED : 'transparent' }]}
+                editable={!busy}
+              />
+              <Pressable
+                accessibilityLabel={showPw2 ? 'Hide re-entered password' : 'Show re-entered password'}
+                onPress={() => setShowPw2((v) => !v)}
+                hitSlop={8}
+                style={styles.eye}
+              >
+                {showPw2 ? <EyeOffIcon size={19} color={theme.inkMuted} /> : <EyeIcon size={19} color={theme.inkMuted} />}
+              </Pressable>
+            </View>
+          </Animated.View>
           {!!(setupErr ?? error) && <Text style={styles.errText}>{setupErr ?? error}</Text>}
           <View style={styles.btnRow}>
             <Pressable
@@ -139,6 +184,7 @@ export default function WalletLockCard({
               <Text style={[styles.btnText, { color: theme.ink }]}>Cancel</Text>
             </Pressable>
             <Pressable
+              accessibilityLabel="Set password & Approve"
               onPress={() => {
                 if (pw.length < 6) return setSetupErr('Use at least 6 characters.');
                 if (pw !== pw2) return setSetupErr('Passwords do not match.');
@@ -159,18 +205,28 @@ export default function WalletLockCard({
       ) : !state ? (
         <>
           <Animated.View style={{ transform: [{ translateX: shakeX }] }}>
-            <TextInput
-              value={pw}
-              onChangeText={setPw}
-              secureTextEntry
-              autoCorrect={false}
-              autoCapitalize="none"
-              placeholder="Security password"
-              placeholderTextColor={theme.inkMuted}
-              selectionColor={theme.brand}
-              style={[styles.input, { backgroundColor: fieldBg, color: theme.ink, borderColor: error ? RED : 'transparent' }]}
-              editable={!busy}
-            />
+            <View>
+              <TextInput
+                value={pw}
+                onChangeText={setPw}
+                secureTextEntry={!showPw}
+                autoCorrect={false}
+                autoCapitalize="none"
+                placeholder="Security password"
+                placeholderTextColor={theme.inkMuted}
+                selectionColor={theme.brand}
+                style={[styles.input, styles.inputWithEye, { backgroundColor: fieldBg, color: theme.ink, borderColor: error ? RED : 'transparent' }]}
+                editable={!busy}
+              />
+              <Pressable
+                accessibilityLabel={showPw ? 'Hide password' : 'Show password'}
+                onPress={() => setShowPw((v) => !v)}
+                hitSlop={8}
+                style={styles.eye}
+              >
+                {showPw ? <EyeOffIcon size={19} color={theme.inkMuted} /> : <EyeIcon size={19} color={theme.inkMuted} />}
+              </Pressable>
+            </View>
           </Animated.View>
           {!!error && <Text style={styles.errText}>{error}</Text>}
           <View style={styles.btnRow}>
@@ -183,6 +239,7 @@ export default function WalletLockCard({
               <Text style={[styles.btnText, { color: theme.ink }]}>Cancel</Text>
             </Pressable>
             <Pressable
+              accessibilityLabel="Approve"
               onPress={() => onApprove(pw)}
               disabled={busy || pw.length === 0}
               style={({ pressed }) => [styles.btn, { backgroundColor: GREEN, opacity: busy ? 0.6 : pressed ? 0.85 : 1 }]}
@@ -224,6 +281,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-500',
     fontWeight: '500',
   },
+  inputWithEye: { paddingRight: 46 },
+  eye: { position: 'absolute', right: 12, top: 0, bottom: 0, justifyContent: 'center' },
+  cornerBtn: { paddingHorizontal: 10, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  cornerText: { fontSize: 12, fontFamily: 'Inter-600', fontWeight: '600' },
   errText: { fontSize: 12, fontFamily: 'Inter-500', fontWeight: '500', color: RED },
   btnRow: { flexDirection: 'row', gap: 10 },
   btn: { flex: 1, height: 46, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },

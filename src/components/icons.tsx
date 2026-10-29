@@ -114,6 +114,17 @@ export const EyeIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconPr
   </Svg>
 );
 
+export const EyeOffIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path
+      d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"
+      {...stroke(color, strokeWidth)}
+    />
+    <Circle cx="12" cy="12" r="3" {...stroke(color, strokeWidth)} />
+    <Path d="M4 4l16 16" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
 export const ChevronRight = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
   <Svg {...base(size)}>
     <Path d="M9 6l6 6-6 6" {...stroke(color, strokeWidth)} />

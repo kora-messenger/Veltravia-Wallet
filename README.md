@@ -426,3 +426,14 @@ Tapping a coin used to depend on where you tapped and in which mode: on the Perp
 ### Home header is transparent again (Oct 29)
 
 The opaque page-coloured strip behind the header is gone. The header floats over the content exactly as it does before you scroll: the wallet pill and the two circular buttons keep their own translucent chip colour (`rgba(60,64,90,0.10)` in light mode), and nothing paints a full-width band. The name-to-balance swap still happens at the same 80px threshold.
+
+### First wallet lock: create the password, don't ask for one that isn't there (Oct 29)
+
+The AI lock card read the keychain flag backwards. `noSecurityPw` was filled with `hasSecurityPassword()`, then passed straight in as `noPassword`, so on a wallet with no password the card showed the *verify* form: whatever the user typed answered "Incorrect security password." That is fixed — the flag is now `hasSecurityPw` (`null` while the keychain is being read) and the card takes `noPassword={hasSecurityPw === false}`.
+
+The first-use card now matches how the Settings screen teaches the same secret:
+
+- **Security password** and **Re-enter password**, each with its own hide/unhide eye (`EyeIcon` / new `EyeOffIcon`), and a red border on the confirm field when the two differ.
+- **Use passcode** in the card's top-right corner, in both the create and the verify state. It opens the same 6-dot, auto-verify `PasscodeConfirmSheet` the Settings → Wallet Lock screen uses, so the 6-digit passcode can confirm the lock instead of the text password when the user prefers that.
+- While the keychain read is in flight the card shows "Checking this wallet…" instead of guessing which form to show.
+- Approve / Set password & Approve now carry accessibility labels.
