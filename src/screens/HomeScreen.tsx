@@ -145,10 +145,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const amountOpacity = scrollY.interpolate({ inputRange: [SWAP_START + SWAP_SPAN * 0.35, SWAP_START + SWAP_SPAN], outputRange: [0, 1], extrapolate: 'clamp' });
   const amountShift = scrollY.interpolate({ inputRange: [SWAP_START, SWAP_START + SWAP_SPAN], outputRange: [10, 0], extrapolate: 'clamp' });
 
-  // Solid page-coloured strip behind the header. It fades in as content starts
-  // sliding under the (translucent) pill/buttons so nothing shows through them.
-  const stripOpacity = scrollY.interpolate({ inputRange: [4, 28], outputRange: [0, 1], extrapolate: 'clamp' });
-
   // Switching wallets: blank page + purple spinner (like Trust), then reveal
   // the new wallet's Home. The first mount (app open) does not trigger it.
   const [switching, setSwitching] = useState(false);
@@ -553,12 +549,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         </View>
       </Animated.ScrollView>
         {/* ---------- Header (pill = active wallet, opens Wallets) ---------- */}
-        {/* page-coloured backing so scrolled content never shows through the header */}
-        <Animated.View
-          testID="headerStrip"
-          pointerEvents="none"
-          style={[styles.headerStrip, { backgroundColor: theme.background, opacity: stripOpacity, height: topInset + 62 }]}
-        />
         <View style={[styles.headerFloat, { top: topInset + 4 }]}>
           <Pressable
             style={({ pressed }) => [styles.brandRow, { backgroundColor: chipBg, opacity: pressed ? 0.8 : 1 }]}
@@ -620,7 +610,6 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   content: { paddingTop: 72, paddingBottom: 150 },
 
-  headerStrip: { position: 'absolute', top: 0, left: 0, right: 0 },
   headerFloat: {
     position: 'absolute',
     top: 0,

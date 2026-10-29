@@ -112,23 +112,26 @@ describe('Home header: wallet name swaps for the balance past the balance card',
     await act(async () => { t.unmount(); });
   });
 
-  it('a solid backing strip fades in as content slides under the header (no see-through text)', async () => {
+  it('the header stays transparent while scrolled: no full-width backing band', async () => {
     const t = await mount();
-    expect(styleOf(t, 'headerStrip').opacity).toBe(0);      // at rest: invisible
-    await scrollTo(t, 14);
-    const mid = styleOf(t, 'headerStrip').opacity;
-    expect(mid).toBeGreaterThan(0);
-    expect(mid).toBeLessThan(1);                              // fading in
-    await scrollTo(t, 60);
-    expect(styleOf(t, 'headerStrip').opacity).toBe(1);        // opaque before the swap even starts
+    // nothing paints a page-coloured strip behind the header, at rest or scrolled
+    expect(t.root.findAll((n) => n.props.testID === 'headerStrip').length).toBe(0);
+    await scrollTo(t, 240);
+    expect(t.root.findAll((n) => n.props.testID === 'headerStrip').length).toBe(0);
+    // the balance pill keeps its translucent chip colour rather than an opaque page colour
+    const flat = (st: any) => Object.assign({}, ...[].concat(st ?? []).flat(6).filter((v: any) => v && typeof v === 'object' && !Array.isArray(v)));
+    const pills = t.root.findAll((n) => !!n.props.style && flat(typeof n.props.style === 'function' ? n.props.style({ pressed: false }) : n.props.style).borderRadius === 23);
+    expect(pills.length).toBeGreaterThan(0);
+    expect(String(flat(pills[0].props.style({ pressed: false })).backgroundColor)).toMatch(/rgba/);
     await act(async () => { t.unmount(); });
   });
 
-  it('the strip is fully opaque before the name starts to fade (swap never happens over see-through content)', async () => {
+  it('the balance still swaps into the header with no band behind it', async () => {
     const t = await mount();
-    await scrollTo(t, SWAP_START);
-    expect(styleOf(t, 'headerStrip').opacity).toBe(1);
-    expect(styleOf(t, 'headerName').opacity).toBe(1);
+    await scrollTo(t, SWAP_START + SWAP_SPAN + 40);
+    expect(styleOf(t, 'headerAmount').opacity).toBe(1);
+    expect(styleOf(t, 'headerName').opacity).toBe(0);
+    expect(t.root.findAll((n) => n.props.testID === 'headerStrip').length).toBe(0);
     await act(async () => { t.unmount(); });
   });
 });

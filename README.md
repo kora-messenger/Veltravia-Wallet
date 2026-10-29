@@ -422,3 +422,7 @@ Tapping a coin used to depend on where you tapped and in which mode: on the Perp
 - A coin tap anywhere — Perps home rows and watchlist, the search list in any mode, the Recents cards, and Related markets on another market page — now opens `PerpsMarket` for that coin.
 - `PerpsSearch` no longer reads `mode` for routing; it is a pure market picker, reached only from the search icon.
 - The Perps home's floating Long/Short pills were removed: they existed only to pre-pick a side for a list tap that no longer behaves differently. The side is chosen on the market page, where Long/Short open the ticket for that market (unchanged).
+
+### Home header is transparent again (Oct 29)
+
+The opaque page-coloured strip behind the header is gone. The header floats over the content exactly as it does before you scroll: the wallet pill and the two circular buttons keep their own translucent chip colour (`rgba(60,64,90,0.10)` in light mode), and nothing paints a full-width band. The name-to-balance swap still happens at the same 80px threshold.
