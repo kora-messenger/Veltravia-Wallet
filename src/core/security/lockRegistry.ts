@@ -21,11 +21,10 @@
  */
 import * as Keychain from 'react-native-keychain';
 import { APP_CONFIG } from '../../config/env';
-import { digest } from '../storage/passcode';
-import { readSeed } from '../storage/secureStorage';
+import { open, seal } from '../crypto/groupCrypto';
+import { adoptRemoteDevices, getGroup } from './walletGroup';
 
 const SERVICE = 'com.veltravia.wallet.lockregistry';
-const KEY_SALT = 'veltravia-lock-v1';
 const TIMEOUT_MS = 6000;
 
 export interface RegistryRemote {
@@ -100,22 +99,20 @@ async function write(next: Partial<RegistryState>): Promise<void> {
 }
 
 /**
- * The registry key for THIS wallet. Derived from the seed so that the same
- * wallet on another device lands on the same record. Null when no seed.
+ * The record handle for this wallet: the RANDOM group id from walletGroup.
+ *
+ * Deliberately NOT derived from the seed. A seed-derived handle would let
+ * anyone holding a copied phrase look up the device group, which is exactly the
+ * leak the pairing design exists to avoid. No group (never paired, or a fresh
+ * wallet) means no sync at all.
  */
 export async function registryKey(): Promise<string | null> {
   const st = await read();
   if (st.key) return st.key;
-  let seed: string | null = null;
-  try {
-    seed = await readSeed();
-  } catch {
-    seed = null;
-  }
-  if (!seed) return null;
-  const key = digest(seed, KEY_SALT);
-  await write({ key });
-  return key;
+  const group = await getGroup();
+  if (!group) return null;
+  await write({ key: group.groupId });
+  return group.groupId;
 }
 
 async function timedFetch(url: string, init?: RequestInit): Promise<Response> {
@@ -133,19 +130,19 @@ export async function publishLockState(locked: boolean): Promise<boolean> {
   if (!registryEnabled()) return false;
   const st = await read();
   const key = st.key ?? (await registryKey());
-  if (!key) return false;
+  const group = await getGroup();
+  if (!key || !group) return false;
   try {
+    // The server gets an opaque group id and a sealed blob. Not the lock, not
+    // the device, not even the fact that a lock exists.
+    // The device list rides inside the box, so names sync across devices while
+    // the server still cannot read them.
+    const devices = (group.devices ?? []).map((d) => ({ id: d.id, name: d.name, addedAt: d.addedAt }));
+    const body = { deviceId: st.deviceId, locked, at: Date.now(), devices };
     const res = await timedFetch(`${APP_CONFIG.API_BASE_URL}/v1/wallet-lock/state`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'X-Veltravia-Env': APP_CONFIG.env },
-      body: JSON.stringify({
-        key,
-        locked,
-        deviceId: st.deviceId,
-        // never send an empty/redundant label
-        ...(st.deviceName ? { deviceName: st.deviceName } : {}),
-        at: Date.now(),
-      }),
+      body: JSON.stringify({ groupId: key, blob: seal(group.key, JSON.stringify(body)) }),
     });
     if (!res.ok) throw new Error(`publish ${res.status}`);
     const remote: RegistryRemote = {
@@ -181,7 +178,7 @@ export async function refreshRegistryLock(): Promise<RegistryRemote | null> {
 
   try {
     const res = await timedFetch(
-      `${APP_CONFIG.API_BASE_URL}/v1/wallet-lock/state?key=${encodeURIComponent(key)}`,
+      `${APP_CONFIG.API_BASE_URL}/v1/wallet-lock/state?groupId=${encodeURIComponent(key)}`,
       { headers: { 'X-Veltravia-Env': APP_CONFIG.env } },
     );
     if (res.status === 404) {
@@ -189,7 +186,21 @@ export async function refreshRegistryLock(): Promise<RegistryRemote | null> {
       return null;
     }
     if (!res.ok) throw new Error(`read ${res.status}`);
-    const body = (await res.json()) as Partial<RegistryRemote> | null;
+    const envelope = (await res.json()) as { groupId?: string; blob?: string } | null;
+    const group = await getGroup();
+    const plain =
+      envelope?.blob && group ? open(group.key, envelope.blob) : null;
+    let body: Partial<RegistryRemote> | null = null;
+    if (plain) {
+      try {
+        body = JSON.parse(plain);
+      } catch {
+        body = null;
+      }
+    }
+    if (body && Array.isArray((body as any).devices) && (body as any).devices.length) {
+      await adoptRemoteDevices((body as any).devices);
+    }
     const remote: RegistryRemote | null =
       body && typeof body.locked === 'boolean'
         ? {

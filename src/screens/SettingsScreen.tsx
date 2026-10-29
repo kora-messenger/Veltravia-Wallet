@@ -157,6 +157,24 @@ export default function SettingsScreen() {
         {biometry === 'none' && (
           <Text style={[styles.cardSub, { color: theme.inkMuted }]}>No biometric sensor found on this device.</Text>
         )}
+        <View style={styles.sheetRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.rowLabel, { color: theme.ink }]}>Paired devices</Text>
+            <Text style={[styles.rowDetail, { color: theme.inkMuted }]}>
+              Devices that share this wallet's lock
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => {
+              setSheet(null);
+              navigation.navigate('Devices');
+            }}
+            hitSlop={8}
+            accessibilityLabel="Paired devices"
+          >
+            <Text style={{ color: theme.brand, fontWeight: '600' }}>Manage</Text>
+          </Pressable>
+        </View>
       </CardSheet>
 
       {/* ---- Notifications ---- */}

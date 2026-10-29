@@ -446,6 +446,18 @@ Ijezie asked the AI "Do you have the ability to lock my wallet to avoid others t
 - **Two independent gates** for the hosted model: the prompt now forbids a directive for a question or a refusal, and `handleDirective` re-checks `lockIntent(userText)` in code and swaps the card for the honest answer. A model can ignore instructions; the code cannot be talked out of it.
 - Tests: `__tests__/lockIntent.test.ts` (8) and `__tests__/lockQuestionAnswered.test.ts` (3, driving the real offline brain with the exact reported message).
 
+#### Wallet groups: the seed is the identity, pairing is the shortcut (2026-10-29)
+
+"Can't the unlock on the old device still work?" — yes, and that is now the design. Same as Trust Wallet, the wallet's identity is the recovery phrase:
+
+- `deriveSeedGroup(seed)` → `groupId = digest(seed, 'veltravia-group-id-v1')[:32]`, `key = digest(seed, 'veltravia-group-key-v1')` (3000-round salted SHA-256). A wallet recovered on a second device lands on the same group with no ceremony, so **lock on phone A blocks phone B, and unlocking on either device clears both** (`__tests__/seedGroupSync.test.ts`, 5 tests).
+- **Pairing is also there**, for adding a device without retyping the phrase: `veltravia-pair://join?g=…&k=…&e=…&d=…`, shown as a QR on Settings → Paired devices (5-minute TTL, single use), scanned by the new device. The code is read optically device-to-device; it never passes through our servers.
+- The pairing code carries the group key **and the device list**, so a newly paired device immediately shows "this wallet is on these devices".
+
+**Privacy of device names — the specific question:** the backend never sees a device name. The only network body is `{ groupId, blob }` where `blob = seal(groupKey, { deviceId, locked, at, devices })`. Names live inside that sealed box, so they sync between devices while the server stores ciphertext. Names are also never harvested from the OS: the default is the literal string "This device". Tests assert it: `Object.keys(body) === ['blob','groupId']` and the raw body does not match `/Pixel|Tablet/`.
+
+Honest limit, stated in the app and here: because the group key derives from the phrase, anyone who has the phrase can read the group's state and appears in the list — though they can already spend the funds. Removing a device therefore only tidies the list; it cannot revoke a phone that still holds the phrase. Key rotation applies only to a paired (no-seed) group.
+
 #### Is the lock custodial? No — and it now costs nothing in privacy (2026-10-29)
 
 Audit answer, for the record:

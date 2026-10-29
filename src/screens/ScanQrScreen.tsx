@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CloseIcon, GalleryIcon, FlashIcon } from '../components/icons';
 import { deliverScanResult, clearScanTarget, hasScanTarget } from '../services/scanTarget';
 import { parseQr, type ParsedQr } from '../services/qrParse';
+import { joinGroup, parsePairingPayload } from '../core/security/walletGroup';
 import ScanResultSheet from '../components/ScanResultSheet';
 import { copyToClipboard } from '../core/clipboard';
 import { codeTargetRect, morphDuration, type Rect } from '../services/scanFrame';
@@ -113,6 +114,27 @@ export default function ScanQrScreen() {
     if (sheet.kind === 'url') {
       setSheet(null);
       Linking.openURL(sheet.value).catch(() => showToast("Couldn't open that link", { kind: 'error' }));
+      return;
+    }
+    if (sheet.kind === 'pairing') {
+      setSheet(null);
+      (async () => {
+        const parsed = parsePairingPayload(sheet.value);
+        if (!parsed.ok) {
+          showToast(
+            parsed.reason === 'expired' ? 'That pairing code has expired' : "That pairing code didn't work",
+            { kind: 'error' },
+          );
+          return;
+        }
+        const group = await joinGroup(parsed);
+        if (!group) {
+          showToast("Couldn't pair this device", { kind: 'error' });
+          return;
+        }
+        showToast('Device paired', { kind: 'success' });
+        navigation.navigate('Devices');
+      })();
       return;
     }
     if (sheet.kind === 'walletconnect') {

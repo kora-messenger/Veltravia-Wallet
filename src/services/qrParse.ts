@@ -12,7 +12,7 @@
  * Pure and side-effect free: ScanQrScreen decides what to do with the result.
  */
 
-export type QrKind = 'evm-address' | 'payment' | 'asset' | 'walletconnect' | 'url' | 'text';
+export type QrKind = 'evm-address' | 'payment' | 'asset' | 'walletconnect' | 'pairing' | 'url' | 'text';
 
 export interface ParsedQr {
   kind: QrKind;
@@ -46,6 +46,16 @@ export function parseQr(raw: string): ParsedQr {
   // bare address
   if (EVM_ADDRESS.test(text)) {
     return { kind: 'evm-address', value: text, label: 'Wallet address', detail: shorten(text) };
+  }
+
+  // Veltravia device pairing — shown by an existing device (see walletGroup.ts).
+  if (/^veltravia-pair:\/\//i.test(text)) {
+    return {
+      kind: 'pairing',
+      value: text,
+      label: 'Pair this device',
+      detail: 'Adds this device to your wallet group so it shares the lock',
+    };
   }
 
   // WalletConnect pairing

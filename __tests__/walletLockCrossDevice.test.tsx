@@ -24,15 +24,21 @@ jest.mock('react-native-config', () => ({
 
 const metrics = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
 
-jest.mock('../src/core/storage/passcode', () => ({
+// The joining/joined wallet. Two "devices" share one group; a third wallet
+// with a different group must not be able to read the blob.
+let mockGroup: { groupId: string; key: string; createdAt: number; devices: any[] } = {
+  groupId: 'a1b2c3d4e5f60718',
+  key: '00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff',
+  createdAt: 1,
+  devices: [],
+};
+jest.mock('../src/core/security/walletGroup', () => ({
   __esModule: true,
-  digest: (text: string, salt: string) => `d(${salt}:${text})`,
+  getGroup: jest.fn(async () => mockGroup),
+  currentGroup: jest.fn(() => mockGroup),
+  deviceId: jest.fn(async () => 'me'),
 }));
-
-jest.mock('../src/core/storage/secureStorage', () => ({
-  __esModule: true,
-  readSeed: jest.fn(async () => 'legal winner thank year wave sausage worth useful legal winner thank yellow'),
-}));
+const { seal, open } = jest.requireActual('../src/core/crypto/groupCrypto');
 
 const mockToast = jest.fn();
 jest.mock('../src/components/Toast', () => ({
@@ -79,26 +85,43 @@ beforeEach(async () => {
 
 const ok = (body: any) => Promise.resolve({ ok: true, status: 200, json: async () => body });
 
+const sealedRemote = (locked: boolean, deviceId: string, deviceName?: string) =>
+  seal(mockGroup.key, JSON.stringify({ locked, deviceId, deviceName, at: Date.now() }));
+
 describe('registry key', () => {
-  it('derives from the recovery phrase, so the same wallet on another device matches', async () => {
-    const k1 = await registryKey();
-    expect(k1).toMatch(/^d\(veltravia-lock-v1:/);
-    __resetLockRegistryForTests();
-    store.clear();
-    const k2 = await registryKey();
-    expect(k2).toBe(k1);
+  it('is the random group id, never anything derived from the seed', async () => {
+    const k = await registryKey();
+    expect(k).toBe(mockGroup.groupId);
+    expect(k).not.toMatch(/legal winner|veltravia-lock-v1/);
+  });
+
+  it('is null when the wallet has no group, so nothing is ever published', async () => {
+    const saved = mockGroup;
+    (mockGroup as any) = null;
+    const k = await registryKey();
+    expect(k).toBeNull();
+    (mockGroup as any) = saved;
   });
 });
 
 describe('publishing a lock', () => {
-  it('sends a seed pseudonym, a flag, a random id — no address, no device model', async () => {
+  it('sends an opaque group id and a sealed blob — the server cannot read the state', async () => {
     fetchMock.mockReturnValueOnce(ok({}));
     await publishLockState(true);
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(Object.keys(body).sort()).toEqual(['at', 'deviceId', 'key', 'locked']);
-    expect(body.locked).toBe(true);
-    expect(body.deviceName).toBeUndefined(); // "Pixel 7" would be a fingerprint
-    expect(JSON.stringify(body)).not.toMatch(/0x[0-9a-fA-F]{6,}/); // never an address
+    expect(Object.keys(body).sort()).toEqual(['blob', 'groupId']);
+    expect(body.groupId).toBe(mockGroup.groupId);
+    // the blob leaks neither the lock nor a device model or address
+    expect(body.blob).not.toMatch(/locked|Pixel|0x[0-9a-fA-F]{6,}/);
+    const inside = JSON.parse(open(mockGroup.key, body.blob)!);
+    expect(inside).toEqual({
+      deviceId: expect.any(String),
+      locked: true,
+      at: expect.any(Number),
+      // the device list synced encrypted, so the server still sees no names
+      devices: expect.any(Array),
+    });
+    expect(body.blob).not.toMatch(/Pixel|Tablet/);
   });
 
   it('queues when the backend is unreachable instead of pretending it landed', async () => {
@@ -115,7 +138,7 @@ describe('publishing a lock', () => {
 
 describe('locked on another device', () => {
   it('blocks value movement with the older-device message', async () => {
-    fetchMock.mockReturnValueOnce(ok({ locked: true, deviceId: 'other-device', deviceName: 'Pixel 7' }));
+    fetchMock.mockReturnValueOnce(ok({ groupId: mockGroup.groupId, blob: sealedRemote(true, 'other-device', 'Pixel 7') }));
     await refreshRegistryLock();
     expect(lockedElsewhere()).toEqual({ deviceName: 'Pixel 7' });
     const block = movementBlock('default');
@@ -126,7 +149,7 @@ describe('locked on another device', () => {
   });
 
   it('refuses an AI transfer on the recovered device', async () => {
-    fetchMock.mockReturnValueOnce(ok({ locked: true, deviceId: 'other-device', deviceName: 'Pixel 7' }));
+    fetchMock.mockReturnValueOnce(ok({ groupId: mockGroup.groupId, blob: sealedRemote(true, 'other-device', 'Pixel 7') }));
     await refreshRegistryLock();
     const res = prepareTransfer({ symbol: 'ETH', to: '0xabc', usd: 10 } as any, chatCtx);
     expect(res.ok).toBe(false);
@@ -138,14 +161,14 @@ describe('locked on another device', () => {
   });
 
   it('ignores a lock this very device set', async () => {
-    fetchMock.mockReturnValueOnce(ok({ locked: true, deviceId: 'me' }));
+    fetchMock.mockReturnValueOnce(ok({ groupId: mockGroup.groupId, blob: sealedRemote(true, 'me') }));
     await refreshRegistryLock();
     // the record is ours only if our id matches; a foreign id blocks
     expect(lockedElsewhere() === null || lockedElsewhere()?.deviceName === undefined).toBe(true);
   });
 
   it('keeps blocking while offline, and clears when a newer answer says unlocked', async () => {
-    fetchMock.mockReturnValueOnce(ok({ locked: true, deviceId: 'other-device', deviceName: 'Pixel 7' }));
+    fetchMock.mockReturnValueOnce(ok({ groupId: mockGroup.groupId, blob: sealedRemote(true, 'other-device', 'Pixel 7') }));
     await refreshRegistryLock();
     // network dies: the cached answer must survive
     fetchMock.mockReturnValueOnce(Promise.reject(new Error('offline')));

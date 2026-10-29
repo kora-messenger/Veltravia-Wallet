@@ -38,6 +38,7 @@ import PerpsDepositScreen from '../screens/PerpsDepositScreen';
 import PerpsWithdrawScreen from '../screens/PerpsWithdrawScreen';
 import PerpsSearchScreen from '../screens/PerpsSearchScreen';
 import PerpsMarketScreen from '../screens/PerpsMarketScreen';
+import DevicesScreen from '../screens/wallet/DevicesScreen';
 import PerpsTradeScreen from '../screens/PerpsTradeScreen';
 import PerpsPayWithScreen from '../screens/PerpsPayWithScreen';
 import PerpsActivityScreen from '../screens/PerpsActivityScreen';
@@ -103,6 +104,7 @@ export type RootStackParamList = {
   PerpsTrade: { venue: 'hyperliquid' | 'aster'; symbol: string; side: 'long' | 'short' };
   PerpsPayWith: { venue: 'hyperliquid' | 'aster' };
   PerpsMarket: { venue: 'hyperliquid' | 'aster'; symbol: string };
+  Devices: undefined;
   PerpsActivity: undefined;
   PerpsVenue: { venue: 'hyperliquid' | 'aster' };
 };
@@ -301,6 +303,7 @@ export default function Navigation() {
       <Stack.Screen name="PerpsDeposit" component={PerpsDepositScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PerpsSearch" component={PerpsSearchScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="PerpsMarket" component={PerpsMarketScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="Devices" component={DevicesScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PerpsTrade" component={PerpsTradeScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PerpsPayWith" component={PerpsPayWithScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PerpsActivity" component={PerpsActivityScreen} options={{ animation: 'slide_from_right' }} />
