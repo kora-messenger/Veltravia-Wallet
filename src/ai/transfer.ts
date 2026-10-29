@@ -12,7 +12,7 @@
  */
 
 import { CHAINS } from '../config/chains';
-import { walletLocked } from '../core/security/walletLock';
+import { movementBlock, movementBlockMessage } from '../core/security/valueGuard';
 import type { ChatContext, TransferProposal } from './protocol';
 
 /** Symbol -> chain that v1 can actually send on. */
@@ -157,14 +157,15 @@ let seq = 0;
 
 export function prepareTransfer(p: ParsedTransfer, ctx: ChatContext): PrepareResult {
   // Wallet lock guard: value movement is frozen until the user unlocks again.
-  if (walletLocked(ctx.walletId)) {
-    return {
-      ok: false,
-      needs: 'unlock',
-      reason:
-        'Your wallet is locked, so I cannot prepare transfers. Sending is blocked until you unlock it — ' +
-        'just tell me to unlock your wallet.',
-    };
+  // A lock set on ANOTHER device cannot be lifted from here, so say so plainly.
+  const block = movementBlock(ctx.walletId);
+  if (block) {
+    const reason =
+      block.kind === 'locked-elsewhere'
+        ? `${movementBlockMessage(block)} I can't move funds for this wallet until it is unlocked there.`
+        : 'Your wallet is locked, so I cannot prepare transfers. Sending is blocked until you unlock it — ' +
+          'just tell me to unlock your wallet.';
+    return { ok: false, needs: 'unlock', reason };
   }
   if (!p.symbol) {
     return { ok: false, needs: 'asset', reason: 'Which coin would you like to send?' };

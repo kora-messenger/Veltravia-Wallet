@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
+import { refreshRegistryLock } from '../../core/security/lockRegistry';
 import { useWallets } from '../../wallets/WalletsProvider';
 import { BackIcon, CloseIcon } from '../../components/icons';
 import LinearGradient from 'react-native-linear-gradient';
@@ -65,6 +66,9 @@ export default function NameWalletScreen({
     // Trust-style beat: brief loading while the account is set up.
     setTimeout(() => {
       createWallet(name, icon, color, origin);
+      // A recovered wallet may already be locked on the user's older device:
+      // resolve the registry now so the guards are honest before they transact.
+      refreshRegistryLock().catch(() => {});
       // Back to Home (Wallets screen is also popped since Home is a tab).
       navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
     }, 900);

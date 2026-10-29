@@ -16,6 +16,7 @@ import { showToast } from '../../components/Toast';
 import { useWallets } from '../../wallets/WalletsProvider';
 import { ShieldLockIcon } from '../../components/icons';
 import { allWalletLocks, refreshWalletLocks } from '../../core/security/walletLock';
+import { refreshRegistryLock } from '../../core/security/lockRegistry';
 import { WalletAvatar } from '../../wallets/WalletAvatar';
 import AddWalletSheet from '../../components/AddWalletSheet';
 import WalletActionMenu, { MenuAnchor } from '../../components/WalletActionMenu';
@@ -35,6 +36,8 @@ export default function WalletsScreen({ navigation }: { navigation: any }) {
 
   useEffect(() => {
     refreshWalletLocks().then(setLockMap).catch(() => setLockMap(allWalletLocks()));
+    // keep the cross-device view fresh while the user looks at their wallets
+    refreshRegistryLock().catch(() => {});
   }, []);
 
   const openMenu = (id: string) => {

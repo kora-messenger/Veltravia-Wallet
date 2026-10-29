@@ -13,6 +13,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator, TextInput, Animated, Easing } from 'react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { CheckIcon, CloseIcon, ShieldLockIcon, EyeIcon, EyeOffIcon } from '../../components/icons';
+import LockWarning from '../../components/LockWarning';
 import type { ChatMessage } from '../../ai/protocol';
 
 const GREEN = '#12915E';
@@ -125,6 +126,7 @@ export default function WalletLockCard({
           <Text style={[styles.body, { color: theme.ink }]}>
             You haven't set a security password for this wallet yet. Create one below — you'll use it every time you lock or unlock.
           </Text>
+          <LockWarning compact />
           <Animated.View style={{ transform: [{ translateX: shakeX }] }}>
             <View>
               <TextInput

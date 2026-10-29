@@ -35,11 +35,16 @@ import { SWAP_START, SWAP_SPAN, headerAmount } from '../services/headerCollapse'
 import { Alert } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { useWallets } from '../wallets/WalletsProvider';
+import { movementBlock } from '../core/security/valueGuard';
+import { refreshWalletLocks } from '../core/security/walletLock';
+import { refreshRegistryLock } from '../core/security/lockRegistry';
 import { WalletAvatar } from '../wallets/WalletAvatar';
 import AnimatedBellIcon from '../components/AnimatedBellIcon';
 import AnimatedScanIcon from '../components/AnimatedScanIcon';
 import Sparkline from '../components/Sparkline';
 import ReceiveSheet from '../components/ReceiveSheet';
+import AppModal from '../components/AppModal';
+import LockedNotice from '../components/LockedNotice';
 import { showToast } from '../components/Toast';
 import WalletSwitchOverlay from '../components/WalletSwitchOverlay';
 import DonutChart from '../components/DonutChart';
@@ -136,6 +141,15 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
   const { activeWallet } = useWallets();
+
+  // Lock gate: value actions stay inert while the wallet is locked, and the
+  // reason is shown instead of a dead tap. Both stores are refreshed on mount
+  // so a lock set on another device is honoured as soon as Home appears.
+  const [lockSheet, setLockSheet] = useState(false);
+  const lockBlock = movementBlock(activeWallet.id);
+  useEffect(() => {
+    Promise.all([refreshWalletLocks(), refreshRegistryLock()]).catch(() => {});
+  }, []);
 
   // Header collapse: once the Total Balance card passes under the header, the
   // pill swaps the wallet name for the balance amount (see headerCollapse.ts).
@@ -256,8 +270,18 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 key={key}
                 style={({ pressed }) => [styles.actionItem, { opacity: pressed ? 0.7 : 1 }]}
                 onPress={() => {
-                  if (key === 'receive') setReceiveOpen(true);
+                  // Receive never moves value out, so it stays available while
+                  // locked. Send/Swap/Buy are frozen.
+                  if (key === 'receive') {
+                    setReceiveOpen(true);
+                    return;
+                  }
+                  if (key !== 'buy' && movementBlock(activeWallet.id)) {
+                    setLockSheet(true);
+                    return;
+                  }
                   if (key === 'buy') navigation.navigate('Buy');
+                  if (key === 'swap') navigation.navigate('Swap');
                 }}
               >
                 <View style={[styles.actionTile, { backgroundColor: bg }]}>
@@ -600,6 +624,18 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
       <ReceiveSheet visible={receiveOpen} onClose={() => setReceiveOpen(false)} walletId={activeWallet.id} />
 
+      <AppModal visible={lockSheet} transparent animationType="fade" onRequestClose={() => setLockSheet(false)}>
+        <Pressable style={styles.lockScrim} onPress={() => setLockSheet(false)}>
+          <Pressable
+            style={[styles.lockCard, { backgroundColor: theme.mode === 'dark' ? '#12121A' : '#FFFFFF' }]}
+            onPress={() => {}}
+          >
+            <LockedNotice block={lockBlock} />
+            <PrimaryButton label="Got it" arrow={false} onPress={() => setLockSheet(false)} />
+          </Pressable>
+        </Pressable>
+      </AppModal>
+
       {/* Wallet-switch loading page: covers header + content, tab bar stays. */}
       {switching && <WalletSwitchOverlay />}
     </View>
@@ -607,6 +643,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 }
 
 const styles = StyleSheet.create({
+  lockScrim: { flex: 1, backgroundColor: 'rgba(8,10,20,0.55)', justifyContent: 'center', padding: 24 },
+  lockCard: { borderRadius: 22, padding: 18, gap: 14 },
   root: { flex: 1 },
   content: { paddingTop: 72, paddingBottom: 150 },
 

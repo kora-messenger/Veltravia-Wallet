@@ -37,6 +37,9 @@ import CandleChart from '../components/CandleChart';
 import OrderBookView from '../components/OrderBookView';
 import OrderBookSettingsSheet from '../components/OrderBookSettingsSheet';
 import { showToast } from '../components/Toast';
+import LockedNotice from '../components/LockedNotice';
+import type { MovementBlock } from '../core/security/valueGuard';
+import { movementBlock } from '../core/security/valueGuard';
 import { FONT } from '../theme/typography';
 import { PERP_SECTIONS, formatPerpPrice, type PerpMarket } from '../services/perpsMarkets';
 import { providerBalance, usePerpsAccount } from '../services/perpsAccount';
@@ -192,6 +195,8 @@ export default function PerpsTradeScreen() {
   /* ------------- three-snap sheet ------------- */
   const heights = useMemo(() => snapHeights(H, insets.top), [H, insets.top]);
   const [snap, setSnap] = useState<SheetSnap>('half');
+  const [lockBlock, setLockBlock] = useState<MovementBlock>(null);
+  const walletId = activeWallet.id;
   const sheetH = useRef(new Animated.Value(heights.half)).current;
   const curH = useRef(heights.half);
   const dragStart = useRef(heights.half);
@@ -236,6 +241,12 @@ export default function PerpsTradeScreen() {
   const onCta = () => {
     if (cta.action === 'fund') return navigation.navigate('PerpsDeposit');
     if (cta.action === 'open') {
+      // Opening a position is value movement: a locked wallet may not trade.
+      const block = movementBlock(activeWallet.id);
+      if (block) {
+        setLockBlock(block);
+        return;
+      }
       Vibration.vibrate(12);
       showToast('Order signing arrives with live data', { kind: 'info' });
     }
@@ -450,6 +461,11 @@ export default function PerpsTradeScreen() {
 
         {snap !== 'peek' ? (
           <View style={styles.ctaBlock}>
+            {lockBlock ? (
+              <View style={{ marginBottom: 10 }}>
+                <LockedNotice block={lockBlock} compact />
+              </View>
+            ) : null}
             <Pressable
               accessibilityLabel={cta.label}
               disabled={cta.action === 'disabled'}

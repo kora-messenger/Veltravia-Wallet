@@ -48,6 +48,7 @@ import { promptBiometrics, isBiometricUnlockEnabled } from '../../core/security/
 import { refreshWalletLock, setWalletLocked } from '../../core/security/walletLock';
 import { showToast } from '../../components/Toast';
 import { hasSecurityPassword, verifySecurityPassword, setSecurityPassword } from '../../core/storage/securityPassword';
+import { publishLockState, refreshRegistryLock } from '../../core/security/lockRegistry';
 import ConsentCard from './ConsentCard';
 import TransferApprovalCard from './TransferApprovalCard';
 import PasscodeConfirmSheet from './PasscodeConfirmSheet';
@@ -255,6 +256,9 @@ export default function AiChatScreen() {
   useEffect(() => {
     const check = () => {
       refreshWalletLock(walletId).catch(() => {});
+      // ...and the cross-device one, so a recovered wallet knows it is locked
+      // on the user's older device before it offers to move funds.
+      refreshRegistryLock().catch(() => {});
       hasSecurityPassword(walletId).then(setHasSecurityPw).catch(() => setHasSecurityPw(false));
     };
     check();
@@ -422,6 +426,9 @@ export default function AiChatScreen() {
         await sleep(1100);
         if (signal.aborted) return;
         await setWalletLocked(walletId, lock);
+        // publish to the cross-device registry: a recovered wallet on another
+        // device must see the lock too
+        await publishLockState(lock);
         emit({ type: 'tool_call', tool: 'wallet-lock', label: lock ? 'Wallet lock initiated' : 'Wallet unlock initiated' });
         await sleep(600);
         if (signal.aborted) return;

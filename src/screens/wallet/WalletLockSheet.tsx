@@ -20,7 +20,9 @@ import { showToast } from '../../components/Toast';
 import { promptBiometrics, isBiometricUnlockEnabled } from '../../core/security/biometrics';
 import { hasSecurityPassword, setSecurityPassword, verifySecurityPassword } from '../../core/storage/securityPassword';
 import { walletLocked, refreshWalletLock, setWalletLocked } from '../../core/security/walletLock';
+import { publishLockState } from '../../core/security/lockRegistry';
 import PasscodeConfirmSheet from '../ai/PasscodeConfirmSheet';
+import LockWarning from '../../components/LockWarning';
 import { useWallets } from '../../wallets/WalletsProvider';
 
 const GREEN = '#12915E';
@@ -121,6 +123,8 @@ export default function WalletLockSheet({ visible, onClose }: { visible: boolean
     setBusy(true);
     await setWalletLocked(walletId, lock);
     await refreshWalletLock(walletId);
+    // tell the registry, so a wallet recovered on another device knows at once
+    await publishLockState(lock);
     setLocked(lock);
     setBusy(false);
     setPw('');
@@ -189,6 +193,10 @@ export default function WalletLockSheet({ visible, onClose }: { visible: boolean
                     ? 'Sending and swapping are paused until you unlock your wallet.'
                     : 'Lock to pause sending and swapping across this wallet.'}
                 </Text>
+              </View>
+
+              <View style={{ marginHorizontal: 20, marginTop: 12 }}>
+                <LockWarning />
               </View>
 
               {!hasPw ? (
