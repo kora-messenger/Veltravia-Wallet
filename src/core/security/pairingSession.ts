@@ -36,6 +36,7 @@ import { digest } from '../storage/passcode';
 import { fromHex, randomBytes, toHex } from '../crypto/hash';
 import { wrapFor, unwrapWith } from './walletGroup';
 import { pairingRelay, type PairingRelayState } from './pairingRelay';
+import { captureProtections, restoreProtections } from './pairingPolicy';
 
 export const PAIR_V2_SCHEME = 'veltravia-pair://2';
 /** Short by design: long enough to scan, short enough to be useless if leaked. */
@@ -241,6 +242,9 @@ export async function approveJoiner(
     await cancelPairingSession();
     return false;
   }
+  // Adding a device is additive: note what protects THIS device before the
+  // hand-off, so nothing can be loosened by the pairing itself.
+  const before = await captureProtections();
   const { sessionId, secret, hostPub } = active;
   const sealed = wrapFor(fromHex(secret), joinerPub, JSON.stringify({
     kind: 'veltravia-pair/1',
@@ -258,6 +262,7 @@ export async function approveJoiner(
   // One-time: the session dies whether or not the relay acknowledged it.
   active = null;
   await persistActive(null);
+  await restoreProtections(before);
   if (!delivered) return false;
   await pairingRelay.cancel(sessionId).catch(() => {});
   return true;

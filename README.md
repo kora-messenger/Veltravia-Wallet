@@ -454,6 +454,16 @@ Ijezie asked the AI "Do you have the ability to lock my wallet to avoid others t
 
 **The code is deliberately lean:** `veltravia-pair://join?g=<group>&k=<key>&e=<expiry>`, no device names. Two reasons: a QR has a hard size ceiling (the first version overflowed and threw "QR payload too long" — `QrCode` now grows to the smallest version that fits, up to v10, instead of dying), and names already sync inside the sealed blob via `adoptRemoteDevices`. Tests in `__tests__/pairingFlow.test.tsx` and `walletGroup.test.ts` pin both properties, including that the URI never contains the phrase.
 
+#### Showing a pairing code requires authentication (2026-10-29)
+
+A pairing code is an invitation into the device group, so displaying one is a security action, not a display action. `src/core/security/pairingAuth.ts` enforces that: the sheet opens **locked** and mints nothing until the owner proves presence — the OS biometric prompt (fingerprint/face via `promptBiometrics`) or this wallet's own 6-digit passcode (`PasscodeConfirmSheet`). No proof exists on the device, no code is shown at all, and the button says so instead of failing silently.
+
+No authorisation is cached. Each code is minted immediately after the proof and the proof is discarded, so **"New code" asks again**; a cancelled or failed prompt never falls through to "show it anyway", and merely opening the sheet triggers nothing.
+
+#### Pairing never loosens the original device (2026-10-29)
+
+`src/core/security/pairingPolicy.ts` snapshots what protects the device before a hand-off (per-wallet lock flags, app lock, the registry's "locked elsewhere" answer) and restores anything that moved, returning a drift report. `approveJoiner` runs it around every delivery, so adding a device can only ever add protection: a locked wallet stays locked, and a "locked elsewhere" answer is never replaced by "unlocked" because a new device joined.
+
 #### Pairing is a handshake, and the old format still parses (2026-10-29)
 
 Two things are true at once, and they were easy to confuse:

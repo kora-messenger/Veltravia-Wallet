@@ -34,6 +34,13 @@ jest.mock('../src/core/storage/secureStorage', () => ({
   readSeed: jest.fn(async () => 'legal winner thank year wave sausage worth useful legal winner thank yellow'),
 }));
 
+jest.mock('../src/screens/ai/PasscodeConfirmSheet', () => {
+  const R = require('react');
+  const { Pressable, Text } = require('react-native');
+  return ({ visible, onVerified }: any) =>
+    visible ? R.createElement(Pressable, { onPress: onVerified }, R.createElement(Text, null, 'keypad')) : null;
+});
+
 jest.mock('../src/components/AppModal', () => {
   const React = require('react');
   const { View } = require('react-native');
@@ -41,11 +48,24 @@ jest.mock('../src/components/AppModal', () => {
 });
 
 import SelectRecoveryMethodScreen from '../src/screens/SelectRecoveryMethodScreen';
+import * as pairingAuth from '../src/core/security/pairingAuth';
 import PairingCodeSheet from '../src/components/PairingCodeSheet';
+
+const mockAuth = pairingAuth as unknown as {
+  authenticateForPairing: jest.Mock;
+  pairingAuthOptions: jest.Mock;
+  pairingAuthAvailable: jest.Mock;
+};
 import { parseQr } from '../src/services/qrParse';
 import { deriveSeedGroup } from '../src/core/security/walletGroup';
 import { startPairingSession, __resetPairingSessionsForTests } from '../src/core/security/pairingSession';
 import { setPairingRelay } from '../src/core/security/pairingRelay';
+
+jest.mock('../src/core/security/pairingAuth', () => ({
+  authenticateForPairing: jest.fn(),
+  pairingAuthOptions: jest.fn(),
+  pairingAuthAvailable: jest.fn(),
+}));
 
 describe('recovery screen pairing entry', () => {
   it('lists "Pair device" and hands the tap to the scanner', async () => {
@@ -84,6 +104,20 @@ describe('the code sheet an existing device shows', () => {
   beforeEach(() => {
     __resetPairingSessionsForTests();
     stubRelay();
+    mockAuth.authenticateForPairing.mockResolvedValue({ ok: true, method: 'biometric' });
+    mockAuth.pairingAuthOptions.mockResolvedValue({ biometric: true, passcode: true });
+  });
+
+  it('stays locked until the owner confirms it is them', async () => {
+    let tree!: renderer.ReactTestRenderer;
+    await act(async () => {
+      tree = renderer.create(<PairingCodeSheet visible onClose={jest.fn()} />);
+    });
+    await act(async () => {
+      for (let i = 0; i < 20; i++) await Promise.resolve();
+    });
+    expect(tree.root.findAll((n) => n.props.testID === 'pairingLocked').length).toBeGreaterThan(0);
+    await act(async () => { tree.unmount(); });
   });
 
   it('renders a live code with a countdown, and never the phrase', async () => {
@@ -92,6 +126,13 @@ describe('the code sheet an existing device shows', () => {
       tree = renderer.create(<PairingCodeSheet visible onClose={jest.fn()} />);
     });
     // minting the session is async: let the effect settle
+    await act(async () => {
+      for (let i = 0; i < 20; i++) await Promise.resolve();
+    });
+    // unlock first: no code is shown until presence is proven
+    await act(async () => {
+      await tree.root.findAll((n) => n.props.accessibilityLabel === 'Confirm it is you')[0].props.onPress();
+    });
     await act(async () => {
       for (let i = 0; i < 20; i++) await Promise.resolve();
     });

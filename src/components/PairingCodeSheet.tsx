@@ -18,6 +18,8 @@ import { useTheme } from '../theme/ThemeProvider';
 import QrCode from './QrCode';
 import AppModal from './AppModal';
 import { ensureGroup, getGroup } from '../core/security/walletGroup';
+import { authenticateForPairing, pairingAuthOptions } from '../core/security/pairingAuth';
+import PasscodeConfirmSheet from '../screens/ai/PasscodeConfirmSheet';
 import {
   approveJoiner,
   cancelPairingSession,
@@ -34,7 +36,12 @@ function mmss(ms: number): string {
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
-type Phase = 'showing' | 'waiting' | 'expired' | 'confirm' | 'done';
+/**
+ * 'locked' is the first state and there is no way around it: a pairing code can
+ * add a device, so showing one needs a fresh proof of presence (biometrics, or
+ * this wallet's passcode). An open app is not consent.
+ */
+type Phase = 'locked' | 'showing' | 'waiting' | 'expired' | 'confirm' | 'done';
 
 export default function PairingCodeSheet({
   visible,
@@ -49,8 +56,12 @@ export default function PairingCodeSheet({
   const { theme } = useTheme();
   const [session, setSession] = useState<HostSession | null>(null);
   const [now, setNow] = useState(Date.now());
-  const [phase, setPhase] = useState<Phase>('showing');
+  const [phase, setPhase] = useState<Phase>('locked');
   const [joiner, setJoiner] = useState<{ pub: string; code: string } | null>(null);
+  const [canBiometric, setCanBiometric] = useState(false);
+  const [canPasscode, setCanPasscode] = useState(false);
+  const [keypad, setKeypad] = useState(false);
+  const [authNote, setAuthNote] = useState<string | null>(null);
   const cancelled = useRef(false);
 
   const mint = useCallback(async () => {
@@ -78,13 +89,20 @@ export default function PairingCodeSheet({
 
   useEffect(() => {
     if (visible) {
-      mint();
+      // Locked until the owner proves it is them. Nothing is minted here.
+      setPhase('locked');
+      setAuthNote(null);
+      pairingAuthOptions().then((o) => {
+        setCanBiometric(o.biometric);
+        setCanPasscode(o.passcode);
+      });
     } else {
       cancelled.current = true;
       cancelPairingSession();
       setSession(null);
-      setPhase('showing');
+      setPhase('locked');
       setJoiner(null);
+      setKeypad(false);
     }
     return () => {
       cancelled.current = true;
@@ -127,7 +145,29 @@ export default function PairingCodeSheet({
     setSession(null);
   };
 
+  /** Ask for proof of presence, then mint. Never mints without it. */
+  const unlockAndMint = async () => {
+    setAuthNote(null);
+    const outcome = await authenticateForPairing();
+    if (outcome.ok) {
+      // The session lives until the joiner arrives or it expires, so this is
+      // kicked off rather than awaited: the sheet must stay responsive.
+      mint();
+      return;
+    }
+    if (outcome.passcodeAvailable) {
+      setKeypad(true);
+      return;
+    }
+    setAuthNote(
+      outcome.reason === 'none'
+        ? 'Set a passcode or biometrics first. A pairing code can add a device, so it needs one.'
+        : 'Authentication is needed before a code is shown.',
+    );
+  };
+
   const remaining = session ? session.expiresAt - now : 0;
+  const locked = phase === 'locked' || phase === 'showing';
 
   return (
     <AppModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -139,7 +179,26 @@ export default function PairingCodeSheet({
           </Text>
 
           <View style={styles.qrWrap}>
-            {phase === 'confirm' && joiner ? (
+            {locked ? (
+              <View style={styles.lockBox} testID="pairingLocked">
+                <Text style={[styles.sub, { color: theme.inkMuted }]}>
+                  Only show this code to someone you are pairing in person. Anyone who scans it can ask to join this
+                  wallet group, so confirm it is you first.
+                </Text>
+                <Text style={[styles.fine, { color: theme.inkMuted }]}>
+                  {canBiometric
+                    ? 'Use your fingerprint or face to continue.'
+                    : canPasscode
+                      ? 'Enter your wallet passcode to continue.'
+                      : 'No biometrics or passcode are set on this device, so a pairing code cannot be shown.'}
+                </Text>
+                {authNote ? (
+                  <Text style={[styles.fine, { color: '#E5484D' }]} testID="pairingAuthNote">
+                    {authNote}
+                  </Text>
+                ) : null}
+              </View>
+            ) : phase === 'confirm' && joiner ? (
               <View style={styles.confirmBox} testID="pairingConfirm">
                 <Text style={[styles.sub, { color: theme.inkMuted }]}>
                   Check that the other device shows the same six digits. If it does not, tap Cancel — someone may be
@@ -170,7 +229,30 @@ export default function PairingCodeSheet({
           </Text>
 
           <View style={styles.actions}>
-            {phase === 'confirm' ? (
+            {locked ? (
+              <>
+                <Pressable
+                  onPress={onClose}
+                  style={({ pressed }) => [styles.btn, { backgroundColor: theme.surfaceAlt, opacity: pressed ? 0.8 : 1 }]}
+                  accessibilityLabel="Cancel"
+                >
+                  <Text style={[styles.btnText, { color: theme.ink }]}>Not now</Text>
+                </Pressable>
+                <Pressable
+                  onPress={unlockAndMint}
+                  disabled={!canBiometric && !canPasscode}
+                  style={({ pressed }) => [
+                    styles.btn,
+                    { backgroundColor: theme.brand, opacity: !canBiometric && !canPasscode ? 0.4 : pressed ? 0.85 : 1 },
+                  ]}
+                  accessibilityLabel={canBiometric ? 'Confirm it is you' : 'Enter passcode'}
+                >
+                  <Text style={[styles.btnText, { color: '#FFFFFF' }]}>
+                    {canBiometric ? 'Confirm it’s you' : 'Enter passcode'}
+                  </Text>
+                </Pressable>
+              </>
+            ) : phase === 'confirm' ? (
               <>
                 <Pressable
                   onPress={decline}
@@ -200,7 +282,13 @@ export default function PairingCodeSheet({
                   <Text style={[styles.btnText, { color: theme.ink }]}>Cancel</Text>
                 </Pressable>
                 <Pressable
-                  onPress={mint}
+                  onPress={() => {
+                    // A new code is a new invitation: prove presence again.
+                    cancelPairingSession();
+                    setSession(null);
+                    setJoiner(null);
+                    setPhase('locked');
+                  }}
                   style={({ pressed }) => [styles.btn, { backgroundColor: theme.brand, opacity: pressed ? 0.85 : 1 }]}
                   accessibilityLabel="Show a new code"
                 >
@@ -211,6 +299,17 @@ export default function PairingCodeSheet({
           </View>
         </View>
       </View>
+
+      <PasscodeConfirmSheet
+        visible={visible && keypad}
+        title="Show pairing code"
+        message="Enter your passcode to show a code that can add a device."
+        onCancel={() => setKeypad(false)}
+        onVerified={() => {
+          setKeypad(false);
+          mint();
+        }}
+      />
     </AppModal>
   );
 }
@@ -222,6 +321,7 @@ const styles = StyleSheet.create({
   sub: { fontSize: 13, lineHeight: 19, textAlign: 'center' },
   qrWrap: { alignItems: 'center', gap: 8, paddingVertical: 6, minHeight: 240, justifyContent: 'center' },
   confirmBox: { gap: 12, alignItems: 'center', paddingVertical: 8 },
+  lockBox: { gap: 10, alignItems: 'center', paddingVertical: 8 },
   safety: { fontSize: 34, fontWeight: '800', letterSpacing: 6 },
   timer: { fontSize: 12.5 },
   fine: { fontSize: 11.5, lineHeight: 16, textAlign: 'center' },
