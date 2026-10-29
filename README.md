@@ -454,6 +454,21 @@ Ijezie asked the AI "Do you have the ability to lock my wallet to avoid others t
 
 **The code is deliberately lean:** `veltravia-pair://join?g=<group>&k=<key>&e=<expiry>`, no device names. Two reasons: a QR has a hard size ceiling (the first version overflowed and threw "QR payload too long" — `QrCode` now grows to the smallest version that fits, up to v10, instead of dying), and names already sync inside the sealed blob via `adoptRemoteDevices`. Tests in `__tests__/pairingFlow.test.tsx` and `walletGroup.test.ts` pin both properties, including that the URI never contains the phrase.
 
+#### Removal is now a real revocation (2026-10-29)
+
+The phrase still gives the wallet its identity, but it no longer grants the lock key. The key is per-device state:
+
+- `group.key` is whatever this device last held, at `group.epoch`. A recovery phrase only bootstraps epoch 0.
+- Each device has an X25519 keypair (`deviceKeyPair()`, secret in the keystore, public half in the device list).
+- **Remove** rotates: new random key, `epoch + 1`, and the new key is wrapped separately for every *remaining* device (`nacl.box` with that device's public key). This device keeps the new key directly.
+- The announcement travels sealed with the **old** key (`rotate` field), so peers can read it and find their envelope. A removed device can read the announcement too: it just has no envelope, and cannot forge one, because wrapping needs the author's secret key.
+- A device that fetches state it cannot open is marked removed (`markRemoved`), shows the notice on Paired devices, and stops publishing. It keeps working with its own local lock.
+- Tests: `__tests__/deviceRevocation.test.ts` proves the removed device finds no envelope, cannot read the next blob, and that a remaining device adopts the rotation and reads it.
+
+**Trade-off, stated plainly:** because epoch 0 derives from the phrase, a fresh restore after any removal lands on the old key, so that phone needs pairing to rejoin. That is the price of removal actually sticking. It also means the removed phone still holds the funds (it has the phrase); this stops lock-state access, not spending.
+
+Backend needs `rotate` on `PUT /v1/wallet-lock/state` and to return it on `GET` (otherwise peers never see a rotation).
+
 #### Wallet groups: the seed is the identity, pairing is the shortcut (2026-10-29)
 
 "Can't the unlock on the old device still work?" — yes, and that is now the design. Same as Trust Wallet, the wallet's identity is the recovery phrase:

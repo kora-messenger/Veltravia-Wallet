@@ -37,6 +37,12 @@ jest.mock('../src/core/security/walletGroup', () => ({
   getGroup: jest.fn(async () => mockGroup),
   currentGroup: jest.fn(() => mockGroup),
   deviceId: jest.fn(async () => 'me'),
+  pendingRotationForUpload: jest.fn(() => null),
+  clearPendingRotation: jest.fn(async () => {}),
+  applyRotation: jest.fn(async () => false),
+  markRemoved: jest.fn(async () => {}),
+  groupRemoved: jest.fn(() => false),
+  adoptRemoteDevices: jest.fn(async () => null),
 }));
 const { seal, open } = jest.requireActual('../src/core/crypto/groupCrypto');
 

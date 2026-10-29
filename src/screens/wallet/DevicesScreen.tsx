@@ -16,7 +16,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import PairingCodeSheet from '../../components/PairingCodeSheet';
 import { showToast } from '../../components/Toast';
-import { deviceId, ensureGroup, getGroup, revokeDevice, type WalletGroup } from '../../core/security/walletGroup';
+import { deviceId, ensureGroup, getGroup, groupRemoved, revokeDevice, type WalletGroup } from '../../core/security/walletGroup';
+import { publishLockState } from '../../core/security/lockRegistry';
+import { walletLocked } from '../../core/security/walletLock';
 
 export default function DevicesScreen() {
   const { theme } = useTheme();
@@ -25,11 +27,13 @@ export default function DevicesScreen() {
   const [group, setGroup] = useState<WalletGroup | null>(null);
   const [ownId, setOwnId] = useState<string>('');
   const [pairingOpen, setPairingOpen] = useState(false);
+  const [removed, setRemoved] = useState(false);
 
   const load = useCallback(async () => {
     await ensureGroup();
     setGroup(await getGroup());
     setOwnId(await deviceId());
+    setRemoved(groupRemoved());
   }, []);
 
   useEffect(() => {
@@ -49,6 +53,9 @@ export default function DevicesScreen() {
           onPress: async () => {
             const next = await revokeDevice(id);
             setGroup(next);
+            // Announce the rotation straight away so the remaining devices pick
+            // up the new key, and the removed one learns it is out.
+            await publishLockState(await walletLocked());
             showToast('Device removed', { kind: 'success' });
           },
         },
@@ -75,6 +82,16 @@ export default function DevicesScreen() {
           Recovering this wallet with your recovery phrase adds that device automatically. Use a pairing code to add
           a device without typing the phrase.
         </Text>
+
+        {removed && (
+          <View style={[styles.card, styles.removedCard, { borderColor: theme.negative }]} testID="removedNotice">
+            <Text style={[styles.removedTitle, { color: theme.negative }]}>This device was removed</Text>
+            <Text style={[styles.fine, { color: theme.inkMuted }]}>
+              It no longer shares this wallet's lock. Pair it again from an authorised device to restore the shared
+              lock; until then it keeps its own local lock.
+            </Text>
+          </View>
+        )}
 
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           {(group?.devices ?? []).map((d) => (
@@ -110,9 +127,10 @@ export default function DevicesScreen() {
           device names.
         </Text>
         <Text style={[styles.fine, { color: theme.inkMuted }]}>
-          This is a lock between your devices, not on the blockchain. Anyone who has your recovery phrase can still
-          move funds from another wallet app, so removing a device here only tidies the list — it cannot revoke a
-          phone that still holds the phrase.
+          Removing a device rotates this wallet's lock key, so that phone can no longer read the lock state and
+          cannot rejoin by restoring the phrase alone; it has to be paired again. This is a lock between your
+          devices, not on the blockchain: anyone who has your recovery phrase can still move funds from another
+          wallet app.
         </Text>
       </ScrollView>
 
@@ -122,6 +140,8 @@ export default function DevicesScreen() {
 }
 
 const styles = StyleSheet.create({
+  removedCard: { borderWidth: 1, padding: 14, gap: 6 },
+  removedTitle: { fontSize: 14.5, fontWeight: '700' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 10 },
   back: { fontSize: 28, lineHeight: 30 },
   title: { fontSize: 17, fontWeight: '600' },

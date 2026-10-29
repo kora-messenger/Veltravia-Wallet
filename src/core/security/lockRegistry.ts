@@ -22,7 +22,16 @@
 import * as Keychain from 'react-native-keychain';
 import { APP_CONFIG } from '../../config/env';
 import { open, seal } from '../crypto/groupCrypto';
-import { adoptRemoteDevices, getGroup } from './walletGroup';
+import {
+  adoptRemoteDevices,
+  applyRotation,
+  clearPendingRotation,
+  getGroup,
+  groupRemoved,
+  markRemoved,
+  pendingRotationForUpload,
+  type Rotation,
+} from './walletGroup';
 
 const SERVICE = 'com.veltravia.wallet.lockregistry';
 const TIMEOUT_MS = 6000;
@@ -132,19 +141,41 @@ export async function publishLockState(locked: boolean): Promise<boolean> {
   const key = st.key ?? (await registryKey());
   const group = await getGroup();
   if (!key || !group) return false;
+  // This device was removed from the group: it must not push state under a key
+  // the others no longer use.
+  if (groupRemoved()) return false;
   try {
     // The server gets an opaque group id and a sealed blob. Not the lock, not
     // the device, not even the fact that a lock exists.
     // The device list rides inside the box, so names sync across devices while
     // the server still cannot read them.
-    const devices = (group.devices ?? []).map((d) => ({ id: d.id, name: d.name, addedAt: d.addedAt }));
+    const devices = (group.devices ?? []).map((d) => ({
+      id: d.id,
+      name: d.name,
+      addedAt: d.addedAt,
+      ...(d.pub ? { pub: d.pub } : {}),
+    }));
+    // A rotation is announced inside the payload sealed with the key everyone
+    // currently holds, so remaining devices can find their envelope and the
+    // removed one can see that it has none.
+    const rotation = pendingRotationForUpload();
     const body = { deviceId: st.deviceId, locked, at: Date.now(), devices };
     const res = await timedFetch(`${APP_CONFIG.API_BASE_URL}/v1/wallet-lock/state`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'X-Veltravia-Env': APP_CONFIG.env },
-      body: JSON.stringify({ groupId: key, blob: seal(group.key, JSON.stringify(body)) }),
+      body: JSON.stringify({
+        groupId: key,
+        blob: seal(group.key, JSON.stringify(body)),
+        // Sealed with the OLD key: peers who still hold it can read the
+        // announcement and open their envelope; the removed device can read it
+        // too, and will find nothing addressed to it.
+        ...(rotation
+          ? { rotate: seal(rotation.underKey, JSON.stringify({ epoch: rotation.epoch, envelopes: rotation.envelopes, by: rotation.by })) }
+          : {}),
+      }),
     });
     if (!res.ok) throw new Error(`publish ${res.status}`);
+    if (rotation) await clearPendingRotation();
     const remote: RegistryRemote = {
       locked,
       deviceId: st.deviceId,
@@ -186,10 +217,26 @@ export async function refreshRegistryLock(): Promise<RegistryRemote | null> {
       return null;
     }
     if (!res.ok) throw new Error(`read ${res.status}`);
-    const envelope = (await res.json()) as { groupId?: string; blob?: string } | null;
-    const group = await getGroup();
-    const plain =
-      envelope?.blob && group ? open(group.key, envelope.blob) : null;
+    const envelope = (await res.json()) as { groupId?: string; blob?: string; rotate?: string } | null;
+    let group = await getGroup();
+    let plain = envelope?.blob && group ? open(group.key, envelope.blob) : null;
+
+    // One retry: another device may have rotated the key while this one was
+    // away. The announcement is sealed under the key we still hold.
+    if (!plain && envelope?.blob && group) {
+      const rotated = envelope.rotate ? await applyFromRotate(group.key, envelope.rotate) : false;
+      if (rotated) {
+        group = await getGroup();
+        plain = open(group!.key, envelope.blob);
+      }
+      if (!plain) {
+        // State exists, sealed with a key this device was never given: it was
+        // removed from the group. Say so instead of silently reading nothing.
+        await markRemoved();
+        await write({ remote: null });
+        return null;
+      }
+    }
     let body: Partial<RegistryRemote> | null = null;
     if (plain) {
       try {
@@ -214,6 +261,18 @@ export async function refreshRegistryLock(): Promise<RegistryRemote | null> {
     return remote;
   } catch {
     return st.remote;
+  }
+}
+
+/** Adopt the rotation announcement if it carries an envelope for this device. */
+async function applyFromRotate(currentKey: string, rotate: string): Promise<boolean> {
+  try {
+    const plain = open(currentKey, rotate);
+    if (!plain) return false;
+    const rotation = JSON.parse(plain) as Rotation;
+    return applyRotation(rotation);
+  } catch {
+    return false;
   }
 }
 

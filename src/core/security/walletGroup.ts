@@ -19,12 +19,14 @@
  * groupCrypto.ts), so a server stores ciphertext it cannot read.
  */
 import * as Keychain from 'react-native-keychain';
-import { fromAscii, randomBytes, sha256, toHex } from '../crypto/hash';
+import nacl from 'tweetnacl';
+import { concat, fromAscii, fromHex, randomBytes, sha256, toHex } from '../crypto/hash';
 import { digest } from '../storage/passcode';
 import { readSeed } from '../storage/secureStorage';
 
 const SERVICE = 'com.veltravia.wallet.walletgroup';
 const DEVICE_SERVICE = 'com.veltravia.wallet.deviceid';
+const DEVICE_KEY_SERVICE = 'com.veltravia.wallet.devicekey';
 const PAIR_SCHEME = 'veltravia-pair://join';
 export const PAIRING_TTL_MS = 5 * 60 * 1000;
 
@@ -32,6 +34,21 @@ export interface GroupDevice {
   id: string;
   name: string;
   addedAt: number;
+  /** X25519 public key. Lets a rotation address this device only. */
+  pub?: string;
+}
+
+/**
+ * A key rotation for the NEXT epoch. Everyone still holding the current key can
+ * read this object, but only a device with a matching envelope can unwrap the
+ * new key — which is what makes a removal stick.
+ */
+export interface Rotation {
+  epoch: number;
+  /** Key for `epoch`, already wrapped per device. */
+  envelopes: Record<string, string>;
+  /** Author's public key, so a recipient can unwrap its own envelope. */
+  by: string;
 }
 
 export interface WalletGroup {
@@ -40,12 +57,24 @@ export interface WalletGroup {
   key: string;
   createdAt: number;
   devices: GroupDevice[];
-  /** Where the identity came from — decides whether removal can revoke access. */
+  /** Where the identity came from. */
   source?: 'seed' | 'pairing';
+  /** Rotation counter. 0 = the key derived straight from the phrase. */
+  epoch?: number;
+  /** This device's X25519 public key (the secret never leaves the keystore). */
+  pub?: string;
+  /** Set when the server had state this device could no longer read. */
+  removedAt?: number;
+  /**
+   * A rotation this device authored and has not confirmed uploaded yet.
+   * `underKey` is the key that epoch's peers still hold, so the announcement
+   * itself can be sealed for them (and not for the removed device).
+   */
+  pendingRotation?: Rotation & { underKey: string };
 }
 
 export type PairingResult =
-  | { ok: true; groupId: string; key: string; devices: GroupDevice[] }
+  | { ok: true; groupId: string; key: string; devices: GroupDevice[]; epoch?: number; pub?: string }
   | { ok: false; reason: 'malformed' | 'expired' | 'scheme' };
 
 let cache: WalletGroup | null = null;
@@ -120,6 +149,94 @@ export async function deviceId(): Promise<string> {
   return id;
 }
 
+let keyPairCache: { secret: Uint8Array; public: string } | null = null;
+
+/**
+ * This device's X25519 keypair, kept in the keystore. The public half is shared
+ * (it rides in the device list); the secret half is what makes a rotation
+ * addressable to this device alone.
+ */
+export async function deviceKeyPair(): Promise<{ secret: Uint8Array; public: string }> {
+  if (keyPairCache) return keyPairCache;
+  try {
+    const res = await Keychain.getGenericPassword({ service: DEVICE_KEY_SERVICE });
+    if (res !== false && res.password) {
+      const parsed = JSON.parse(res.password);
+      if (typeof parsed?.secret === 'string' && typeof parsed?.public === 'string') {
+        keyPairCache = { secret: fromHex(parsed.secret), public: parsed.public };
+        return keyPairCache;
+      }
+    }
+  } catch {
+    /* create below */
+  }
+  const kp = nacl.box.keyPair();
+  keyPairCache = { secret: kp.secretKey, public: toHex(kp.publicKey) };
+  await Keychain.setGenericPassword(
+    'devicekey',
+    JSON.stringify({ secret: toHex(kp.secretKey), public: keyPairCache.public }),
+    { service: DEVICE_KEY_SERVICE, accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY },
+  ).catch(() => {});
+  return keyPairCache;
+}
+
+/** Wrap `plaintext` for one device (host side). */
+function wrapFor(mySecret: Uint8Array, theirPubHex: string, plaintext: string): string | null {
+  try {
+    const nonce = nacl.randomBytes(nacl.box.nonceLength);
+    const shared = nacl.box.before(fromHex(theirPubHex), mySecret);
+    const boxed = nacl.box.after(fromAscii(plaintext), nonce, shared);
+    return toHex(concat(nonce, boxed));
+  } catch {
+    return null;
+  }
+}
+
+/** Unwrap one envelope addressed to this device, or null if it is not ours. */
+function unwrapWith(mySecret: Uint8Array, theirPubHex: string, payloadHex: string): string | null {
+  try {
+    const raw = fromHex(payloadHex);
+    const nonce = raw.slice(0, nacl.box.nonceLength);
+    const boxed = raw.slice(nacl.box.nonceLength);
+    const shared = nacl.box.before(fromHex(theirPubHex), mySecret);
+    const opened = nacl.box.open.after(boxed, nonce, shared);
+    if (!opened) return null;
+    return String.fromCharCode(...opened);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Turn the pending rotation into the group's live key, if this device has an
+ * envelope for itself. Returns true when the key changed.
+ */
+export async function applyRotation(rotation: Rotation | null | undefined): Promise<boolean> {
+  if (!rotation || typeof rotation.epoch !== 'number') return false;
+  const group = await getGroup();
+  if (!group) return false;
+  if ((group.epoch ?? 0) >= rotation.epoch) return false;
+  const mine = rotation.envelopes?.[await deviceId()];
+  if (!mine || !rotation.by) return false; // addressed to other devices: we were removed
+  const pair = await deviceKeyPair();
+  const key = unwrapWith(pair.secret, rotation.by, mine);
+  if (!key || !/^[0-9a-f]{64}$/i.test(key)) return false;
+  await persist({ ...group, key, epoch: rotation.epoch, removedAt: undefined });
+  return true;
+}
+
+/** Record that this device can no longer read the group's state. */
+export async function markRemoved(): Promise<void> {
+  const group = await getGroup();
+  if (!group || group.removedAt) return;
+  await persist({ ...group, removedAt: Date.now() });
+}
+
+/** True when this device was removed from the wallet's lock group. */
+export function groupRemoved(): boolean {
+  return !!cache?.removedAt;
+}
+
 export async function getGroup(): Promise<WalletGroup | null> {
   if (cache) return cache;
   const stored = await readStored();
@@ -127,13 +244,24 @@ export async function getGroup(): Promise<WalletGroup | null> {
   if (seed) {
     const { groupId, key } = deriveSeedGroup(seed);
     const own = await deviceId();
-    // Keep whatever device names this install has learned, if it is the same wallet.
-    const devices =
-      stored && stored.groupId === groupId && stored.devices.length
-        ? stored.devices
-        : [{ id: own, name: 'This device', addedAt: Date.now() }];
-    cache = { groupId, key, createdAt: stored?.createdAt ?? Date.now(), devices, source: 'seed' };
-    if (!stored || stored.groupId !== groupId) await persist(cache);
+    const pub = (await deviceKeyPair()).public;
+    // The phrase gives this wallet's IDENTITY. The key, however, is whatever
+    // this device last held: after a rotation a removed device must NOT silently
+    // re-derive its way back in.
+    if (stored && stored.groupId === groupId) {
+      cache = { ...stored, pub: stored.pub ?? pub };
+      return cache;
+    }
+    cache = {
+      groupId,
+      key,
+      createdAt: stored?.createdAt ?? Date.now(),
+      devices: [{ id: own, name: 'This device', addedAt: Date.now(), pub }],
+      source: 'seed',
+      epoch: 0,
+      pub,
+    };
+    await persist(cache);
     return cache;
   }
   cache = stored;
@@ -150,10 +278,13 @@ export async function ensureGroup(deviceName = 'This device'): Promise<WalletGro
   if (existing) {
     // Make sure this device is listed, even when the wallet was recovered.
     const own = await deviceId();
+    if (existing.removedAt) return existing; // removed devices do not re-add themselves
+    const pub = (await deviceKeyPair()).public;
     if (!existing.devices.some((d) => d.id === own)) {
       const next: WalletGroup = {
         ...existing,
-        devices: [...existing.devices, { id: own, name: deviceName, addedAt: Date.now() }],
+        pub,
+        devices: [...existing.devices, { id: own, name: deviceName, addedAt: Date.now(), pub }],
       };
       await persist(next);
       return next;
@@ -161,11 +292,14 @@ export async function ensureGroup(deviceName = 'This device'): Promise<WalletGro
     return existing;
   }
   const id = await deviceId();
+  const pub = (await deviceKeyPair()).public;
   const group: WalletGroup = {
     groupId: hex(16),
     key: hex(32),
     createdAt: Date.now(),
-    devices: [{ id, name: deviceName, addedAt: Date.now() }],
+    devices: [{ id, name: deviceName, addedAt: Date.now(), pub }],
+    epoch: 0,
+    pub,
   };
   await persist(group);
   return group;
@@ -175,12 +309,15 @@ export async function ensureGroup(deviceName = 'This device'): Promise<WalletGro
 export async function joinGroup(payload: PairingResult, deviceName = 'This device'): Promise<WalletGroup | null> {
   if (!payload.ok) return null;
   const id = await deviceId();
+  const pub = (await deviceKeyPair()).public;
   const group: WalletGroup = {
     groupId: payload.groupId,
     key: payload.key,
     createdAt: Date.now(),
-    devices: mergeDevices([{ id, name: deviceName, addedAt: Date.now() }], payload.devices ?? []),
+    devices: mergeDevices([{ id, name: deviceName, addedAt: Date.now(), pub }], payload.devices ?? []),
     source: 'pairing',
+    epoch: payload.epoch ?? 0,
+    pub,
   };
   await persist(group);
   return group;
@@ -208,16 +345,44 @@ export async function revokeDevice(id: string): Promise<WalletGroup | null> {
   if (!group) return null;
   const own = await deviceId();
   if (id === own) return group; // never strand this device by deleting itself
+
+  const remaining = group.devices.filter((d) => d.id !== id);
+  const pair = await deviceKeyPair();
+  const epoch = (group.epoch ?? 0) + 1;
+  const newKey = hex(32);
+
+  // Address the new key to everyone EXCEPT the removed device. It still holds
+  // the old key and can read this rotation object, but has no envelope, so the
+  // next epoch stays out of reach.
+  const envelopes: Record<string, string> = {};
+  for (const d of remaining) {
+    // This device already holds the new key; only peers need an envelope.
+    if (!d.pub || d.id === own) continue;
+    const boxed = wrapFor(pair.secret, d.pub, newKey);
+    if (boxed) envelopes[d.id] = boxed;
+  }
+
   const next: WalletGroup = {
     ...group,
-    // A seed-derived key cannot be rotated without changing the phrase, so
-    // removal from a seed group is a local tidy-up, not a revocation. Owners of
-    // the phrase can still read state; the UI says so.
-    key: group.source === 'seed' ? group.key : hex(32),
-    devices: group.devices.filter((d) => d.id !== id),
+    key: newKey,
+    epoch,
+    devices: remaining,
+    pendingRotation: { epoch, envelopes, by: pair.public, underKey: group.key },
   };
   await persist(next);
   return next;
+}
+
+/** Called once the rotation has been published: nothing left to announce. */
+export async function clearPendingRotation(): Promise<void> {
+  const group = await getGroup();
+  if (!group?.pendingRotation) return;
+  await persist({ ...group, pendingRotation: undefined });
+}
+
+/** The rotation to advertise in the next upload, if any. */
+export function pendingRotationForUpload(): (Rotation & { underKey: string }) | null {
+  return cache?.pendingRotation ?? null;
 }
 
 /** Union of two device lists, by id. Newest name wins. */
@@ -227,7 +392,8 @@ export function mergeDevices(current: GroupDevice[], incoming: GroupDevice[]): G
     // ids are hex from randomBytes(8); anything else is junk from a code
     if (!d || typeof d.id !== 'string' || !/^[0-9a-f]{8,32}$/i.test(d.id)) continue;
     const name = typeof d.name === 'string' && d.name.trim() ? d.name.trim().slice(0, 40) : 'Paired device';
-    byId.set(d.id, { id: d.id, name, addedAt: typeof d.addedAt === 'number' ? d.addedAt : Date.now() });
+    const pub = typeof d.pub === 'string' && /^[0-9a-f]{64}$/i.test(d.pub) ? d.pub : byId.get(d.id)?.pub;
+    byId.set(d.id, { id: d.id, name, addedAt: typeof d.addedAt === 'number' ? d.addedAt : Date.now(), ...(pub ? { pub } : {}) });
   }
   return Array.from(byId.values()).slice(0, 20);
 }
@@ -258,6 +424,8 @@ export async function adoptRemoteDevices(incoming: GroupDevice[]): Promise<Walle
  */
 export function buildPairingPayload(group: WalletGroup, now = Date.now()): string {
   const expires = now + PAIRING_TTL_MS;
+  // Only what is needed to join. Public keys and the epoch arrive with the
+  // first sealed sync, which keeps this code inside QR capacity.
   return `${PAIR_SCHEME}?g=${group.groupId}&k=${group.key}&e=${expires}`;
 }
 
@@ -270,7 +438,7 @@ export function parsePairingPayload(uri: string, now = Date.now()): PairingResul
     const eq = pair.indexOf('=');
     if (eq > 0) params[pair.slice(0, eq)] = decodeURIComponent(pair.slice(eq + 1));
   }
-  const { g, k, e, d } = params;
+  const { g, k, e, d, n, p } = params;
   if (!g || !k || !e || !/^[0-9a-f]{16,64}$/i.test(g) || !/^[0-9a-f]{32,128}$/i.test(k)) {
     return { ok: false, reason: 'malformed' };
   }
@@ -289,7 +457,15 @@ export function parsePairingPayload(uri: string, now = Date.now()): PairingResul
       devices = [];
     }
   }
-  return { ok: true, groupId: g, key: k, devices };
+  const epoch = Number(n);
+  return {
+    ok: true,
+    groupId: g,
+    key: k,
+    devices,
+    ...(Number.isFinite(epoch) && epoch >= 0 ? { epoch } : {}),
+    ...(/^[0-9a-f]{64}$/i.test(p ?? '') ? { pub: p } : {}),
+  };
 }
 
 export async function clearGroup(): Promise<void> {
@@ -300,4 +476,21 @@ export async function clearGroup(): Promise<void> {
 export function __resetWalletGroupForTests(): void {
   cache = null;
   deviceIdCache = null;
+  keyPairCache = null;
+}
+
+/** Test seam: pretend to be a specific device id. */
+export function __setDeviceIdForTests(id: string): void {
+  deviceIdCache = id;
+}
+
+/** Test seam: install a group directly. */
+export async function __setGroupForTests(group: WalletGroup): Promise<void> {
+  cache = group;
+  await persist(group);
+}
+
+/** Test seam: act as a device whose keypair is known to the test. */
+export function __setDeviceKeyPairForTests(secretHex: string, publicHex: string): void {
+  keyPairCache = { secret: fromHex(secretHex), public: publicHex };
 }
