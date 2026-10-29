@@ -168,29 +168,19 @@ describe('Search screen: browse vs trade mode (the two connected screens)', () =
     await act(async () => { t.unmount(); });
   });
 
-  it('long mode: the same tap opens the ticket for that side', async () => {
-    const nav: string[] = [];
-    const Probe = ({ route }: any) => { nav.push(route.name + ':' + (route.params?.side ?? '')); return null; };
-    const t = await mount(PerpsSearchScreen, 'PerpsSearch', { mode: 'long' }, { PerpsMarket: Probe, PerpsTrade: Probe });
-    await act(async () => { jest.advanceTimersByTime(900); });
-    const row = t.root.findAll((n) => n.props.accessibilityLabel === 'Market ETH' && typeof n.props.onPress === 'function')[0];
-    await act(async () => { row.props.onPress(); });
-    await act(async () => { jest.advanceTimersByTime(600); });
-    expect(nav).toContain('PerpsTrade:long');
-    expect(nav.some((x) => x.startsWith('PerpsMarket'))).toBe(false);
-    await act(async () => { t.unmount(); });
-  });
-
-  it('short mode routes to the short ticket', async () => {
-    const nav: string[] = [];
-    const Probe = ({ route }: any) => { nav.push(route.name + ':' + (route.params?.side ?? '')); return null; };
-    const t = await mount(PerpsSearchScreen, 'PerpsSearch', { mode: 'short' }, { PerpsMarket: Probe, PerpsTrade: Probe });
-    await act(async () => { jest.advanceTimersByTime(900); });
-    const row = t.root.findAll((n) => n.props.accessibilityLabel === 'Market BTC' && typeof n.props.onPress === 'function')[0];
-    await act(async () => { row.props.onPress(); });
-    await act(async () => { jest.advanceTimersByTime(600); });
-    expect(nav).toContain('PerpsTrade:short');
-    await act(async () => { t.unmount(); });
+  it('a tap opens the market page in every mode (long/short no longer reroute it)', async () => {
+    for (const mode of [undefined, 'long', 'short'] as const) {
+      const nav: string[] = [];
+      const Probe = ({ route }: any) => { nav.push(route.name); return null; };
+      const t = await mount(PerpsSearchScreen, 'PerpsSearch', mode ? { mode } : undefined, { PerpsMarket: Probe, PerpsTrade: Probe });
+      await act(async () => { jest.advanceTimersByTime(900); });
+      const row = t.root.findAll((n) => n.props.accessibilityLabel === 'Market ETH' && typeof n.props.onPress === 'function')[0];
+      await act(async () => { row.props.onPress(); });
+      await act(async () => { jest.advanceTimersByTime(600); });
+      expect(nav).toContain('PerpsMarket');
+      expect(nav).not.toContain('PerpsTrade');
+      await act(async () => { t.unmount(); });
+    }
   });
 });
 
@@ -201,21 +191,13 @@ describe('Long / Short entry points', () => {
     return { seen, Probe };
   };
 
-  it('Perps home Long -> market list in long mode; Short -> short mode', async () => {
+  it('the Perps home has no Long / Short pills to route through', async () => {
     const PerpsScreen = require('../src/screens/PerpsScreen').default;
     const { seen, Probe } = probeNav();
     const t = await mount(PerpsScreen, 'Perps', undefined, { PerpsSearch: Probe });
-    await act(async () => { t.root.findAll((n) => n.props.accessibilityLabel === 'Long' && typeof n.props.onPress === 'function')[0].props.onPress(); });
-    await act(async () => { jest.advanceTimersByTime(600); });
-    expect(seen.find((s) => s.name === 'PerpsSearch')?.params).toEqual({ mode: 'long' });
+    expect(t.root.findAll((n) => (n.props.accessibilityLabel === 'Long' || n.props.accessibilityLabel === 'Short') && typeof n.props.onPress === 'function').length).toBe(0);
+    expect(seen.length).toBe(0);
     await act(async () => { t.unmount(); });
-
-    const again = probeNav();
-    const t2 = await mount(PerpsScreen, 'Perps', undefined, { PerpsSearch: again.Probe });
-    await act(async () => { t2.root.findAll((n) => n.props.accessibilityLabel === 'Short' && typeof n.props.onPress === 'function')[0].props.onPress(); });
-    await act(async () => { jest.advanceTimersByTime(600); });
-    expect(again.seen.find((s) => s.name === 'PerpsSearch')?.params).toEqual({ mode: 'short' });
-    await act(async () => { t2.unmount(); });
   });
 
   it('Market Detail Long / Short open the ticket directly for that market', async () => {

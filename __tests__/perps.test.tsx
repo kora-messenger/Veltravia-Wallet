@@ -118,12 +118,12 @@ describe('perps home', () => {
     await act(async () => { t.unmount(); });
   });
 
-  it('lists the market sections and the Long / Short pills', async () => {
+  it('lists the market sections; no floating Long / Short pills (the side is chosen on the market page)', async () => {
     const t = await mount();
     const all = texts(t);
     for (const title of ['Popular', 'New', 'Stocks', 'Crypto', 'Pre-IPO', 'Commodities', 'FX', 'Meme']) expect(all).toContain(title);
-    expect(all).toContain('Long');
-    expect(all).toContain('Short');
+    expect(all).not.toContain('Long');
+    expect(all).not.toContain('Short');
     await act(async () => { t.unmount(); });
   });
 });
@@ -184,10 +184,10 @@ describe('Watchlist on the Perps home (Trust parity)', () => {
     await act(async () => { t.unmount(); });
   });
 
-  it('tapping a market row opens the same market list as the search icon', async () => {
+  it('tapping a market row opens that market\'s page', async () => {
     const { createNativeStackNavigator } = require('@react-navigation/native-stack');
     const Stack = createNativeStackNavigator();
-    const List = () => null;
+    const Market = () => null;
     let tree!: renderer.ReactTestRenderer;
     await act(async () => {
       tree = renderer.create(
@@ -195,7 +195,7 @@ describe('Watchlist on the Perps home (Trust parity)', () => {
           <NavigationContainer>
             <Stack.Navigator initialRouteName="Perps">
               <Stack.Screen name="Perps" component={PerpsScreen} />
-              <Stack.Screen name="PerpsSearch" component={List} />
+              <Stack.Screen name="PerpsMarket" component={Market} />
             </Stack.Navigator>
           </NavigationContainer>
         </SafeAreaProvider>,
@@ -203,18 +203,18 @@ describe('Watchlist on the Perps home (Trust parity)', () => {
     });
     const row = tree.root.findAll((n) => n.props.accessibilityLabel === 'Market ETH' && typeof n.props.onPress === 'function')[0];
     await act(async () => { row.props.onPress(); });
-    const nav = tree.root.findByType(List).props.navigation;
-    expect(tree.root.findByType(List).props.route.name).toBe('PerpsSearch');
-    // browse mode: no long/short trading mode is passed
-    expect(tree.root.findByType(List).props.route.params).toBeUndefined();
-    expect(nav.getState().routes.map((r: { name: string }) => r.name)).toEqual(['Perps', 'PerpsSearch']);
+    const route = tree.root.findByType(Market).props.route;
+    expect(route.name).toBe('PerpsMarket');
+    expect(route.params).toEqual({ venue: 'hyperliquid', symbol: 'ETH' });
+    expect(route.params.side).toBeUndefined();      // never a long/short jump
     await act(async () => { tree.unmount(); });
   });
 
-  it('the search icon and a coin row land on the identical screen', async () => {
+  it('the search icon opens the market list; a coin opens its page (two different jobs)', async () => {
     const { createNativeStackNavigator } = require('@react-navigation/native-stack');
     const Stack = createNativeStackNavigator();
     const List = () => null;
+    const Market = () => null;
     let tree!: import('react-test-renderer').ReactTestRenderer;
     await act(async () => {
       tree = renderer.create(
@@ -223,6 +223,7 @@ describe('Watchlist on the Perps home (Trust parity)', () => {
             <Stack.Navigator initialRouteName="Perps">
               <Stack.Screen name="Perps" component={PerpsScreen} />
               <Stack.Screen name="PerpsSearch" component={List} />
+              <Stack.Screen name="PerpsMarket" component={Market} />
             </Stack.Navigator>
           </NavigationContainer>
         </SafeAreaProvider>,
@@ -231,15 +232,12 @@ describe('Watchlist on the Perps home (Trust parity)', () => {
     await act(async () => {
       tree.root.findAll((n) => n.props.accessibilityLabel === 'Search perps' && typeof n.props.onPress === 'function')[0].props.onPress();
     });
-    const viaSearch = tree.root.findByType(List).props.route.params;
     expect(tree.root.findByType(List).props.route.name).toBe('PerpsSearch');
     await act(async () => { tree.root.findByType(List).props.navigation.goBack(); });
     await act(async () => {
       tree.root.findAll((n) => n.props.accessibilityLabel === 'Market ETH' && typeof n.props.onPress === 'function')[0].props.onPress();
     });
-    const viaCoin = tree.root.findByType(List).props.route.params;
-    expect(tree.root.findByType(List).props.route.name).toBe('PerpsSearch');
-    expect(viaCoin).toEqual(viaSearch);
+    expect(tree.root.findByType(Market).props.route.name).toBe('PerpsMarket');
     await act(async () => { tree.unmount(); });
   });
 });

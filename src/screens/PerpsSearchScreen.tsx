@@ -64,16 +64,14 @@ export default function PerpsSearchScreen() {
   const route = useRoute<any>();
   // Trust reuses this one screen two ways: opened from the search icon it's a
   // browser (tap a market -> Market Detail); opened from Long / Short the very
-  // same list sends a tap straight to the trade ticket for that side.
-  const side: 'long' | 'short' | undefined =
-    route.params?.mode === 'long' || route.params?.mode === 'short' ? route.params.mode : undefined;
   const openMarket = useCallback(
     (m: { venue?: string; symbol: string }) => {
       const venue = m.venue ?? 'hyperliquid';
-      if (side) navigation.navigate('PerpsTrade', { venue, symbol: m.symbol, side });
-      else navigation.navigate('PerpsMarket', { venue, symbol: m.symbol });
+      // Every tap opens the market page. Long/Short are chosen inside it, never
+      // by which list you came from.
+      navigation.navigate('PerpsMarket', { venue, symbol: m.symbol });
     },
-    [navigation, side],
+    [navigation],
   );
   const hl = useVenuePrefs('hyperliquid');
   const aster = useVenuePrefs('aster');

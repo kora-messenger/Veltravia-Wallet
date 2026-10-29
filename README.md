@@ -414,3 +414,11 @@ A screen waiting for a scan now receives the **usable value** (the address insid
 **Invalid/standalone codes** get Trust's bottom sheet instead of a toast (`ScanResultSheet.tsx`): the code type, the value, the chain, and one action — Copy address, Send, Open link or Connect — plus Scan again. So a WiFi QR shows "Unrecognised code · Not a wallet code" instead of silently vanishing, and the reason stays on screen until dismissed.
 
 Not wired yet: WalletConnect pairing says so plainly rather than pretending, and a payment URI shows its amount but does not pre-fill a send.
+
+### Every coin opens the same Perps market page (Oct 29)
+
+Tapping a coin used to depend on where you tapped and in which mode: on the Perps home it opened the market *list*, and a list opened from a Long or Short pill sent the tap straight into the trade ticket. That split is gone.
+
+- A coin tap anywhere — Perps home rows and watchlist, the search list in any mode, the Recents cards, and Related markets on another market page — now opens `PerpsMarket` for that coin.
+- `PerpsSearch` no longer reads `mode` for routing; it is a pure market picker, reached only from the search icon.
+- The Perps home's floating Long/Short pills were removed: they existed only to pre-pick a side for a list tap that no longer behaves differently. The side is chosen on the market page, where Long/Short open the ticket for that market (unchanged).

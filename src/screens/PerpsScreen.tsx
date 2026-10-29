@@ -17,8 +17,7 @@ import { useWallets } from '../wallets/WalletsProvider';
 import Sparkline from '../components/Sparkline';
 import {
   HistoryIcon, GearIcon, SearchIcon, ChevronRight, ChevronDownIcon,
-  PlusIcon, MinusIcon, COIN_ICONS,
-  ArrowUpRightTx, ArrowDownRightIcon,
+  PlusIcon, MinusIcon, COIN_ICONS, ArrowDownRightIcon,
 } from '../components/icons';
 import { SkeletonBlock } from '../components/Skeleton';
 import {
@@ -249,9 +248,8 @@ export default function PerpsScreen() {
                 <Pressable
                   key={`${s.key}-${m.symbol}`}
                   accessibilityLabel={`Market ${m.symbol}`}
-                  // Trust: a coin opens the same market list the search icon opens
-                  // (browse mode), and the market page is one tap deeper.
-                  onPress={() => navigation.navigate('PerpsSearch')}
+                  // Trust: a coin opens its market page directly.
+                  onPress={() => navigation.navigate('PerpsMarket', { venue: m.venue ?? 'hyperliquid', symbol: m.symbol })}
                   style={({ pressed }) => [styles.row, pressed && { backgroundColor: dark ? 'rgba(255,255,255,0.05)' : '#F1F1F4' }]}
                 >
                   <MarketLogo m={m} />
@@ -276,25 +274,6 @@ export default function PerpsScreen() {
         ))}
       </ScrollView>
 
-      {/* Long / Short pills float above the tab bar */}
-      <View pointerEvents="box-none" style={[styles.ls, { bottom: 104 + insets.bottom }]}>
-        <Pressable
-          accessibilityLabel="Long"
-          onPress={() => navigation.navigate('PerpsSearch', { mode: 'long' })}
-          style={({ pressed }) => [styles.lsBtn, { backgroundColor: GREEN, opacity: pressed ? 0.88 : 1 }]}
-        >
-          <Text style={styles.lsText}>Long</Text>
-          <ArrowUpRightTx size={18} color="#FFFFFF" strokeWidth={2.4} />
-        </Pressable>
-        <Pressable
-          accessibilityLabel="Short"
-          onPress={() => navigation.navigate('PerpsSearch', { mode: 'short' })}
-          style={({ pressed }) => [styles.lsBtn, { backgroundColor: RED, opacity: pressed ? 0.88 : 1 }]}
-        >
-          <Text style={styles.lsText}>Short</Text>
-          <ArrowDownRightIcon size={18} color="#FFFFFF" strokeWidth={2.4} />
-        </Pressable>
-      </View>
     </View>
   );
 }
@@ -362,7 +341,4 @@ const styles = StyleSheet.create({
   price: { fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600' },
   change: { fontSize: 12, fontFamily: 'Inter-600', fontWeight: '600', marginTop: 2 },
 
-  ls: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', gap: 14, paddingHorizontal: 26 },
-  lsBtn: { flex: 1, height: 52, borderRadius: 26, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  lsText: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter-700', fontWeight: '700' },
 });
