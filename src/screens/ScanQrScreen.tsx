@@ -13,7 +13,7 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, Pressable, ActivityIndicator, useWindowDimensions, StatusBar, Linking,
+  View, Text, StyleSheet, Pressable, ActivityIndicator, useWindowDimensions, StatusBar, Linking, Animated, Easing,
 } from 'react-native';
 import {
   Camera, useCameraDevice, useCodeScanner, useCameraPermission,
@@ -25,6 +25,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CloseIcon, GalleryIcon, FlashIcon } from '../components/icons';
 import { deliverScanResult, clearScanTarget } from '../services/scanTarget';
+import { codeTargetRect, morphDuration, type Rect } from '../services/scanFrame';
 import { showToast } from '../components/Toast';
 
 // Every value below is measured off Trust's scanner screenshot (461px wide =
@@ -55,11 +56,40 @@ export default function ScanQrScreen() {
     else showToast('Scanned: ' + value, { kind: 'info' });
   }, [navigation]);
 
+  // -- the brackets, which start centred and fly onto the code before it is read
+  const winX = (width - FRAME) / 2;
+  const winY = (height - FRAME) / 2;
+  const boxLeft = useRef(new Animated.Value(winX)).current;
+  const boxTop = useRef(new Animated.Value(winY)).current;
+  const boxSize = useRef(new Animated.Value(FRAME)).current;
+  const box = useRef<Rect>({ left: winX, top: winY, width: FRAME, height: FRAME });
+  const chasing = useRef(false);   // locked onto a code: ignore anything else
+
+  // Fly the brackets onto the code, then read it once they have settled there.
+  const snapTo = useCallback((rect: Rect, value: string) => {
+    chasing.current = true;
+    const duration = morphDuration(box.current, rect);
+    Animated.parallel([
+      Animated.timing(boxLeft, { toValue: rect.left, duration, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
+      Animated.timing(boxTop, { toValue: rect.top, duration, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
+      Animated.timing(boxSize, { toValue: rect.width, duration, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
+    ]).start(({ finished }) => {
+      if (!finished) return;
+      box.current = rect;
+      // a short hold so the user sees the frame sitting on the code, then report it
+      setTimeout(() => deliver(value), 130);
+    });
+  }, [boxLeft, boxTop, boxSize, deliver]);
+
   const codeScanner = useCodeScanner({
     codeTypes: ['qr'],
     onCodeScanned: (codes) => {
-      const v = codes[0]?.value;
-      if (v && v.trim()) deliver(v.trim());
+      if (done.current || chasing.current) return;
+      const hit = codes.find((c) => !!c?.value && !!c.value.trim());
+      if (!hit?.value) return;
+      const rect = codeTargetRect(hit, { width, height });
+      if (!rect) { deliver(hit.value.trim()); return; }   // no geometry: read it straight away
+      snapTo(rect, hit.value.trim());
     },
   });
 
@@ -87,10 +117,7 @@ export default function ScanQrScreen() {
     }
   }, [deliver]);
 
-  // Left/top/right/bottom masks leave a clear window exactly at the center.
-  const winX = (width - FRAME) / 2;
-  const winY = (height - FRAME) / 2;
-  const mask = (extra: object) => [styles.mask, { backgroundColor: 'rgba(0,0,0,0.66)' }, extra];
+  const maskBg = { backgroundColor: 'rgba(0,0,0,0.66)' };
 
   if (!hasPermission) {
     return (
@@ -133,20 +160,21 @@ export default function ScanQrScreen() {
         codeScanner={codeScanner}
       />
 
-      {/* dimmed mask with a clear center window */}
+      {/* dimmed mask: its clear window is the same animated box as the brackets, so the
+          window glides onto the code together with them */}
       <View style={styles.maskLayer} pointerEvents="none">
-        <View style={mask({ position: 'absolute', left: 0, right: 0, top: 0, height: winY })} />
-        <View style={mask({ position: 'absolute', left: 0, right: 0, top: winY + FRAME, bottom: 0 })} />
-        <View style={mask({ position: 'absolute', top: winY, height: FRAME, left: 0, width: winX })} />
-        <View style={mask({ position: 'absolute', top: winY, height: FRAME, right: 0, width: winX })} />
+        <Animated.View style={[styles.mask, maskBg, { position: 'absolute', left: 0, right: 0, top: 0, height: boxTop }]} />
+        <Animated.View style={[styles.mask, maskBg, { position: 'absolute', left: 0, right: 0, top: Animated.add(boxTop, boxSize), bottom: 0 }]} />
+        <Animated.View style={[styles.mask, maskBg, { position: 'absolute', top: boxTop, height: boxSize, left: 0, width: boxLeft }]} />
+        <Animated.View style={[styles.mask, maskBg, { position: 'absolute', top: boxTop, height: boxSize, right: 0, left: Animated.add(boxLeft, boxSize) }]} />
 
         {/* corner brackets */}
-        <View style={{ position: 'absolute', left: winX, top: winY, width: FRAME, height: FRAME }}>
+        <Animated.View testID="scanBox" style={{ position: 'absolute', left: boxLeft, top: boxTop, width: boxSize, height: boxSize }}>
           <View style={[styles.bracket, styles.tl, { borderTopLeftRadius: RADIUS }]} />
           <View style={[styles.bracket, styles.tr, { borderTopRightRadius: RADIUS }]} />
           <View style={[styles.bracket, styles.bl, { borderBottomLeftRadius: RADIUS }]} />
           <View style={[styles.bracket, styles.br, { borderBottomRightRadius: RADIUS }]} />
-        </View>
+        </Animated.View>
       </View>
 
       {/* header: close on the left, gallery + torch on the right, title centred on the

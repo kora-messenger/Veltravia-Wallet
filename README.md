@@ -368,3 +368,12 @@ Measured off Trust's scanner screenshot (461px wide = 411dp, 1dp = 1.1216px) and
 | title | 15.2dp cap height, centred at x=230 (screen centre) | 17dp, absolutely centred |
 
 Also: the page is now pure black with a black scrim (it was a navy tint with a lighter grey mask), the header buttons are solid #202020 instead of translucent grey, and the title is centred on the screen rather than in the space left over between the buttons. The torch icon turns amber while lit.
+
+### Scanner chases the code before reading it (Oct 29)
+
+A detected QR no longer pops the screen instantly. The brackets (and the clear window in the dim mask) fly from the centre onto the code's own rectangle, square up around it with 10dp of padding, hold for 130ms, and only then report the value.
+
+- Geometry: `src/services/scanFrame.ts` (`codeTargetRect`, `morphDuration`). Uses the code's corners when the camera supplies them, so a tilted code is framed by its real extent rather than its larger axis-aligned box; never shrinks below 120dp (the four arms would collapse) and never leaves the screen.
+- Timing: 140-320ms, scaled by how far the box has to travel, cubic ease-out.
+- Lock-on: the first valid code claims the scan, so a second code in view cannot hijack the result mid-flight. A code with no reported position is still read immediately.
+- The brackets keep Trust's measurements (55dp arms, 10dp lines, 18dp radius); only the box they sit in moves and resizes.
