@@ -207,7 +207,7 @@ describe('Recents row (Trust parity)', () => {
     // opening a market page records it (the market page does this on mount)
     await act(async () => { addPerpsRecent({ venue: 'hyperliquid', symbol: 'BTC' }); });
     expect(texts(t)).toContain('Recents');
-    expect(texts(t)).toContain('BTC Perps');
+    expect(texts(t)).toEqual(expect.arrayContaining(['BTC', 'Perps']));
     // tapping the card opens that market's page
     const nav = t.root.findByType(PerpsSearchScreen).props.navigation;
     const spy = jest.spyOn(nav, 'navigate');

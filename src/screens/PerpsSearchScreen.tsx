@@ -178,7 +178,7 @@ export default function PerpsSearchScreen() {
               <Text style={[styles.clearAll, { color: theme.brand }]}>Clear all</Text>
             </Pressable>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recentsRow}>
+          <ScrollView horizontal style={styles.stripFixed} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recentsRow}>
             {recentMarkets.map((m) => (
               <Pressable
                 key={`${m.venue ?? 'hyperliquid'}:${m.symbol}`}
@@ -187,7 +187,10 @@ export default function PerpsSearchScreen() {
                 onPress={() => openMarket(m)}
               >
                 <MarketLogo m={m} />
-                <Text style={[styles.recentName, { color: theme.ink }]} numberOfLines={1}>{`${m.symbol} Perps`}</Text>
+                <View>
+                  <Text style={[styles.recentName, { color: theme.ink }]} numberOfLines={1}>{m.symbol}</Text>
+                  <Text style={[styles.recentSub, { color: muted }]} numberOfLines={1}>Perps</Text>
+                </View>
               </Pressable>
             ))}
           </ScrollView>
@@ -198,6 +201,7 @@ export default function PerpsSearchScreen() {
       <ScrollView
         ref={tabsRef}
         horizontal
+        style={styles.stripFixed}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.tabs}
         scrollEventThrottle={16}
@@ -244,7 +248,7 @@ export default function PerpsSearchScreen() {
 
       {/* list */}
       {loading ? (
-        <View style={styles.center} accessibilityLabel="Loading markets">
+        <View style={styles.loadingBox} accessibilityLabel="Loading markets">
           <ActivityIndicator color={muted} />
         </View>
       ) : (
@@ -405,7 +409,9 @@ const styles = StyleSheet.create({
   clearAll: { fontSize: 14, fontFamily: 'Inter-600', fontWeight: '600' },
   recentsRow: { paddingHorizontal: 16, gap: 8 },
   recentCard: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, minWidth: 118 },
-  recentName: { fontSize: 14, fontFamily: 'Inter-600', fontWeight: '600' },
+  recentName: { fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600' },
+  recentSub: { fontSize: 13, fontFamily: 'Inter-500', fontWeight: '500', marginTop: 1 },
+  stripFixed: { flexGrow: 0, flexShrink: 0 },
   tabs: { paddingHorizontal: 16, alignItems: 'center', gap: 6, paddingBottom: 10 },
   tab: { height: 40, minWidth: 44, paddingHorizontal: 16, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   tabText: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
@@ -415,6 +421,7 @@ const styles = StyleSheet.create({
   marks: { flexDirection: 'row', alignItems: 'center' },
   marksBig: { flexDirection: 'row', alignItems: 'center', width: 30 },
   center: { flex: 1, alignItems: 'center', paddingTop: 140 },
+  loadingBox: { flex: 1, alignItems: 'center', paddingTop: 140 },
   empty: { fontSize: 15, fontFamily: 'Inter-500', fontWeight: '500', textAlign: 'center', paddingHorizontal: 40 },
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, height: 76 },
   logo: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },

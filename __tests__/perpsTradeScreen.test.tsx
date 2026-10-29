@@ -399,3 +399,27 @@ describe('Order book (Trust recording, list icon)', () => {
     await act(async () => { t.unmount(); });
   });
 });
+
+
+describe('Search screen layout does not jump while a tab is loading (video, Oct 29)', () => {
+  const flat = (st: any) => Object.assign({}, ...[].concat(st ?? []).flat(5).filter(Boolean));
+  it.each([['browse', undefined], ['long', 'long'], ['short', 'short']])('%s mode: tab strip + recents are fixed-size, the spinner owns the leftover space', async (_n, mode) => {
+    const Probe = () => null;
+    const t = await mount(PerpsSearchScreen, 'PerpsSearch', mode ? { mode } : undefined, { PerpsMarket: Probe, PerpsTrade: Probe });
+    // tap a tab so the spinner mounts
+    const tab = t.root.findAll((n) => n.props.accessibilityLabel === 'Tab New' && typeof n.props.onPress === 'function')[0];
+    await act(async () => { tab.props.onPress(); });
+    expect(t.root.findAll((n) => n.props.accessibilityLabel === 'Loading markets').length).toBeGreaterThan(0);
+    // every horizontal strip above the list must refuse to grow (else it is stretched down the screen)
+    const strips = t.root.findAll((n) => n.props.horizontal === true && n.props.accessibilityLabel !== 'Market pages');
+    expect(strips.length).toBeGreaterThan(0);
+    for (const s of strips) {
+      const st = flat(s.props.style);
+      expect(st.flexGrow).toBe(0);
+      expect(st.flexShrink).toBe(0);
+    }
+    await act(async () => { jest.advanceTimersByTime(900); });
+    expect(t.root.findAll((n) => n.props.accessibilityLabel === 'Loading markets').length).toBe(0);
+    await act(async () => { t.unmount(); });
+  });
+});

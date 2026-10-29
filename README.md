@@ -331,3 +331,7 @@ The ticket's list icon swaps the chart for a 19-row depth ladder and tapping it 
 Tapping either footer control opens **Order book settings**: X, centred title, Reset, "Display currency" (USD | the asset, e.g. BTC), a divider, "Group by" (1, 2, 5, 10, 100; fewer options on cheaper assets) and a solid blue **Apply**. Selected chips are the darker grey of the Filter sheet. Nothing changes until Apply, closing discards the draft, and Reset is inert while the draft is at USD / 1. Opening the book from the peek state returns the sheet to half.
 
 Engine: `src/services/orderBook.ts` (`buildOrderBook`, `ladderRows`, `barFractions`, `buySellRatio`, formatters, grouping). **The data is synthetic and deterministic per market/tick** until the backend order-book feed is connected; the API shape matches a live feed so only the source changes.
+
+### Search list loading layout (fixed Oct 29)
+
+While a tab was loading, the Recents strip and tab strip (horizontal ScrollViews, which grow vertically by default) were stretched by the flex spinner box, shoving the tab pills ~175px and the provider/volume chips ~350px down the screen. Both strips are now `flexGrow: 0 / flexShrink: 0` so only the spinner takes the leftover space. This affected Browse, Long and Short alike. The Recents card now matches Trust: logo, symbol, and a grey "Perps" caption beneath (it used to read "BTC Perps" on one line).
