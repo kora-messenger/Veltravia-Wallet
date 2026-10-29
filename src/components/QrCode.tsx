@@ -45,7 +45,18 @@ export default function QrCode({
   logo?: React.ReactNode;
 }) {
   // Version 4 (33x33) like Trust: finer, more refined dots than the minimal fit.
-  const matrix = useMemo(() => encodeQr(value, 4), [value]);
+  // Longer payloads (a pairing code) grow to the smallest version that fits, so
+  // a code never renders as an error block.
+  const matrix = useMemo(() => {
+    for (let v = 4; v <= 10; v++) {
+      try {
+        return encodeQr(value, v);
+      } catch {
+        // too long for this version: try the next
+      }
+    }
+    return encodeQr(value, 4); // last resort: let the caller see the real error
+  }, [value]);
   const n = matrix.length;
   const unit = size / (n + QUIET * 2);
 

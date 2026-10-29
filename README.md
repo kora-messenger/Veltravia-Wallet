@@ -446,6 +446,14 @@ Ijezie asked the AI "Do you have the ability to lock my wallet to avoid others t
 - **Two independent gates** for the hosted model: the prompt now forbids a directive for a question or a refusal, and `handleDirective` re-checks `lockIntent(userText)` in code and swaps the card for the honest answer. A model can ignore instructions; the code cannot be talked out of it.
 - Tests: `__tests__/lockIntent.test.ts` (8) and `__tests__/lockQuestionAnswered.test.ts` (3, driving the real offline brain with the exact reported message).
 
+#### Where pairing lives in the UI (2026-10-29)
+
+- **Old device (has the wallet):** Manage account → **Pair a new device** row, which opens `PairingCodeSheet` (live QR, 5-minute countdown, "New code"). The same sheet is reachable from Settings → Security → Paired devices.
+- **New device (no wallet):** "Select recovery method" now has a **Pair device** row under View-only wallet. It registers a scan target and opens the QR scanner; on a read it calls `joinGroup`, then says "Device paired. Now restore with your secret phrase."
+- **Pairing from the scanner with nothing waiting** (home scan button) is handled too: the result sheet's primary action is "Pair this device".
+
+**The code is deliberately lean:** `veltravia-pair://join?g=<group>&k=<key>&e=<expiry>`, no device names. Two reasons: a QR has a hard size ceiling (the first version overflowed and threw "QR payload too long" — `QrCode` now grows to the smallest version that fits, up to v10, instead of dying), and names already sync inside the sealed blob via `adoptRemoteDevices`. Tests in `__tests__/pairingFlow.test.tsx` and `walletGroup.test.ts` pin both properties, including that the URI never contains the phrase.
+
 #### Wallet groups: the seed is the identity, pairing is the shortcut (2026-10-29)
 
 "Can't the unlock on the old device still work?" — yes, and that is now the design. Same as Trust Wallet, the wallet's identity is the recovery phrase:

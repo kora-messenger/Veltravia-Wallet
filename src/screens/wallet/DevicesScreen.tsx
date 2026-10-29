@@ -14,22 +14,9 @@ import { View, Text, ScrollView, Pressable, StyleSheet, Alert } from 'react-nati
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
-import QrCode from '../../components/QrCode';
+import PairingCodeSheet from '../../components/PairingCodeSheet';
 import { showToast } from '../../components/Toast';
-import {
-  buildPairingPayload,
-  deviceId,
-  ensureGroup,
-  getGroup,
-  revokeDevice,
-  PAIRING_TTL_MS,
-  type WalletGroup,
-} from '../../core/security/walletGroup';
-
-function mmss(ms: number): string {
-  const total = Math.max(0, Math.ceil(ms / 1000));
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
-}
+import { deviceId, ensureGroup, getGroup, revokeDevice, type WalletGroup } from '../../core/security/walletGroup';
 
 export default function DevicesScreen() {
   const { theme } = useTheme();
@@ -37,8 +24,7 @@ export default function DevicesScreen() {
   const insets = useSafeAreaInsets();
   const [group, setGroup] = useState<WalletGroup | null>(null);
   const [ownId, setOwnId] = useState<string>('');
-  const [pairing, setPairing] = useState<{ uri: string; expires: number } | null>(null);
-  const [now, setNow] = useState(Date.now());
+  const [pairingOpen, setPairingOpen] = useState(false);
 
   const load = useCallback(async () => {
     await ensureGroup();
@@ -50,19 +36,6 @@ export default function DevicesScreen() {
     load();
   }, [load]);
 
-  // Countdown for the pairing code; it is short-lived on purpose.
-  useEffect(() => {
-    if (!pairing) return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, [pairing]);
-
-  const startPairing = () => {
-    if (!group) return;
-    const expires = Date.now() + PAIRING_TTL_MS;
-    setPairing({ uri: buildPairingPayload(group), expires });
-    setNow(Date.now());
-  };
 
   const remove = (id: string, name: string) => {
     Alert.alert(
@@ -83,8 +56,6 @@ export default function DevicesScreen() {
     );
   };
 
-  const expired = pairing ? pairing.expires - now <= 0 : false;
-
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
@@ -98,7 +69,7 @@ export default function DevicesScreen() {
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40, gap: 16 }}>
         <Text style={[styles.lead, { color: theme.inkMuted }]}>
           Every device in this list shares one wallet lock. Lock it on one device and the others refuse to send,
-          swap or trade until it is unlocked — from any of them.
+          swap or trade until it is unlocked from any of them.
         </Text>
         <Text style={[styles.fine, { color: theme.inkMuted }]}>
           Recovering this wallet with your recovery phrase adds that device automatically. Use a pairing code to add
@@ -126,32 +97,17 @@ export default function DevicesScreen() {
         </View>
 
         <Pressable
-          onPress={startPairing}
+          onPress={() => setPairingOpen(true)}
           style={[styles.action, { backgroundColor: theme.brand }]}
           accessibilityRole="button"
         >
-          <Text style={styles.actionText}>{pairing ? 'Show a new code' : 'Pair a new device'}</Text>
+          <Text style={styles.actionText}>Pair a new device</Text>
         </Pressable>
 
-        {pairing && (
-          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <View style={{ alignItems: 'center', gap: 12, padding: 8 }}>
-              <QrCode value={pairing.uri} size={200} />
-              <Text style={[styles.hint, { color: theme.inkMuted }]}>
-                {expired
-                  ? 'This code has expired. Show a new one.'
-                  : `Scan it with the new device (Settings → Paired devices → Scan) within ${mmss(
-                      pairing.expires - now,
-                    )}. It only works once.`}
-              </Text>
-            </View>
-          </View>
-        )}
-
         <Text style={[styles.fine, { color: theme.inkMuted }]}>
-          Pairing never sends your recovery phrase anywhere. The code carries the wallet's group key and the device
-          list, and lock state is encrypted with that key, so Veltravia Wallet's servers store something they cannot
-          read — not even your device names.
+          Pairing never sends your recovery phrase anywhere. The code carries only this wallet's group key, and lock
+          state is encrypted with it, so Veltravia Wallet's servers store something they cannot read — not even your
+          device names.
         </Text>
         <Text style={[styles.fine, { color: theme.inkMuted }]}>
           This is a lock between your devices, not on the blockchain. Anyone who has your recovery phrase can still
@@ -159,6 +115,8 @@ export default function DevicesScreen() {
           phone that still holds the phrase.
         </Text>
       </ScrollView>
+
+      <PairingCodeSheet visible={pairingOpen} onClose={() => setPairingOpen(false)} />
     </View>
   );
 }

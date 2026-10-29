@@ -24,9 +24,11 @@ import { showToast } from '../../components/Toast';
 import { WalletAvatar } from '../../wallets/WalletAvatar';
 import SecretPhraseGateSheet from '../../components/SecretPhraseGateSheet';
 import EditIconSheet from '../../components/EditIconSheet';
+import PairingCodeSheet from '../../components/PairingCodeSheet';
 import {
   BackIcon,
   CloseIcon,
+  ScanIcon,
   PencilIcon,
   DriveTriangleIcon,
   ScanFaceIcon,
@@ -55,6 +57,7 @@ export default function ManageAccountScreen({
 
   const [name, setName] = useState(wallet?.name ?? '');
   const [gateOpen, setGateOpen] = useState(false);
+  const [pairingOpen, setPairingOpen] = useState(false);
   const [iconOpen, setIconOpen] = useState(false);
   const inputRef = useRef<{ focus: () => void } | null>(null);
   const stripRef = useRef<{ scrollTo: (o: { x: number; animated: boolean }) => void } | null>(null);
@@ -296,6 +299,20 @@ export default function ManageAccountScreen({
           </View>
         </Pressable>
 
+        {/* ---------- Pair a new device ---------- */}
+        <Pressable
+          style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}
+          onPress={() => setPairingOpen(true)}
+        >
+          <View style={[styles.rowIcon, { backgroundColor: rowIconBg }]}>
+            <ScanIcon size={24} color={theme.ink} />
+          </View>
+          <View style={styles.rowText}>
+            <Text style={[styles.rowTitle, { color: theme.ink }]}>Pair a new device</Text>
+            <Text style={[styles.rowSub, { color: theme.inkMuted }]}>Scan a code to share this wallet's lock</Text>
+          </View>
+        </Pressable>
+
         {/* ---------- Warning ---------- */}
         {!wallet.backedUp && (
           <View style={[styles.warning, { backgroundColor: dark ? 'rgba(245,166,35,0.12)' : '#F6E8DE' }]}>
@@ -334,6 +351,8 @@ export default function ManageAccountScreen({
           setIconOpen(false);
         }}
       />
+
+      <PairingCodeSheet visible={pairingOpen} onClose={() => setPairingOpen(false)} />
 
       <SecretPhraseGateSheet
         visible={gateOpen}

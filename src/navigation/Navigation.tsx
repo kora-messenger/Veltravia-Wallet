@@ -18,6 +18,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import { useTheme } from '../theme/ThemeProvider';
 import FloatingTabBar from '../components/FloatingTabBar';
+import { showToast } from '../components/Toast';
+import { registerScanTarget } from '../services/scanTarget';
+import { joinGroup, parsePairingPayload } from '../core/security/walletGroup';
 import type { NavigationContainerRef } from '@react-navigation/native';
 import WalletsScreen from '../screens/wallet/WalletsScreen';
 import NameWalletScreen from '../screens/wallet/NameWalletScreen';
@@ -278,6 +281,27 @@ export default function Navigation() {
               // Back arrow returns to the welcome screen (the stack root).
               onBack={() => navigationRef.current?.goBack()}
               onSecretPhrase={() => navigationRef.current?.navigate('ImportWallet')}
+              // Pair device: scan the code an existing device shows (Manage account
+              // → Pair a new device), so this phone joins the wallet group.
+              onPairDevice={() => {
+                const off = registerScanTarget(async (value) => {
+                  off();
+                  const parsed = parsePairingPayload(value);
+                  if (!parsed.ok) {
+                    showToast(
+                      parsed.reason === 'expired' ? 'That pairing code has expired' : 'That code is not a pairing code',
+                      { kind: 'error' },
+                    );
+                    return;
+                  }
+                  const group = await joinGroup(parsed);
+                  showToast(
+                    group ? 'Device paired. Now restore with your secret phrase.' : "Couldn't pair this device",
+                    { kind: group ? 'success' : 'error', duration: 3000 },
+                  );
+                });
+                navigationRef.current?.navigate('ScanQr');
+              }}
             />
           )}
         </Stack.Screen>

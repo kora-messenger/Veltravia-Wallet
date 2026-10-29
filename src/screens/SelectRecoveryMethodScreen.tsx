@@ -30,6 +30,7 @@ import {
   EyeIcon,
   ChevronUpIcon,
   ChevronDownIcon,
+  ScanIcon,
 } from '../components/icons';
 import { promptBiometrics, isBiometricsSupported } from '../core/security/biometrics';
 
@@ -49,15 +50,19 @@ const ALL: Method[] = [
   { key: 'swift', label: 'Swift wallet', icon: BoltIcon },
   { key: 'keystore', label: 'Keystore', icon: KeystoreFileIcon },
   { key: 'viewonly', label: 'View-only wallet', icon: EyeIcon },
+  // Pairing: join this wallet's group from another device, no phrase typed here.
+  { key: 'pair', label: 'Pair device', icon: ScanIcon },
 ];
 const COLLAPSED_COUNT = 3;
 
 export default function SelectRecoveryMethodScreen({
   onBack,
   onSecretPhrase,
+  onPairDevice,
 }: {
   onBack: () => void;
   onSecretPhrase: () => void;
+  onPairDevice: () => void;
 }) {
   const { theme } = useTheme();
   const [expanded, setExpanded] = useState(true);
@@ -107,7 +112,9 @@ export default function SelectRecoveryMethodScreen({
 
   const pressRow = (m: Method) => {
     if (swiftLoading) return;
-    if (m.key === 'seed') {
+    if (m.key === 'pair') {
+      onPairDevice();
+    } else if (m.key === 'seed') {
       onSecretPhrase();
     } else if (m.key === 'swift') {
       onSwift();

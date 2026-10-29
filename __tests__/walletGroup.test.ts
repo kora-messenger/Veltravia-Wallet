@@ -150,19 +150,31 @@ describe('pairing', () => {
   });
 });
 
-describe('pairing carries the device list', () => {
-  it('hands the new device the existing list, plus itself', async () => {
-    const host = await ensureGroup('Pixel');
+describe('pairing code shape', () => {
+  it('stays scannable: no device names in the QR, list syncs separately', async () => {
+    await ensureGroup('Pixel');
     await adoptRemoteDevices([{ id: 'abc12345', name: 'Tablet', addedAt: 5 }]);
-    const parsed = parsePairingPayload(buildPairingPayload((await getGroup())!));
+    const uri = buildPairingPayload((await getGroup())!);
+    // A QR has a hard size ceiling; names live in the sealed blob instead.
+    expect(uri).not.toContain('Pixel');
+    expect(uri.length).toBeLessThan(160);
+
+    const parsed = parsePairingPayload(uri);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
-    expect(parsed.devices.map((d) => d.name).sort()).toEqual(['Pixel', 'Tablet']);
+    expect(parsed.devices).toEqual([]);
 
     __resetWalletGroupForTests();
     mockStoreClear();
     const joined = await joinGroup(parsed, 'Laptop');
-    expect(joined?.devices.map((d) => d.name).sort()).toEqual(['Laptop', 'Pixel', 'Tablet']);
+    expect(joined?.devices.map((d) => d.name)).toEqual(['Laptop']);
+
+    // The host's list arrives on the next sync, inside the sealed box.
+    const afterSync = await adoptRemoteDevices([
+      { id: joined!.devices[0].id, name: 'Laptop', addedAt: 1 },
+      { id: 'abc12345', name: 'Tablet', addedAt: 5 },
+    ]);
+    expect(afterSync?.devices.map((d) => d.name).sort()).toEqual(['Laptop', 'Tablet']);
   });
 
   it('merges without duplicating a device seen twice, and caps the list', () => {

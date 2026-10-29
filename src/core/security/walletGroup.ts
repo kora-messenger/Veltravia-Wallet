@@ -246,11 +246,19 @@ export async function adoptRemoteDevices(incoming: GroupDevice[]): Promise<Walle
   return next;
 }
 
-/** The pairing URI an EXISTING device shows. Short-lived; single use on the UI side. */
+/**
+ * The pairing URI an EXISTING device shows. Short-lived; single use on the UI side.
+ *
+ * DELIBERATELY LEAN. The code is grouped into a QR, so it carries only what is
+ * needed to join: group id, group key, expiry. Device NAMES are not encoded —
+ * they would blow the payload past what a scannable code can hold, and they
+ * already sync inside the sealed blob (`adoptRemoteDevices`), so a paired device
+ * learns the list on its first sync. `d` is still PARSED for forward
+ * compatibility, just never emitted.
+ */
 export function buildPairingPayload(group: WalletGroup, now = Date.now()): string {
   const expires = now + PAIRING_TTL_MS;
-  const devices = encodeURIComponent(JSON.stringify(group.devices.map((d) => ({ id: d.id, name: d.name, a: d.addedAt }))));
-  return `${PAIR_SCHEME}?g=${group.groupId}&k=${group.key}&e=${expires}&d=${devices}`;
+  return `${PAIR_SCHEME}?g=${group.groupId}&k=${group.key}&e=${expires}`;
 }
 
 export function parsePairingPayload(uri: string, now = Date.now()): PairingResult {
