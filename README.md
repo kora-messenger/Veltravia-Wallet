@@ -392,3 +392,25 @@ The bell is a generated 45 KB WAV at `android/app/src/main/res/raw/scan_captured
 - Idle text is localised ("Escanea el QR", "Scannez", "Scansiona"), and the header keeps the same three controls we now match: close, gallery, torch.
 
 Still missing on our side: the invalid-QR bottom sheet (we show a toast) and that universal URI parsing.
+
+### Scanned codes are parsed, and bad ones explain themselves (Oct 29)
+
+Two of Trust's scanner behaviours we were missing.
+
+**Universal parsing** (`src/services/qrParse.ts`): a scan is classified, not just decoded.
+
+| what was scanned | result |
+|---|---|
+| `0x…` (40 hex) | wallet address |
+| `ethereum:0x…@56?value=…` | payment, chain + amount |
+| `ethereum:<contract>@1/transfer?address=<to>&uint256=…` | token transfer, contract + amount |
+| `eip155:1/erc20:0x…` | asset (CAIP-19) |
+| `wc:…@2?relay-protocol=…` | WalletConnect pairing |
+| `https://…` | link (host shown) |
+| anything else | not a wallet code |
+
+A screen waiting for a scan now receives the **usable value** (the address inside a payment URI, the URL) rather than the raw envelope. Chain names resolve for Ethereum, BNB Chain, Polygon, Base and Arbitrum.
+
+**Invalid/standalone codes** get Trust's bottom sheet instead of a toast (`ScanResultSheet.tsx`): the code type, the value, the chain, and one action — Copy address, Send, Open link or Connect — plus Scan again. So a WiFi QR shows "Unrecognised code · Not a wallet code" instead of silently vanishing, and the reason stays on screen until dismissed.
+
+Not wired yet: WalletConnect pairing says so plainly rather than pretending, and a payment URI shows its amount but does not pre-fill a send.

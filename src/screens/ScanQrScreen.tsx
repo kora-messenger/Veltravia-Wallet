@@ -24,7 +24,10 @@ import jsQR from 'jsqr';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CloseIcon, GalleryIcon, FlashIcon } from '../components/icons';
-import { deliverScanResult, clearScanTarget } from '../services/scanTarget';
+import { deliverScanResult, clearScanTarget, hasScanTarget } from '../services/scanTarget';
+import { parseQr, type ParsedQr } from '../services/qrParse';
+import ScanResultSheet from '../components/ScanResultSheet';
+import { copyToClipboard } from '../core/clipboard';
 import { codeTargetRect, morphDuration, type Rect } from '../services/scanFrame';
 import { captureFeedback, captureBell } from '../core/scanFeedback';
 import { showToast } from '../components/Toast';
@@ -47,6 +50,7 @@ export default function ScanQrScreen() {
   const device = useCameraDevice('back', { physicalDevices: ['wide-angle-camera'] });
   const [torch, setTorch] = useState(false);
   const [decoding, setDecoding] = useState(false);
+  const [sheet, setSheet] = useState<ParsedQr | null>(null);
   const done = useRef(false);
 
   // A result only counts once; the screen pops on the first valid code.
@@ -54,8 +58,13 @@ export default function ScanQrScreen() {
     if (done.current) return;
     done.current = true;
     captureFeedback();                 // bell + tick, exactly when the code is taken
-    if (deliverScanResult(value)) navigation.goBack();
-    else showToast('Scanned: ' + value, { kind: 'info' });
+    const parsed = parseQr(value);
+    // Screens that opened the scanner want the usable value (address, URL), not
+    // the envelope a payment URI wraps it in.
+    if (hasScanTarget() && deliverScanResult(parsed.value)) { navigation.goBack(); return; }
+    // Nobody was waiting (home scan button) or the code is actionless: keep the
+    // sheet on screen instead of a toast so the reason stays visible (Trust).
+    setSheet(parsed);
   }, [navigation]);
 
   // -- the brackets, which start centred and fly onto the code before it is read
@@ -94,6 +103,28 @@ export default function ScanQrScreen() {
       snapTo(rect, hit.value.trim());
     },
   });
+
+  const closeSheet = useCallback(() => setSheet(null), []);
+
+  // The sheet's primary action depends on what was read: copy an address, open a
+  // link, or start a WalletConnect pairing (not wired yet, so say so plainly).
+  const sheetPrimary = useCallback(() => {
+    if (!sheet) return;
+    if (sheet.kind === 'url') {
+      setSheet(null);
+      Linking.openURL(sheet.value).catch(() => showToast("Couldn't open that link", { kind: 'error' }));
+      return;
+    }
+    if (sheet.kind === 'walletconnect') {
+      setSheet(null);
+      showToast('WalletConnect pairing arrives with the dApp session work.', { kind: 'info', duration: 2600 });
+      return;
+    }
+    const ok = copyToClipboard(sheet.value, { sensitive: true });
+    setSheet(null);
+    showToast(ok ? 'Address copied' : "Couldn't copy the address", { kind: ok ? 'success' : 'error' });
+  }, [sheet]);
+  const rescan = useCallback(() => { setSheet(null); done.current = false; chasing.current = false; }, []);
 
   const close = useCallback(() => {
     clearScanTarget();
@@ -195,6 +226,14 @@ export default function ScanQrScreen() {
         </View>
         <Text style={[styles.title, { top: (BTN - 21) / 2 }]} pointerEvents="none">Scan QR code</Text>
       </View>
+
+      <ScanResultSheet
+        visible={sheet !== null}
+        parsed={sheet}
+        onClose={closeSheet}
+        onRescan={rescan}
+        onPrimary={sheetPrimary}
+      />
 
       {/* home gesture bar */}
       <View style={styles.gesture} />

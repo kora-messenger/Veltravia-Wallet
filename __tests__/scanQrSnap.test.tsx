@@ -88,4 +88,81 @@ describe('scanner brackets chase the code before reading it', () => {
     expect(mockFeedback.capture).toHaveBeenCalledTimes(1);   // bell + tick as it is read
     await act(async () => { t.unmount(); });
   });
+
+  it('with nobody waiting, a valid address opens the result sheet instead of leaving', async () => {
+    jest.useFakeTimers();
+    let t: renderer.ReactTestRenderer;
+    await act(async () => { t = mount(); });
+    await act(async () => {
+      captured.onCodeScanned([{ type: 'qr', value: '0x9b21c6d5f0A1b2C3d4E5f60718293a4B5c6D7e8F', frame: { x: 150, y: 400, width: 90, height: 90 } }]);
+    });
+    await act(async () => { jest.advanceTimersByTime(600); });
+    const texts = t!.root.findAll((n) => typeof n.props.children === 'string').map((n) => n.props.children);
+    expect(texts).toContain('Scanned code');
+    const val = t!.root.findAll((n) => n.props.testID === 'scanResultValue')[0];
+    expect([].concat(val.props.children).join('')).toBe('0x9b21c6d5f0A1b2C3d4E5f60718293a4B5c6D7e8F');
+    await act(async () => { t!.unmount(); });
+  });
+
+  it('an unrecognisable code explains itself in the sheet, not a toast', async () => {
+    jest.useFakeTimers();
+    let t: renderer.ReactTestRenderer;
+    await act(async () => { t = mount(); });
+    await act(async () => {
+      captured.onCodeScanned([{ type: 'qr', value: 'WIFI:S:Cafe;T:WPA;P:pass;;', frame: { x: 150, y: 400, width: 90, height: 90 } }]);
+    });
+    await act(async () => { jest.advanceTimersByTime(600); });
+    const texts = t!.root.findAll((n) => typeof n.props.children === 'string').map((n) => n.props.children);
+    expect(texts).toContain('Unrecognised code');
+    expect(texts).toContain('Not a wallet code');
+    await act(async () => { t!.unmount(); });
+  });
+
+  it('a waiting screen receives the address, not the payment-URI envelope', async () => {
+    jest.useFakeTimers();
+    const got: string[] = [];
+    registerScanTarget((v) => got.push(v));
+    let t: renderer.ReactTestRenderer;
+    await act(async () => { t = mount(); });
+    await act(async () => {
+      captured.onCodeScanned([{ type: 'qr', value: 'ethereum:0x9b21c6d5f0A1b2C3d4E5f60718293a4B5c6D7e8F@1', frame: { x: 150, y: 400, width: 90, height: 90 } }]);
+    });
+    await act(async () => { jest.advanceTimersByTime(600); });
+    expect(got).toEqual(['0x9b21c6d5f0A1b2C3d4E5f60718293a4B5c6D7e8F']);
+    await act(async () => { t!.unmount(); });
+  });
+
+  it('Copy address copies the parsed address and closes the sheet', async () => {
+    jest.useFakeTimers();
+    const copy = jest.spyOn(require('../src/core/clipboard'), 'copyToClipboard').mockReturnValue(true);
+    let t: renderer.ReactTestRenderer;
+    await act(async () => { t = mount(); });
+    await act(async () => {
+      captured.onCodeScanned([{ type: 'qr', value: '0x9b21c6d5f0A1b2C3d4E5f60718293a4B5c6D7e8F', frame: { x: 150, y: 400, width: 90, height: 90 } }]);
+    });
+    await act(async () => { jest.advanceTimersByTime(600); });
+    const btn = t!.root.findAll((n) => n.props.accessibilityLabel === 'Copy address' && typeof n.props.onPress === 'function')[0];
+    await act(async () => { btn.props.onPress(); });
+    expect(copy).toHaveBeenCalledWith('0x9b21c6d5f0A1b2C3d4E5f60718293a4B5c6D7e8F', { sensitive: true });
+    expect(t!.root.findAll((n) => n.props.testID === 'scanResultValue').length).toBe(0);
+    copy.mockRestore();
+    await act(async () => { t!.unmount(); });
+  });
+
+  it('a link opens instead of being copied', async () => {
+    jest.useFakeTimers();
+    const { Linking } = require('react-native');
+    const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true as never);
+    let t: renderer.ReactTestRenderer;
+    await act(async () => { t = mount(); });
+    await act(async () => {
+      captured.onCodeScanned([{ type: 'qr', value: 'https://veltraviawallet.com/claim', frame: { x: 150, y: 400, width: 90, height: 90 } }]);
+    });
+    await act(async () => { jest.advanceTimersByTime(600); });
+    const btn = t!.root.findAll((n) => n.props.accessibilityLabel === 'Open link' && typeof n.props.onPress === 'function')[0];
+    await act(async () => { btn.props.onPress(); });
+    expect(open).toHaveBeenCalledWith('https://veltraviawallet.com/claim');
+    open.mockRestore();
+    await act(async () => { t!.unmount(); });
+  });
 });

@@ -23,6 +23,11 @@ export function registerScanTarget(open: ScanHandler, close?: () => void) {
   };
 }
 
+/** True when a screen is waiting for a scan result. */
+export function hasScanTarget(): boolean {
+  return entry !== null;
+}
+
 /** Called by ScanQrScreen when a QR is found. */
 export function deliverScanResult(value: string): boolean {
   if (!entry) return false;
