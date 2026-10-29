@@ -33,6 +33,7 @@ import { verifyPairingDigits } from './pairingVerify';
 import { storeSeed } from '../storage/secureStorage';
 import { wipeWallet } from '../storage/secureStorage';
 import { walletManager, type WalletAccount } from '../wallet/walletManager';
+import { importLockMaterial } from './lockTransfer';
 
 export type PairFailure =
   | 'scheme'
@@ -64,6 +65,10 @@ export type PairOutcome =
        * nobody checked — reported honestly instead of assumed.
        */
       identity: IdentityCheck;
+      /** Wallets this device now sees as locked, inherited from the old device. */
+      lockedWallets: string[];
+      /** Wallets whose lock password now works here too (verifier transferred). */
+      passwordWallets: string[];
     }
   | { ok: false; reason: PairFailure; attemptsLeft?: number };
 
@@ -131,12 +136,18 @@ export async function finishPairing(
   const group = await adoptPairingMaterial(joined.material, deviceName);
   if (!group) return { ok: false, reason: 'invalid' };
 
+  // The new phone arrives as protected as the old one: same lock flags, same
+  // password working (verifier only), its own biometrics as the second step.
+  const inheritance = await importLockMaterial(joined.lock).catch(() => ({ locked: [], passwords: [] }));
+
   return {
     ok: true,
     group,
     safetyNumber: joined.safetyNumber ?? safetyNumber(begun.handle.hostPub, begun.handle.joinerPub),
     seeded: !!joined.seed,
     identity,
+    lockedWallets: inheritance.locked,
+    passwordWallets: inheritance.passwords,
   };
 }
 

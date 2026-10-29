@@ -568,3 +568,15 @@ Pairing used to hand over only the group key, so a "paired" phone could never re
 **Tests** — `__tests__/pairingFullAccess.test.ts` (8): phrase released only after the digits match; the phrase never appears in anything the relay carries (the mock records every byte); a wrong code cannot open the box (`unverified`); five wrong guesses kill the session and the correct code no longer rescues it; a five-digit entry costs no attempt; the phrase reaches the keystore through `storeSeed`; a mismatched code never reaches storage; a derived-address disagreement wipes and fails. Full suite: 404 passing, `tsc --noEmit` clean.
 
 **Still needed on the backend:** `POST/GET /v1/pairing-relay/*` (open, join, poll, deliver, cancel) and `/v1/wallet-lock/state`. Until they exist, pairing works only against the in-memory relay used by tests, and cross-device lock sync stays off (`LOCK_REGISTRY_ENABLED = false`).
+
+### Lock state travels with the wallet (Oct 29)
+
+A paired phone used to arrive unlocked with no lock password, which meant adding a device quietly loosened the wallet on the new handset. Fixed: the pairing box now carries the lock flags and the security-password **verifier**, so the new phone starts exactly as protected as the old one and the password the user already knows opens it there.
+
+- **What is transferred** — `walletId -> locked` flags, plus `walletId -> "salt:digest"` verifiers (`src/core/security/lockTransfer.ts`). The password itself is never transferred: the old device does not have it either, only its digest.
+- **The honest trade-off** — a verifier can be brute-forced offline by whoever holds it. That is accepted because the same sealed envelope already carries the recovery phrase, which is strictly more powerful, and the alternative (an unlocked new device) is worse. The digest is salted and iterated (`passcode.digest`), and it only ever exists inside a box sealed to the new phone's one-time key.
+- **Conservative import** — a lock is only ever added, never removed, and a verifier is adopted only when this device has no password for that wallet. A local credential is never replaced by one that arrived from another device.
+- **Biometrics do not travel** — they belong to the new handset's hardware and enrolment. The second step stays device-local: the same password, then this phone's own fingerprint/face/passcode.
+- **Unlocking is symmetric afterwards** — once paired, either device can lock or unlock without asking the other. The lock is a property of the wallet, not of a handset.
+- **Surfaces** — the success screen says the wallet came over locked when it did; the Paired devices footer states that lock state and password travel while biometrics do not.
+- **Tests** — `__tests__/pairingLockInheritance.test.ts` (6): locked wallet arrives locked and the same password opens it (wrong password rejected); the password never appears in relay traffic and the verifier is a salt:digest; an unlocked wallet does not invent a lock; a local password is never overwritten; exporting does not change the host; the inherited lock actually trips `movementBlock` and unlocking locally clears it. Full suite: 410 passing.

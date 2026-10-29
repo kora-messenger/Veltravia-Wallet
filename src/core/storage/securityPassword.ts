@@ -18,6 +18,63 @@ import { digest } from './passcode';
 
 const service = (walletId: string) => `com.veltravia.wallet.securitypassword.${walletId}`;
 
+/**
+ * Which wallets hold a security password. Needed so a paired device can be told
+ * about them: keychain services cannot be enumerated, so we keep the list.
+ */
+const INDEX_SERVICE = 'com.veltravia.wallet.securitypassword.__index';
+
+async function rememberWallet(walletId: string): Promise<void> {
+  const ids = new Set(await listSecurityPasswordWallets());
+  ids.add(walletId);
+  await Keychain.setGenericPassword('index', JSON.stringify([...ids]), {
+    service: INDEX_SERVICE,
+    accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+  });
+}
+
+/** Wallets that currently hold a security password on THIS device. */
+export async function listSecurityPasswordWallets(): Promise<string[]> {
+  try {
+    const res = await Keychain.getGenericPassword({ service: INDEX_SERVICE });
+    if (res === false) return [];
+    const parsed = JSON.parse(res.password);
+    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The stored verifier ("salt:digest") for a wallet — safe to move between the
+ * user's own devices, useless on its own: it verifies a password, it is not one.
+ */
+export async function readSecurityPasswordVerifier(walletId: string): Promise<string | null> {
+  try {
+    const res = await Keychain.getGenericPassword({ service: service(walletId) });
+    if (res === false) return null;
+    return res.password;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Adopt a verifier that came from another of the user's devices. Refuses to
+ * overwrite a password already set here: pairing may add a lock, never replace
+ * a credential this device's owner chose.
+ */
+export async function adoptSecurityPasswordVerifier(walletId: string, verifier: string): Promise<boolean> {
+  if (!/^[0-9a-f]+:[0-9a-f]+$/i.test(verifier)) return false;
+  if (await hasSecurityPassword(walletId)) return false;
+  await Keychain.setGenericPassword('securitypw', verifier, {
+    service: service(walletId),
+    accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+  });
+  await rememberWallet(walletId);
+  return true;
+}
+
 const randomSalt = () =>
   Array.from({ length: 16 }, () => Math.floor(Math.random() * 256).toString(16).padStart(2, '0')).join('');
 
@@ -28,6 +85,7 @@ export async function setSecurityPassword(walletId: string, pw: string): Promise
     service: service(walletId),
     accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
   });
+  await rememberWallet(walletId);
 }
 
 /** True once this wallet has a security password. */

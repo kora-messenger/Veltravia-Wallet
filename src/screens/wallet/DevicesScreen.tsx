@@ -128,6 +128,9 @@ export default function DevicesScreen() {
           it, or your device names.
         </Text>
         <Text style={[styles.fine, { color: theme.inkMuted }]}>
+          Lock state and your lock password come with the wallet: a phone paired while this wallet is locked
+          arrives locked, opened by the same password. Fingerprints and face unlock do not travel, because they
+          belong to each phone.
           Removing a device rotates the lock key, so that phone stops reading lock state and has to pair again. It
           cannot take back the phrase it already holds: a removed device can still move funds, exactly like any copy
           of your recovery phrase. If you lost a phone or think it was compromised, move the wallet to a new phrase

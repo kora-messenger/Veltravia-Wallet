@@ -39,6 +39,7 @@ import { pairingRelay, type PairingRelayState } from './pairingRelay';
 import { captureProtections, restoreProtections } from './pairingPolicy';
 import { readSeed } from '../storage/secureStorage';
 import { walletManager, type WalletAccount } from '../wallet/walletManager';
+import { exportLockMaterial, type LockMaterial } from './lockTransfer';
 
 export const PAIR_V2_SCHEME = 'veltravia-pair://2';
 /**
@@ -284,6 +285,9 @@ export async function approveJoiner(
   } catch {
     accounts = null;
   }
+  // Lock state comes along so the new phone starts as protected as this one: the
+  // flags plus password VERIFIERS (salt:digest), never a password we do not have.
+  const lock = await exportLockMaterial().catch(() => null);
   const sealed = wrapFor(fromHex(secret), joinerPub, JSON.stringify({
     kind: SEALED_KIND,
     groupId: material.groupId,
@@ -292,6 +296,7 @@ export async function approveJoiner(
     hostPub,
     seed,
     accounts,
+    lock,
     at: now,
   }));
   if (!sealed) return false;
@@ -328,6 +333,8 @@ export type JoinResult =
       accounts?: WalletAccount[] | null;
       /** Digits were proven before the box was opened. Always true on this path. */
       digitsVerified: boolean;
+      /** The host's lock flags and password verifiers, if it sent any. */
+      lock?: LockMaterial | null;
     }
   | { status: 'expired' }
   | { status: 'cancelled' }
@@ -427,6 +434,7 @@ export async function completePairingJoin(
           hostPub?: string;
           seed?: string;
           accounts?: WalletAccount[] | null;
+          lock?: LockMaterial | null;
         };
         if (material.kind !== SEALED_KIND && material.kind !== SEALED_KIND_GROUP_ONLY) return { status: 'invalid' };
         if (!material.groupId || !/^[0-9a-f]{32,64}$/i.test(material.groupId)) return { status: 'invalid' };
@@ -445,6 +453,7 @@ export async function completePairingJoin(
           hostPub: code.hostPub,
           seed: material.kind === SEALED_KIND ? material.seed : undefined,
           accounts: Array.isArray(material.accounts) ? material.accounts : null,
+          lock: material.lock ?? null,
           digitsVerified: verified.has(code.sessionId),
         };
       } catch {

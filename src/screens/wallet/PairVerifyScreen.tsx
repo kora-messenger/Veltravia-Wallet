@@ -52,6 +52,8 @@ export default function PairVerifyScreen({
   const [digits, setDigits] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
+  /** True when the old device handed over a locked wallet. */
+  const [inherited, setInherited] = useState(false);
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<any>(null);
   const cancelled = useRef(false);
@@ -104,6 +106,7 @@ export default function PairVerifyScreen({
       (inputRef.current as unknown as { focus: () => void } | null)?.focus();
       return;
     }
+    setInherited(outcome.lockedWallets.length > 0);
     setStage('success');
     onPaired?.();
   }, [begun, busy, digits, onPaired]);
@@ -131,6 +134,9 @@ export default function PairVerifyScreen({
               <Text style={[styles.title, { color: theme.ink }]}>Device Paired Successfully!</Text>
               <Text style={[styles.sub, { color: theme.inkMuted }]}>
                 Your Veltravia Wallet is now available on this device.
+                {inherited
+                  ? ' It came over locked, exactly as it was: use the same lock password here to move funds.'
+                  : ''}
               </Text>
             </View>
           ) : stage === 'securing' ? (
