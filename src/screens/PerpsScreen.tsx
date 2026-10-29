@@ -249,7 +249,9 @@ export default function PerpsScreen() {
                 <Pressable
                   key={`${s.key}-${m.symbol}`}
                   accessibilityLabel={`Market ${m.symbol}`}
-                  onPress={() => navigation.navigate('PerpsMarket', { venue: m.venue ?? 'hyperliquid', symbol: m.symbol })}
+                  // Trust: a coin opens the same market list the search icon opens
+                  // (browse mode), and the market page is one tap deeper.
+                  onPress={() => navigation.navigate('PerpsSearch')}
                   style={({ pressed }) => [styles.row, pressed && { backgroundColor: dark ? 'rgba(255,255,255,0.05)' : '#F1F1F4' }]}
                 >
                   <MarketLogo m={m} />

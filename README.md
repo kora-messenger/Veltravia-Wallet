@@ -335,3 +335,7 @@ Engine: `src/services/orderBook.ts` (`buildOrderBook`, `ladderRows`, `barFractio
 ### Search list loading layout (fixed Oct 29)
 
 While a tab was loading, the Recents strip and tab strip (horizontal ScrollViews, which grow vertically by default) were stretched by the flex spinner box, shoving the tab pills ~175px and the provider/volume chips ~350px down the screen. Both strips are now `flexGrow: 0 / flexShrink: 0` so only the spinner takes the leftover space. This affected Browse, Long and Short alike. The Recents card now matches Trust: logo, symbol, and a grey "Perps" caption beneath (it used to read "BTC Perps" on one line).
+
+### One market list for every entry point (Oct 29)
+
+Tapping a coin on the Perps home now opens the same market list the search icon opens (browse mode), and the market page is one tap deeper from that list. Previously a coin jumped straight to the market page while the search icon opened the list, so the two entry points disagreed. Long/Short still open the same list in their own mode.
