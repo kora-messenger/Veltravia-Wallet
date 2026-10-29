@@ -27,9 +27,11 @@ import {
   ScrollView,
   Pressable,
   StatusBar,
+  Animated,
   useWindowDimensions,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import { SWAP_START, SWAP_SPAN, headerAmount } from '../services/headerCollapse';
 import { Alert } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { useWallets } from '../wallets/WalletsProvider';
@@ -135,6 +137,18 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [receiveOpen, setReceiveOpen] = useState(false);
   const { activeWallet } = useWallets();
 
+  // Header collapse: once the Total Balance card passes under the header, the
+  // pill swaps the wallet name for the balance amount (see headerCollapse.ts).
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const nameOpacity = scrollY.interpolate({ inputRange: [SWAP_START, SWAP_START + SWAP_SPAN * 0.625], outputRange: [1, 0], extrapolate: 'clamp' });
+  const nameShift = scrollY.interpolate({ inputRange: [SWAP_START, SWAP_START + SWAP_SPAN], outputRange: [0, -10], extrapolate: 'clamp' });
+  const amountOpacity = scrollY.interpolate({ inputRange: [SWAP_START + SWAP_SPAN * 0.35, SWAP_START + SWAP_SPAN], outputRange: [0, 1], extrapolate: 'clamp' });
+  const amountShift = scrollY.interpolate({ inputRange: [SWAP_START, SWAP_START + SWAP_SPAN], outputRange: [10, 0], extrapolate: 'clamp' });
+
+  // Solid page-coloured strip behind the header. It fades in as content starts
+  // sliding under the (translucent) pill/buttons so nothing shows through them.
+  const stripOpacity = scrollY.interpolate({ inputRange: [4, 28], outputRange: [0, 1], extrapolate: 'clamp' });
+
   // Switching wallets: blank page + purple spinner (like Trust), then reveal
   // the new wallet's Home. The first mount (app open) does not trigger it.
   const [switching, setSwitching] = useState(false);
@@ -166,9 +180,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     <View style={[styles.root, { backgroundColor: theme.background }]}>
       {/* RN 0.87 is always edge-to-edge; only the icon style is ours. */}
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
-      <ScrollView
+      <Animated.ScrollView
         contentContainerStyle={[styles.content, { paddingHorizontal: H_PAD, paddingTop: topInset + 68 }]}
         showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
       >
         {/* ---------- Balance card (opens Balance Details) ---------- */}
         <Pressable onPress={() => navigation.navigate('BalanceDetails')} style={{ marginBottom: 20 }}>
@@ -535,17 +551,44 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             </View>
           </Pressable>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
         {/* ---------- Header (pill = active wallet, opens Wallets) ---------- */}
+        {/* page-coloured backing so scrolled content never shows through the header */}
+        <Animated.View
+          testID="headerStrip"
+          pointerEvents="none"
+          style={[styles.headerStrip, { backgroundColor: theme.background, opacity: stripOpacity, height: topInset + 62 }]}
+        />
         <View style={[styles.headerFloat, { top: topInset + 4 }]}>
           <Pressable
             style={({ pressed }) => [styles.brandRow, { backgroundColor: chipBg, opacity: pressed ? 0.8 : 1 }]}
             onPress={() => navigation.navigate('Wallets')}
           >
             <WalletAvatar icon={activeWallet.icon} color={activeWallet.color} size={34} />
-            <Text style={[styles.brand, { color: theme.ink }]} numberOfLines={1}>
-              {activeWallet.name}
-            </Text>
+            {/* name and balance share one slot: the name slides up and fades as
+                the balance card passes under the header, the amount takes its place */}
+            <View style={styles.brandSlot}>
+              {/* invisible spacer: reserves the width of whichever text is longer so
+                  the pill never resizes (or clips the amount) during the swap */}
+              <Text style={[styles.brand, { opacity: 0 }]} numberOfLines={1} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                {(headerAmount(total, hidden).length > activeWallet.name.length) ? headerAmount(total, hidden) : activeWallet.name}
+              </Text>
+              <Animated.Text
+                testID="headerName"
+                style={[styles.brand, styles.brandName, { color: theme.ink, opacity: nameOpacity, transform: [{ translateY: nameShift }] }]}
+                numberOfLines={1}
+              >
+                {activeWallet.name}
+              </Animated.Text>
+              <Animated.Text
+                testID="headerAmount"
+                pointerEvents="none"
+                style={[styles.brand, styles.brandAmount, { color: theme.ink, opacity: amountOpacity, transform: [{ translateY: amountShift }] }]}
+                numberOfLines={1}
+              >
+                {headerAmount(total, hidden)}
+              </Animated.Text>
+            </View>
           </Pressable>
           <View style={styles.headerRight}>
             <Pressable
@@ -577,6 +620,7 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   content: { paddingTop: 72, paddingBottom: 150 },
 
+  headerStrip: { position: 'absolute', top: 0, left: 0, right: 0 },
   headerFloat: {
     position: 'absolute',
     top: 0,
@@ -597,6 +641,10 @@ const styles = StyleSheet.create({
     borderRadius: 23,
   },
   brand: { fontSize: 16, fontFamily: 'Inter-700', fontWeight: '700', letterSpacing: -0.2 },
+  // both texts occupy the same box; the slot is as wide as the longer of the two
+  brandSlot: { justifyContent: 'center', minHeight: 22 },
+  brandAmount: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, textAlignVertical: 'center' },
+  brandName: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, textAlignVertical: 'center' },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   scanBtn: {
     width: 46,

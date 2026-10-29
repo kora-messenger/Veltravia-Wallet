@@ -339,3 +339,11 @@ While a tab was loading, the Recents strip and tab strip (horizontal ScrollViews
 ### One market list for every entry point (Oct 29)
 
 Tapping a coin on the Perps home now opens the same market list the search icon opens (browse mode), and the market page is one tap deeper from that list. Previously a coin jumped straight to the market page while the search icon opened the list, so the two entry points disagreed. Long/Short still open the same list in their own mode.
+
+### Home header collapse (Oct 29)
+
+Scrolling the Home page down past the Total Balance card swaps the pill's text: the wallet name ("Veltravia Wallet") slides up and fades out while the balance amount (`$1,248.42`) slides up into the same slot and fades in. Scrolling back up reverses it. The avatar, bell and scan buttons never move. The amount follows the eye toggle (`$••••••` when hidden) and uses the card's format.
+
+The swap is scroll-linked (`Animated.Value` fed by the ScrollView, native driver, so it runs on the UI thread) and starts at 80px, just before the card's own amount reaches the pill's line, finishing 34px later. The name fades a little faster than the amount arrives so the two never overlap. The pill reserves the width of the longer text, so it does not resize mid-swap. Logic and constants: `src/services/headerCollapse.ts`.
+
+Also fixed: the header chips are only 10% opaque, so scrolled content (e.g. "Back up your wallet") showed through the wallet name. A page-coloured strip now fades in behind the header between 4px and 28px of scroll, fully opaque before the swap begins.
