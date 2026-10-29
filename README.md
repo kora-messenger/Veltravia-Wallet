@@ -434,6 +434,6 @@ The AI lock card read the keychain flag backwards. `noSecurityPw` was filled wit
 The first-use card now matches how the Settings screen teaches the same secret:
 
 - **Security password** and **Re-enter password**, each with its own hide/unhide eye (`EyeIcon` / new `EyeOffIcon`), and a red border on the confirm field when the two differ.
-- **Use passcode** in the card's top-right corner, in both the create and the verify state. It opens the same 6-dot, auto-verify `PasscodeConfirmSheet` the Settings → Wallet Lock screen uses, so the 6-digit passcode can confirm the lock instead of the text password when the user prefers that.
+- **Use passcode** in the card's top-right corner, in both the create and the verify state. It opens the same 6-dot, auto-verify `PasscodeConfirmSheet` the Settings → Wallet Lock screen uses, so the 6-digit passcode can confirm the lock instead of the text password when the user prefers that. That is VELTRAVIA'S OWN passcode (`com.veltravia.wallet.passcode`, digest only, set at onboarding) — never the device PIN/pattern, which only the OS itself ever asks for. The sheet's copy is now passed per job, so a lock says "Confirm wallet lock" instead of "Confirm transfer".
 - While the keychain read is in flight the card shows "Checking this wallet…" instead of guessing which form to show.
 - Approve / Set password & Approve now carry accessibility labels.

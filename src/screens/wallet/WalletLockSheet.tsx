@@ -242,6 +242,8 @@ export default function WalletLockSheet({ visible, onClose }: { visible: boolean
 
       <PasscodeConfirmSheet
         visible={passcodeStep}
+        title="Confirm wallet lock"
+        message="Enter your Veltravia passcode to confirm this wallet lock."
         onCancel={() => setPasscodeStep(false)}
         onVerified={async () => {
           setPasscodeStep(false);

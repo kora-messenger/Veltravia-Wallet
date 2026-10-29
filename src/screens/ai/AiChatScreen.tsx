@@ -799,6 +799,12 @@ export default function AiChatScreen() {
 
       <PasscodeConfirmSheet
         visible={!!passcodeFor}
+        title={passcodeFor?.kind === 'wallet_lock' ? 'Confirm wallet lock' : 'Confirm transfer'}
+        message={
+          passcodeFor?.kind === 'wallet_lock'
+            ? 'Enter your Veltravia passcode to confirm this wallet lock.'
+            : 'Enter your passcode to approve this transfer.'
+        }
         onCancel={() => setPasscodeFor(null)}
         onVerified={async () => {
           const pf = passcodeFor;

@@ -8,6 +8,7 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import { TextInput } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 jest.mock('../src/theme/ThemeProvider', () => ({
   useTheme: () => ({ theme: { mode: 'light', ink: '#0F111A', inkMuted: '#8A8EA3', brand: '#6C63FF', background: '#FFFFFF', surface: '#F5F5F7' } }),
@@ -113,6 +114,32 @@ describe('wallet lock card: optional passcode route', () => {
   it('hides the corner button once the card is resolved', async () => {
     const { tree } = await mount({ noPassword: false, resolved: 'approved' as never });
     expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Use passcode').length).toBe(0);
+    await act(async () => { tree.unmount(); });
+  });
+});
+
+describe('passcode sheet copy', () => {
+  it('says wallet lock for a lock, never "transfer", and calls it the Veltravia passcode', async () => {
+    jest.mock('../src/core/storage/passcode', () => ({ verifyPasscode: jest.fn(async () => true) }));
+    const PasscodeConfirmSheet = require('../src/screens/ai/PasscodeConfirmSheet').default;
+    let tree!: renderer.ReactTestRenderer;
+    await act(async () => {
+      tree = renderer.create(
+        <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
+          <PasscodeConfirmSheet
+            visible
+            title="Confirm wallet lock"
+            message="Enter your Veltravia passcode to confirm this wallet lock."
+            onCancel={() => {}}
+            onVerified={() => {}}
+          />
+        </SafeAreaProvider>,
+      );
+    });
+    const all = tree.root.findAll((n) => typeof n.props.children === 'string').map((n) => n.props.children as string);
+    expect(all).toContain('Confirm wallet lock');
+    expect(all.some((t) => /Veltravia passcode/.test(t))).toBe(true);
+    expect(all.some((t) => /transfer/i.test(t))).toBe(false);
     await act(async () => { tree.unmount(); });
   });
 });

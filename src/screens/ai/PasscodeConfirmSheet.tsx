@@ -4,6 +4,10 @@
  * Fallback when biometrics are off, cancelled or fail. Same keypad language
  * as the lock screen: 6 dots, auto-verify on the last digit, shake + clear
  * on a wrong code, 5 wrong attempts => 30s lockout.
+ *
+ * This is VELTRAVIA'S OWN 6-digit passcode (com.veltravia.wallet.passcode),
+ * never the device PIN/pattern: the device one is only ever requested by the
+ * OS itself (biometrics.ts). Copy is passed in per job.
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Animated, Vibration } from 'react-native';
@@ -24,10 +28,15 @@ export default function PasscodeConfirmSheet({
   visible,
   onCancel,
   onVerified,
+  title = 'Confirm transfer',
+  message = 'Enter your passcode to approve this transfer.',
 }: {
   visible: boolean;
   onCancel: () => void;
   onVerified: () => void;
+  /** Copy for the job at hand (transfer, wallet lock, …). */
+  title?: string;
+  message?: string;
 }) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -91,13 +100,13 @@ export default function PasscodeConfirmSheet({
       <View style={styles.scrim}>
         <View style={[styles.sheet, { backgroundColor: dark ? '#0B1220' : '#FFFFFF', paddingBottom: Math.max(insets.bottom, 16) }]}>
           <View style={styles.top}>
-            <Text style={[styles.title, { color: theme.ink }]}>Confirm transfer</Text>
+            <Text style={[styles.title, { color: theme.ink }]}>{title}</Text>
             <Pressable hitSlop={10} onPress={onCancel} style={[styles.x, { backgroundColor: dark ? 'rgba(255,255,255,0.10)' : '#EDEDF1' }]}>
               <CloseIcon size={20} color={theme.ink} />
             </Pressable>
           </View>
           <Text style={[styles.sub, { color: theme.inkMuted }]}>
-            {lockLeft > 0 ? `Too many attempts. Try again in ${lockLeft}s.` : 'Enter your passcode to approve this transfer.'}
+            {lockLeft > 0 ? `Too many attempts. Try again in ${lockLeft}s.` : message}
           </Text>
 
           <Animated.View style={[styles.dots, { transform: [{ translateX: shake }] }]}>
