@@ -21,6 +21,16 @@ interface EnvConfig {
   OPENROUTER_API_KEY: string;
   /** Model id on the gateway, e.g. "anthropic/claude-haiku-5.5". */
   AI_MODEL: string;
+  /**
+   * Cross-device wallet lock registry. OFF unless deliberately switched on.
+   *
+   * While off, the app sends NOTHING about a lock: the lock stays a purely
+   * local, non-custodial flag. Turning it on publishes one seed-derived
+   * pseudonym plus a lock flag so a wallet recovered on a new device learns it
+   * is locked on the older one. It costs some privacy (see README), so it is
+   * never on by accident.
+   */
+  LOCK_REGISTRY_ENABLED: boolean;
 }
 
 // react-native-config reads from .env files at build time.
@@ -32,6 +42,7 @@ const ENV: Record<BuildEnv, Omit<EnvConfig, 'env'>> = {
     WS_BASE_URL: Config.WS_BASE_URL ?? 'wss://stream.dev.veltravia.app',
     OPENROUTER_API_KEY: Config.OPENROUTER_API_KEY ?? '',
     AI_MODEL: Config.AI_MODEL ?? 'anthropic/claude-haiku-5.5',
+    LOCK_REGISTRY_ENABLED: Config.LOCK_REGISTRY_ENABLED === 'true',
     EXPLORER_TEMPLATE: {
       '1': 'https://sepolia.etherscan.io/tx/{hash}',
       '97': 'https://testnet.bscscan.com/tx/{hash}',
@@ -43,6 +54,7 @@ const ENV: Record<BuildEnv, Omit<EnvConfig, 'env'>> = {
     WS_BASE_URL: Config.WS_BASE_URL ?? 'wss://stream.stg.veltravia.app',
     OPENROUTER_API_KEY: Config.OPENROUTER_API_KEY ?? '',
     AI_MODEL: Config.AI_MODEL ?? 'anthropic/claude-haiku-5.5',
+    LOCK_REGISTRY_ENABLED: Config.LOCK_REGISTRY_ENABLED === 'true',
     EXPLORER_TEMPLATE: {
       '1': 'https://sepolia.etherscan.io/tx/{hash}',
       '97': 'https://testnet.bscscan.com/tx/{hash}',
@@ -54,6 +66,7 @@ const ENV: Record<BuildEnv, Omit<EnvConfig, 'env'>> = {
     WS_BASE_URL: Config.WS_BASE_URL ?? 'wss://stream.veltravia.app',
     OPENROUTER_API_KEY: Config.OPENROUTER_API_KEY ?? '',
     AI_MODEL: Config.AI_MODEL ?? 'anthropic/claude-haiku-5.5',
+    LOCK_REGISTRY_ENABLED: Config.LOCK_REGISTRY_ENABLED === 'true',
     EXPLORER_TEMPLATE: {
       '1': 'https://etherscan.io/tx/{hash}',
       '56': 'https://bscscan.com/tx/{hash}',

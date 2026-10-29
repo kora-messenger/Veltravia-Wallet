@@ -14,6 +14,14 @@ import renderer, { act } from 'react-test-renderer';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Keychain from 'react-native-keychain';
 
+// This file exercises the registry, so it opts in explicitly. Off is the
+// default and is covered by __tests__/lockRegistryPrivacy.test.ts.
+jest.mock('react-native-config', () => ({
+  __esModule: true,
+  Config: { LOCK_REGISTRY_ENABLED: 'true' },
+  default: { LOCK_REGISTRY_ENABLED: 'true' },
+}));
+
 const metrics = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
 
 jest.mock('../src/core/storage/passcode', () => ({
@@ -83,12 +91,13 @@ describe('registry key', () => {
 });
 
 describe('publishing a lock', () => {
-  it('sends only the key, the flag, a device id and a label', async () => {
+  it('sends a seed pseudonym, a flag, a random id — no address, no device model', async () => {
     fetchMock.mockReturnValueOnce(ok({}));
     await publishLockState(true);
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(Object.keys(body).sort()).toEqual(['at', 'deviceId', 'deviceName', 'key', 'locked']);
+    expect(Object.keys(body).sort()).toEqual(['at', 'deviceId', 'key', 'locked']);
     expect(body.locked).toBe(true);
+    expect(body.deviceName).toBeUndefined(); // "Pixel 7" would be a fingerprint
     expect(JSON.stringify(body)).not.toMatch(/0x[0-9a-fA-F]{6,}/); // never an address
   });
 

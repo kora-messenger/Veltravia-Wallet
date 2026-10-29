@@ -446,6 +446,15 @@ Ijezie asked the AI "Do you have the ability to lock my wallet to avoid others t
 - **Two independent gates** for the hosted model: the prompt now forbids a directive for a question or a refusal, and `handleDirective` re-checks `lockIntent(userText)` in code and swaps the card for the honest answer. A model can ignore instructions; the code cannot be talked out of it.
 - Tests: `__tests__/lockIntent.test.ts` (8) and `__tests__/lockQuestionAnswered.test.ts` (3, driving the real offline brain with the exact reported message).
 
+#### Is the lock custodial? No — and it now costs nothing in privacy (2026-10-29)
+
+Audit answer, for the record:
+- **Custody is untouched.** Keys never leave the device; the backend never signs, never moves funds, and has no path that can lift a lock. Unlocking requires the local security password plus biometrics/passcode, verified on the device (`setWalletLocked` is called only from `AiChatScreen` and `WalletLockSheet` after local authentication). A hostile or compromised server can at most hide the *cross-device* signal; it can never unlock the local lock or spend.
+- **Registry is now opt-in and OFF by default** (`APP_CONFIG.LOCK_REGISTRY_ENABLED`, `Config.LOCK_REGISTRY_ENABLED === 'true'`). While off, `publishLockState` and `refreshRegistryLock` return immediately: zero requests, zero identifiers, the lock is purely local. That is the shipping default until the endpoints exist.
+- **No device fingerprint.** The payload used to carry the hardware model ("Pixel 7") — a real identifier that narrows a user down. Removed: the label is omitted unless a user-set label exists, and the other device simply says "the older device".
+- **What the registry would disclose if switched on:** a stable pseudonym `digest(seed, "veltravia-lock-v1")` (3000-round salted SHA-256 — not reversible, and 128-bit seeds are not brute-forceable), a random 12-byte device id and a timestamp. Not the seed, not an address, not a balance. The honest caveat: that pseudonym is a *permanent cross-device marker* for one wallet, the one class of identifier an unlinkability-first wallet should be shy about. Hence opt-in, and the recommended path before enabling it in production is pairing-by-QR (device A shows a code, device B scans it) so no seed-derived value ever reaches the server.
+- Tests: `__tests__/lockRegistryPrivacy.test.ts` (2) pins the off state — no fetch, no block, nothing to correlate.
+
 #### Cross-device lock enforcement (2026-10-29)
 
 A locked wallet is never "active": value movement is refused on every surface, and a wallet recovered on a new device knows it is locked on the older one.

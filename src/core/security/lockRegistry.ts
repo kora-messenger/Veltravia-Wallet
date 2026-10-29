@@ -20,7 +20,6 @@
  * replacement: if the backend is unreachable the local lock still holds.
  */
 import * as Keychain from 'react-native-keychain';
-import { Platform } from 'react-native';
 import { APP_CONFIG } from '../../config/env';
 import { digest } from '../storage/passcode';
 import { readSeed } from '../storage/secureStorage';
@@ -50,9 +49,19 @@ const randomId = () =>
 let state: RegistryState = { key: null, deviceId: '', deviceName: '', remote: null, pending: false };
 let loaded = false;
 
+/**
+ * The label sent with a lock. Deliberately NOT the hardware model: "Pixel 7"
+ * is a fingerprint that narrows a user down, and this wallet promises none.
+ * A generic platform label is the most we will disclose, and even that is
+ * optional — the other device can simply say "an older device".
+ */
 function deviceName(): string {
-  const model = (Platform.constants as { Model?: string; Brand?: string } | undefined)?.Model;
-  return model ? `${model}`.trim() : Platform.OS === 'ios' ? 'iPhone' : 'Android device';
+  return '';
+}
+
+/** False until deliberately enabled in env; while false, nothing leaves the device. */
+function registryEnabled(): boolean {
+  return APP_CONFIG.LOCK_REGISTRY_ENABLED === true;
 }
 
 async function read(): Promise<RegistryState> {
@@ -121,6 +130,7 @@ async function timedFetch(url: string, init?: RequestInit): Promise<Response> {
 
 /** Publish this device's lock state for the wallet. Best effort, queued on failure. */
 export async function publishLockState(locked: boolean): Promise<boolean> {
+  if (!registryEnabled()) return false;
   const st = await read();
   const key = st.key ?? (await registryKey());
   if (!key) return false;
@@ -132,12 +142,18 @@ export async function publishLockState(locked: boolean): Promise<boolean> {
         key,
         locked,
         deviceId: st.deviceId,
-        deviceName: st.deviceName,
+        // never send an empty/redundant label
+        ...(st.deviceName ? { deviceName: st.deviceName } : {}),
         at: Date.now(),
       }),
     });
     if (!res.ok) throw new Error(`publish ${res.status}`);
-    const remote: RegistryRemote = { locked, deviceId: st.deviceId, deviceName: st.deviceName, at: Date.now() };
+    const remote: RegistryRemote = {
+      locked,
+      deviceId: st.deviceId,
+      ...(st.deviceName ? { deviceName: st.deviceName } : {}),
+      at: Date.now(),
+    };
     await write({ remote, pending: false });
     return true;
   } catch {
@@ -151,6 +167,7 @@ export async function publishLockState(locked: boolean): Promise<boolean> {
  * cached record on any failure (never throws), so guards stay honest.
  */
 export async function refreshRegistryLock(): Promise<RegistryRemote | null> {
+  if (!registryEnabled()) return null;
   const st = await read();
   const key = st.key ?? (await registryKey());
   if (!key) return st.remote;
