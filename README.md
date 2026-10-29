@@ -454,6 +454,18 @@ Ijezie asked the AI "Do you have the ability to lock my wallet to avoid others t
 
 **The code is deliberately lean:** `veltravia-pair://join?g=<group>&k=<key>&e=<expiry>`, no device names. Two reasons: a QR has a hard size ceiling (the first version overflowed and threw "QR payload too long" — `QrCode` now grows to the smallest version that fits, up to v10, instead of dying), and names already sync inside the sealed blob via `adoptRemoteDevices`. Tests in `__tests__/pairingFlow.test.tsx` and `walletGroup.test.ts` pin both properties, including that the URI never contains the phrase.
 
+#### An unlinked device wipes itself and returns to Welcome (2026-10-29)
+
+Removing a device used to leave the removed phone working with its own local lock. That is now wrong: on removal the phone **deletes the wallet and goes back to the welcome screen**, like a fresh install.
+
+- `src/core/security/deviceRemoval.ts` — `wipeRemovedDevice()` clears the phrase, accounts list, lock flags, cached registry blob, wallet group, device id/key and per-account security passwords, then resets in-memory caches (caches first: their setters would re-create the entries being deleted).
+- `removalEvents.ts` — a dependency-free event so the registry can raise "this device was removed" and the app root can act, without the two importing each other.
+- `lockRegistry` raises it when it finds state it cannot decrypt; `App.tsx` registers the handler, calls `handleDeviceRemoved()`, then `resetToWelcome()` (full navigation reset).
+- `WelcomeScreen` shows a one-shot notice: "This device was unlinked", read via `takeRemovalNotice()`.
+- Tests: `__tests__/deviceRemoval.test.ts` (wipe contents, single event, idempotent) and `__tests__/deviceRevocation.test.ts` (rotation and envelopes).
+
+**Honest limits, unchanged:** this is a cooperative wipe for an honest install. No wallet can force a modified build or an offline phone to forget a phrase it already has. What cannot be bypassed is the key rotation: the removed device holds no envelope for the next epoch, so it cannot read future lock state or re-derive it. Non-custodial is intact throughout — the phrase never leaves the device, and the server stores only ciphertext.
+
 #### Removal is now a real revocation (2026-10-29)
 
 The phrase still gives the wallet its identity, but it no longer grants the lock key. The key is per-device state:

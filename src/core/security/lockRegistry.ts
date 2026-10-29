@@ -124,6 +124,13 @@ export async function registryKey(): Promise<string | null> {
   return group.groupId;
 }
 
+/** Set by the app root so a removal can be acted on (wipe + navigate). */
+let removalHandler: (() => Promise<void>) | null = null;
+
+export function registerRemovalHandler(handler: () => Promise<void>): void {
+  removalHandler = handler;
+}
+
 async function timedFetch(url: string, init?: RequestInit): Promise<Response> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
@@ -234,6 +241,10 @@ export async function refreshRegistryLock(): Promise<RegistryRemote | null> {
         // removed from the group. Say so instead of silently reading nothing.
         await markRemoved();
         await write({ remote: null });
+        // The app root listens: a removed device wipes itself and goes back to
+        // the welcome screen.
+        const handler = removalHandler;
+        if (handler) handler().catch(() => {});
         return null;
       }
     }

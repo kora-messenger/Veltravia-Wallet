@@ -23,6 +23,7 @@ import {
 import { openInBrowser } from '../../services/browserState';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
+import { takeRemovalNotice } from '../../core/security/deviceRemoval';
 import PrimaryButton from '../../components/PrimaryButton';
 import SecondaryButton from '../../components/SecondaryButton';
 
@@ -90,6 +91,8 @@ export default function WelcomeScreen({
   const { theme, isDark } = useTheme();
   const dark = theme.mode === 'dark';
   const [loading, setLoading] = useState<'create' | 'import' | null>(autoLoadFor ?? null);
+  // Set when this device was unlinked: say why the wallet is gone.
+  const [removed] = useState(() => takeRemovalNotice());
   const LOAD_MS = 2000;
 
   // Return from passcode: keep spinning for 2s, then finish account creation.
@@ -154,6 +157,15 @@ export default function WelcomeScreen({
   return (
     <SafeAreaView edges={['left', 'right']} style={[styles.root, { backgroundColor: theme.background }]}>
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
+      {removed && (
+        <View style={[styles.removedBanner, { borderColor: theme.border, backgroundColor: theme.surface }]} testID="unlinkedNotice">
+          <Text style={[styles.removedTitle, { color: theme.ink }]}>This device was unlinked</Text>
+          <Text style={[styles.removedBody, { color: theme.inkMuted }]}>
+            It was removed from your wallet from another device, so the wallet was deleted here. Import it with your
+            recovery phrase to use it again.
+          </Text>
+        </View>
+      )}
       <FlatList
         ref={listRef}
         data={SLIDES}
@@ -222,6 +234,9 @@ export default function WelcomeScreen({
 }
 
 const styles = StyleSheet.create({
+  removedBanner: { marginHorizontal: 20, marginTop: 12, padding: 14, borderWidth: 1, borderRadius: 14, gap: 4 },
+  removedTitle: { fontSize: 14.5, fontWeight: '700' },
+  removedBody: { fontSize: 12.5, lineHeight: 18 },
   root: { flex: 1 },
   carousel: { flex: 1 },
   slide: {

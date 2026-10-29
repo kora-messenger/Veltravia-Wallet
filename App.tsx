@@ -5,7 +5,9 @@ import { WalletsProvider } from './src/wallets/WalletsProvider';
 import Navigation from './src/navigation/Navigation';
 import { ToastHost } from './src/components/Toast';
 import { refreshWalletLocks } from './src/core/security/walletLock';
-import { refreshRegistryLock } from './src/core/security/lockRegistry';
+import { registerRemovalHandler, refreshRegistryLock } from './src/core/security/lockRegistry';
+import { handleDeviceRemoved } from './src/core/security/deviceRemoval';
+import { resetToWelcome } from './src/navigation/Navigation';
 
 /**
  * Boot: load the local lock flags and re-read the cross-device lock registry.
@@ -16,6 +18,12 @@ import { refreshRegistryLock } from './src/core/security/lockRegistry';
  */
 function useLockSyncOnLaunch(): void {
   useEffect(() => {
+    // A device unlinked from its wallet group wipes itself and returns to the
+    // welcome screen, wherever the discovery happened.
+    registerRemovalHandler(async () => {
+      await handleDeviceRemoved();
+      resetToWelcome();
+    });
     (async () => {
       try {
         await refreshWalletLocks();

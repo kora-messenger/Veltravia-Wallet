@@ -67,6 +67,14 @@ registerBrowserNavigator({
   navigate: (name: string, params?: any) => (navigationRef.current as any)?.navigate(name, params),
 });
 
+/**
+ * Drop the whole stack and land on the welcome screen. Used when this device has
+ * been removed from its wallet group: there is no wallet here any more.
+ */
+export function resetToWelcome(): void {
+  navigationRef.current?.reset({ index: 0, routes: [{ name: 'Onboarding' }] });
+}
+
 // Placeholder until screen files land in Phase 2 — typed to force wiring.
 const HomeScreen = require('../screens/HomeScreen').default;
 const MarketsScreen = require('../screens/MarketsScreen').default;
