@@ -43,6 +43,7 @@ import { movementBlock } from '../core/security/valueGuard';
 import { FONT } from '../theme/typography';
 import { PERP_SECTIONS, formatPerpPrice, type PerpMarket } from '../services/perpsMarkets';
 import { providerBalance, usePerpsAccount } from '../services/perpsAccount';
+import { addPerpsRecent } from '../services/perpsRecents';
 import type { Candle } from '../services/candleEngine';
 import {
   buildOrderBook, DEFAULT_BOOK_SETTINGS, groupOptionsFor, type BookSettings,
@@ -150,6 +151,7 @@ export default function PerpsTradeScreen() {
   const side: TradeSide = route.params?.side === 'long' ? 'long' : 'short';
   const market = useMemo(() => findTradeMarket(venue, symbol), [venue, symbol]);
 
+  useEffect(() => { if (market) addPerpsRecent(market as any); }, [market]);
 
   const pageBg = dark ? theme.background : '#FCFCFC';
   const chipBg = dark ? '#1E2133' : '#EEEDF0';

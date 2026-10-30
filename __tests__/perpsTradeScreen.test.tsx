@@ -25,9 +25,10 @@ jest.mock('@react-native-community/netinfo', () => ({
 import PerpsTradeScreen, { findTradeMarket } from '../src/screens/PerpsTradeScreen';
 import PerpsPayWithScreen from '../src/screens/PerpsPayWithScreen';
 import PerpsSearchScreen from '../src/screens/PerpsSearchScreen';
+import { resetPerpsRecents } from '../src/services/perpsRecents';
 import { resetPerpsFavorites } from '../src/services/perpsFavorites';
 
-beforeEach(() => { resetPerpsFavorites(); mockToast.mockClear(); jest.useFakeTimers(); });
+beforeEach(() => { resetPerpsFavorites(); resetPerpsRecents(); mockToast.mockClear(); jest.useFakeTimers(); });
 afterEach(() => { jest.useRealTimers(); });
 
 const mount = async (Screen: any, name: string, params?: any, extra?: Record<string, any>) => {

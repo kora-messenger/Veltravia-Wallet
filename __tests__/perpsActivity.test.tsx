@@ -27,8 +27,9 @@ import PerpsActivityScreen from '../src/screens/PerpsActivityScreen';
 import PerpsScreen from '../src/screens/PerpsScreen';
 import PerpsMarketScreen from '../src/screens/PerpsMarketScreen';
 import { resetPerpsFavorites } from '../src/services/perpsFavorites';
+import { resetPerpsRecents } from '../src/services/perpsRecents';
 
-beforeEach(() => { resetPerpsFavorites(); mockOnline = true; jest.useFakeTimers(); });
+beforeEach(() => { resetPerpsFavorites(); resetPerpsRecents(); mockOnline = true; jest.useFakeTimers(); });
 afterEach(() => { jest.useRealTimers(); });
 
 const mountScreen = async (Screen: any, name: string, params?: any) => {

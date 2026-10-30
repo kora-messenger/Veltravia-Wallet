@@ -33,6 +33,7 @@ import { intervalToResolution } from '../services/tvBridge';
 import { PERP_SECTIONS, formatPerpPrice, formatChange, type PerpMarket } from '../services/perpsMarkets';
 import { getMarketInfo, getMarketStats, relatedMarkets, marketName } from '../services/perpsMarketInfo';
 import { usePerpsFavorites, toggleFavorite, loadPerpsFavorites } from '../services/perpsFavorites';
+import { addPerpsRecent } from '../services/perpsRecents';
 import { useVenuePrefs, type PerpsVenue as VenueType } from '../services/perpsVenues';
 
 // Trust-measured action colors: deep green / deep red.
@@ -99,6 +100,7 @@ export default function PerpsMarketScreen() {
   // opening a market records it in Recents
   useEffect(() => {
     loadPerpsFavorites();
+    if (symbol) addPerpsRecent({ venue, symbol });
   }, [venue, symbol]);
 
   if (!market) {

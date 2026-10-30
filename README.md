@@ -582,13 +582,6 @@ A paired phone used to arrive unlocked with no lock password, which meant adding
 - **Tests** — `__tests__/pairingLockInheritance.test.ts` (6): locked wallet arrives locked and the same password opens it (wrong password rejected); the password never appears in relay traffic and the verifier is a salt:digest; an unlocked wallet does not invent a lock; a local password is never overwritten; exporting does not change the host; the inherited lock actually trips `movementBlock` and unlocking locally clears it. Full suite: 410 passing.
 
 
-**Market browser rebuilt to Trust's own screen (Oct 30).** The Perps "Search market" screen no longer opens on a
-Recents strip. It now matches Trust: a bare star button, the segmented pills (Popular / New / Stocks / Crypto) with
-the selected one grey, the "All providers" and "Volume (24h)" chips beneath, rows of logo + ticker + leverage badge +
-volume + sparkline + price/change, and the floating search pill with the round X. Per-row star buttons are gone
-(favoriting lives on the market page; a long press in the list still toggles it). The unused recents store and
-`src/services/perpsRecents.ts` were deleted with it. Tests: `__tests__/perpsSearch.test.tsx`.
-
 **Pair a New Device intro (Oct 30 design).** The pairing sheet now opens on a designed card instead of a wall of
 instructions: a vector illustration (dark phone showing the code, light phone scanning it, a shield joining them
 with a dashed glow), "Pair a New Device", one line of explanation, three feature rows (Secure & Encrypted, Link to

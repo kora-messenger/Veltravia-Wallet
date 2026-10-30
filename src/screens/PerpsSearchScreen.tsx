@@ -1,12 +1,6 @@
 /**
  * Veltravia Wallet — Perps "Search market" (Trust parity).
  *
- * Rebuilt to Trust's own layout: a bare star at the left of the tab strip, the
- * segmented pills (Popular / New / Stocks / Crypto), the provider and sort
- * chips underneath, then rows of logo, ticker, leverage, volume, sparkline and
- * price — and the floating search pill with the round X at the foot. The old
- * Recents strip is gone; Trust does not put one here.
- *
  * Opened from the search icon on the Perps home. A full-screen market browser:
  *   - star tab (favorites) + the section tabs (Popular, New, Crypto, Stocks...)
  *   - "All providers" and "Volume (24h)" filter chips, each opening a picker
@@ -36,6 +30,7 @@ import {
 import { formatPerpPrice, formatChange, perpSpark, type PerpMarket } from '../services/perpsMarkets';
 import { useVenuePrefs } from '../services/perpsVenues';
 import { usePerpsFavorites, toggleFavorite, loadPerpsFavorites } from '../services/perpsFavorites';
+import { usePerpsRecents, addPerpsRecent, clearPerpsRecents, loadPerpsRecents } from '../services/perpsRecents';
 import { PERP_SECTIONS } from '../services/perpsMarkets';
 import {
   SEARCH_TABS, FAVORITES_TAB, SORT_OPTIONS, queryMarkets, favKey, defaultDir,
@@ -81,6 +76,7 @@ export default function PerpsSearchScreen() {
   const hl = useVenuePrefs('hyperliquid');
   const aster = useVenuePrefs('aster');
   const favorites = usePerpsFavorites();
+  const recents = usePerpsRecents();
 
   // One page per tab, swipeable like Trust: the list is a horizontal pager and
   // the tab strip follows it (and vice versa).
@@ -100,7 +96,7 @@ export default function PerpsSearchScreen() {
   const [loading, setLoading] = useState(false);
   const first = useRef(true);
 
-  useEffect(() => { loadPerpsFavorites(); }, []);
+  useEffect(() => { loadPerpsFavorites(); loadPerpsRecents(); }, []);
 
   // brief spinner when switching tab (not on first paint)
   useEffect(() => {
@@ -147,11 +143,19 @@ export default function PerpsSearchScreen() {
     else if (x + w + MARGIN > right) tabsRef.current.scrollTo({ x: x + w + MARGIN - W, animated: true });
   }, [tab, W]);
 
+  // Recents resolve against the dataset; hidden venues drop out of the row.
+  const recentMarkets = useMemo(
+    () => recents
+      .map((r) => PERP_SECTIONS.flatMap((s) => s.markets).find((m) => m.symbol === r.symbol && (m.venue ?? 'hyperliquid') === r.venue))
+      .filter((m): m is PerpMarket => !!m)
+      .filter((m) => (m.venue ?? 'hyperliquid') === 'aster' ? aster.showInMarkets : hl.showInMarkets),
+    [recents, hl.showInMarkets, aster.showInMarkets],
+  );
+
   const close = () => { Keyboard.dismiss(); navigation.goBack(); };
   const onX = () => (query ? setQuery('') : close());
 
   const chipBg = dark ? '#1D2133' : '#F0F0F3';
-  const pillBg = dark ? '#252A3D' : '#E7E7EC';
   const muted = theme.inkMuted;
   const leverageBg = dark ? 'rgba(255,255,255,0.10)' : '#EEEEF3';
   const sortLabel = SORT_OPTIONS.find((o) => o.key === sort)!.label;
@@ -163,46 +167,66 @@ export default function PerpsSearchScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: theme.background, paddingTop: insets.top + 6 }]}>
-      {/* tab strip — a bare star, then the segmented pills (Trust) */}
-      <View style={styles.tabRow}>
+      {/* Recents: recently viewed markets (Trust parity) */}
+      {recentMarkets.length > 0 ? (
+        <View style={styles.recentsWrap}>
+          <View style={styles.recentsHead}>
+            <Text style={[styles.recentsTitle, { color: theme.ink }]}>Recents</Text>
+            <Pressable accessibilityLabel="Clear all recents" onPress={clearPerpsRecents} hitSlop={8}>
+              <Text style={[styles.clearAll, { color: theme.brand }]}>Clear all</Text>
+            </Pressable>
+          </View>
+          <ScrollView horizontal style={styles.stripFixed} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recentsRow}>
+            {recentMarkets.map((m) => (
+              <Pressable
+                key={`${m.venue ?? 'hyperliquid'}:${m.symbol}`}
+                accessibilityLabel={`Recent ${m.symbol}`}
+                style={[styles.recentCard, { backgroundColor: chipBg }]}
+                onPress={() => openMarket(m)}
+              >
+                <MarketLogo m={m} />
+                <View>
+                  <Text style={[styles.recentName, { color: theme.ink }]} numberOfLines={1}>{m.symbol}</Text>
+                  <Text style={[styles.recentSub, { color: muted }]} numberOfLines={1}>Perps</Text>
+                </View>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
+
+      {/* tab strip */}
+      <ScrollView
+        ref={tabsRef}
+        horizontal
+        style={styles.stripFixed}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabs}
+        scrollEventThrottle={16}
+        onScroll={(e) => { stripX.current = e.nativeEvent.contentOffset.x; }}
+      >
         <Pressable
           accessibilityLabel="Favorites"
           onPress={() => selectTab(FAVORITES_TAB)}
-          hitSlop={8}
-          style={styles.starBtn}
+          style={[styles.tab, tab === FAVORITES_TAB && { backgroundColor: dark ? '#252A3D' : '#E7E7EC' }]}
         >
-          <StarIcon
-            size={24}
-            color={tab === FAVORITES_TAB ? theme.ink : muted}
-            filled={tab === FAVORITES_TAB}
-            strokeWidth={1.8}
-          />
+          <StarIcon size={22} color={tab === FAVORITES_TAB ? theme.ink : muted} filled={tab === FAVORITES_TAB} />
         </Pressable>
-        <ScrollView
-          ref={tabsRef}
-          horizontal
-          style={styles.stripFixed}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabs}
-          scrollEventThrottle={16}
-          onScroll={(e) => { stripX.current = e.nativeEvent.contentOffset.x; }}
-        >
-          {SEARCH_TABS.map((t) => {
-            const active = tab === t.key;
-            return (
-              <Pressable
-                key={t.key}
-                accessibilityLabel={`Tab ${t.title}`}
-                onLayout={(e) => { tabX.current[t.key] = e.nativeEvent.layout.x; tabW.current[t.key] = e.nativeEvent.layout.width; }}
-                onPress={() => selectTab(t.key)}
-                style={[styles.tab, { backgroundColor: active ? pillBg : 'transparent' }]}
-              >
-                <Text style={[styles.tabText, { color: active ? theme.ink : muted }]}>{t.title}</Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </View>
+        {SEARCH_TABS.map((t) => {
+          const active = tab === t.key;
+          return (
+            <Pressable
+              key={t.key}
+              accessibilityLabel={`Tab ${t.title}`}
+              onLayout={(e) => { tabX.current[t.key] = e.nativeEvent.layout.x; tabW.current[t.key] = e.nativeEvent.layout.width; }}
+              onPress={() => selectTab(t.key)}
+              style={[styles.tab, active && { backgroundColor: dark ? '#252A3D' : '#E7E7EC' }]}
+            >
+              <Text style={[styles.tabText, { color: active ? theme.ink : muted }]}>{t.title}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
 
       {/* filter chips */}
       <View style={styles.filters}>
@@ -280,6 +304,14 @@ export default function PerpsSearchScreen() {
                         <Text style={[styles.price, { color: theme.ink }]}>{formatPerpPrice(m.price)}</Text>
                         <Text style={[styles.change, { color: col }]}>{formatChange(m.change24h)}</Text>
                       </View>
+                      <Pressable
+                        accessibilityLabel={fav ? `Unfavorite ${m.symbol}` : `Favorite ${m.symbol}`}
+                        hitSlop={8}
+                        onPress={() => toggleFavorite(favKey(m))}
+                        style={styles.favBtn}
+                      >
+                        <StarIcon size={18} color={fav ? '#F4B728' : muted} filled={fav} />
+                      </Pressable>
                     </Pressable>
                   );
                   return t === FAVORITES_TAB ? (
@@ -369,10 +401,16 @@ export default function PerpsSearchScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  tabRow: { flexDirection: 'row', alignItems: 'center', paddingLeft: 12, paddingBottom: 10 },
-  starBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginRight: 4 },
+  recentsWrap: { paddingBottom: 12 },
+  recentsHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 10 },
+  recentsTitle: { fontSize: 18, fontFamily: 'Inter-700', fontWeight: '700' },
+  clearAll: { fontSize: 14, fontFamily: 'Inter-600', fontWeight: '600' },
+  recentsRow: { paddingHorizontal: 16, gap: 8 },
+  recentCard: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, minWidth: 118 },
+  recentName: { fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600' },
+  recentSub: { fontSize: 13, fontFamily: 'Inter-500', fontWeight: '500', marginTop: 1 },
   stripFixed: { flexGrow: 0, flexShrink: 0 },
-  tabs: { alignItems: 'center', gap: 6, paddingRight: 16 },
+  tabs: { paddingHorizontal: 16, alignItems: 'center', gap: 6, paddingBottom: 10 },
   tab: { height: 40, minWidth: 44, paddingHorizontal: 16, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   tabText: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
   filters: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 6 },
@@ -394,6 +432,7 @@ const styles = StyleSheet.create({
   rowRight: { alignItems: 'flex-end', minWidth: 96, marginLeft: 6 },
   price: { fontSize: 17, fontFamily: 'Inter-700', fontWeight: '700' },
   change: { fontSize: 14, fontFamily: 'Inter-600', fontWeight: '600', marginTop: 3 },
+  favBtn: { marginLeft: 8, width: 24, alignItems: 'center' },
   bar: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', alignItems: 'center', gap: 10 },
   field: { flex: 1, height: 52, borderRadius: 26, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, gap: 10 },
   input: { flex: 1, fontSize: 17, fontFamily: 'Inter-500', paddingVertical: 0 },
