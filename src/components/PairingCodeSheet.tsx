@@ -13,9 +13,10 @@
  * key. Closing the sheet cancels the session.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import QrCode from './QrCode';
+import PairDeviceIntro from './PairDeviceIntro';
 import AppModal from './AppModal';
 import { ensureGroup, getGroup } from '../core/security/walletGroup';
 import { authenticateForPairing, pairingAuthOptions } from '../core/security/pairingAuth';
@@ -168,37 +169,73 @@ export default function PairingCodeSheet({
 
   const remaining = session ? session.expiresAt - now : 0;
   const locked = phase === 'locked' || phase === 'showing';
+  // Lavender for the feature bubbles and the notice; translucent violet on dark
+  // so the card keeps the design's tint without glowing.
+  const accent = theme.mode === 'light' ? '#F0F0FF' : 'rgba(108,99,255,0.14)';
+  const accentText = theme.mode === 'light' ? '#4B3FD7' : '#A9A3FF';
 
   return (
     <AppModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <View style={[styles.sheet, { backgroundColor: theme.surface }]} testID="pairingCodeSheet">
+          {locked ? (
+            // Phases before a code exists: explain, then gate on proof of presence.
+            // Nothing is minted yet: explain what pairing does, then ask for proof
+            // of presence. "Show QR Code" goes through the same gate as before.
+            <>
+              <View testID="pairingLocked" style={{ flexShrink: 1 }}>
+                {/* The card is tall on small phones: the explanation scrolls, the
+                    two buttons stay put. */}
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  bounces={false}
+                  contentContainerStyle={{ gap: 10 }}
+                >
+                  <PairDeviceIntro
+                    accent={accent}
+                    accentText={accentText}
+                    titleColor={theme.ink}
+                    bodyColor={theme.inkMuted}
+                  />
+                </ScrollView>
+              </View>
+              {authNote ? (
+                <Text style={[styles.fine, { color: '#E5484D' }]} testID="pairingAuthNote">
+                  {authNote}
+                </Text>
+              ) : null}
+              <View style={styles.actions}>
+                <Pressable
+                  onPress={onClose}
+                  style={({ pressed }) => [styles.btn, { backgroundColor: theme.surfaceAlt, opacity: pressed ? 0.8 : 1 }]}
+                  accessibilityLabel="Cancel"
+                >
+                  <Text style={[styles.btnText, { color: theme.ink }]}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  onPress={unlockAndMint}
+                  disabled={!canBiometric && !canPasscode}
+                  style={({ pressed }) => [
+                    styles.btn,
+                    { backgroundColor: theme.brand, opacity: !canBiometric && !canPasscode ? 0.4 : pressed ? 0.85 : 1 },
+                  ]}
+                  accessibilityLabel={canBiometric ? 'Show QR Code' : 'Enter passcode'}
+                >
+                  <Text style={[styles.btnText, { color: '#FFFFFF' }]}>
+                    {canBiometric ? 'Show QR Code' : 'Enter passcode'}
+                  </Text>
+                </Pressable>
+              </View>
+            </>
+          ) : (
+            <>
           <Text style={[styles.title, { color: theme.ink }]}>Pair a device</Text>
           <Text style={[styles.sub, { color: theme.inkMuted }]}>
             On the other device open Veltravia Wallet → Import an existing wallet → Pair device, then scan this code.
           </Text>
 
           <View style={styles.qrWrap}>
-            {locked ? (
-              <View style={styles.lockBox} testID="pairingLocked">
-                <Text style={[styles.sub, { color: theme.inkMuted }]}>
-                  Only show this code to someone you are pairing in person. Anyone who scans it can ask to join this
-                  wallet group, so confirm it is you first.
-                </Text>
-                <Text style={[styles.fine, { color: theme.inkMuted }]}>
-                  {canBiometric
-                    ? 'Use your fingerprint or face to continue.'
-                    : canPasscode
-                      ? 'Enter your wallet passcode to continue.'
-                      : 'No biometrics or passcode are set on this device, so a pairing code cannot be shown.'}
-                </Text>
-                {authNote ? (
-                  <Text style={[styles.fine, { color: '#E5484D' }]} testID="pairingAuthNote">
-                    {authNote}
-                  </Text>
-                ) : null}
-              </View>
-            ) : phase === 'confirm' && joiner ? (
+            {phase === 'confirm' && joiner ? (
               <View style={styles.confirmBox} testID="pairingConfirm">
                 <Text style={[styles.sub, { color: theme.inkMuted }]}>
                   Check that the other device shows the same six digits. If it does not, tap Cancel — someone may be
@@ -229,30 +266,7 @@ export default function PairingCodeSheet({
           </Text>
 
           <View style={styles.actions}>
-            {locked ? (
-              <>
-                <Pressable
-                  onPress={onClose}
-                  style={({ pressed }) => [styles.btn, { backgroundColor: theme.surfaceAlt, opacity: pressed ? 0.8 : 1 }]}
-                  accessibilityLabel="Cancel"
-                >
-                  <Text style={[styles.btnText, { color: theme.ink }]}>Not now</Text>
-                </Pressable>
-                <Pressable
-                  onPress={unlockAndMint}
-                  disabled={!canBiometric && !canPasscode}
-                  style={({ pressed }) => [
-                    styles.btn,
-                    { backgroundColor: theme.brand, opacity: !canBiometric && !canPasscode ? 0.4 : pressed ? 0.85 : 1 },
-                  ]}
-                  accessibilityLabel={canBiometric ? 'Confirm it is you' : 'Enter passcode'}
-                >
-                  <Text style={[styles.btnText, { color: '#FFFFFF' }]}>
-                    {canBiometric ? 'Confirm it’s you' : 'Enter passcode'}
-                  </Text>
-                </Pressable>
-              </>
-            ) : phase === 'confirm' ? (
+            {phase === 'confirm' ? (
               <>
                 <Pressable
                   onPress={decline}
@@ -297,6 +311,8 @@ export default function PairingCodeSheet({
               </>
             )}
           </View>
+            </>
+          )}
         </View>
       </View>
 
@@ -316,7 +332,7 @@ export default function PairingCodeSheet({
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 24 },
-  sheet: { borderRadius: 20, padding: 20, gap: 12 },
+  sheet: { borderRadius: 24, padding: 20, gap: 12, maxHeight: '92%' },
   title: { fontSize: 17, fontWeight: '700', textAlign: 'center' },
   sub: { fontSize: 13, lineHeight: 19, textAlign: 'center' },
   qrWrap: { alignItems: 'center', gap: 8, paddingVertical: 6, minHeight: 240, justifyContent: 'center' },

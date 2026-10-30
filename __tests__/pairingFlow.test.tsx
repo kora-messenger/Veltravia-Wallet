@@ -131,7 +131,7 @@ describe('the code sheet an existing device shows', () => {
     });
     // unlock first: no code is shown until presence is proven
     await act(async () => {
-      await tree.root.findAll((n) => n.props.accessibilityLabel === 'Confirm it is you')[0].props.onPress();
+      await tree.root.findAll((n) => n.props.accessibilityLabel === 'Show QR Code')[0].props.onPress();
     });
     await act(async () => {
       for (let i = 0; i < 20; i++) await Promise.resolve();

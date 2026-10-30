@@ -126,7 +126,7 @@ describe('showing a pairing code requires proof of presence', () => {
   it('shows the code after biometrics succeed', async () => {
     mockAuth.authenticateForPairing.mockResolvedValue({ ok: true, method: 'biometric' });
     const tree = await renderSheet();
-    const btn = tree.root.findAll((n) => n.props.accessibilityLabel === 'Confirm it is you')[0];
+    const btn = tree.root.findAll((n) => n.props.accessibilityLabel === 'Show QR Code')[0];
     await act(async () => {
       await btn.props.onPress();
     });
@@ -139,7 +139,7 @@ describe('showing a pairing code requires proof of presence', () => {
   it('does not show a code when the prompt is cancelled or fails', async () => {
     mockAuth.authenticateForPairing.mockResolvedValue({ ok: false, reason: 'cancelled', passcodeAvailable: false });
     const tree = await renderSheet();
-    const btn = tree.root.findAll((n) => n.props.accessibilityLabel === 'Confirm it is you')[0];
+    const btn = tree.root.findAll((n) => n.props.accessibilityLabel === 'Show QR Code')[0];
     await act(async () => {
       await btn.props.onPress();
     });
@@ -153,7 +153,7 @@ describe('showing a pairing code requires proof of presence', () => {
   it('falls back to the passcode keypad, and only a verified passcode mints a code', async () => {
     mockAuth.authenticateForPairing.mockResolvedValue({ ok: false, reason: 'cancelled', passcodeAvailable: true });
     const tree = await renderSheet();
-    const btn = tree.root.findAll((n) => n.props.accessibilityLabel === 'Confirm it is you')[0];
+    const btn = tree.root.findAll((n) => n.props.accessibilityLabel === 'Show QR Code')[0];
     await act(async () => {
       await btn.props.onPress();
     });
@@ -188,7 +188,7 @@ describe('showing a pairing code requires proof of presence', () => {
     mockAuth.authenticateForPairing.mockResolvedValue({ ok: true, method: 'biometric' });
     const tree = await renderSheet();
     await act(async () => {
-      await tree.root.findAll((n) => n.props.accessibilityLabel === 'Confirm it is you')[0].props.onPress();
+      await tree.root.findAll((n) => n.props.accessibilityLabel === 'Show QR Code')[0].props.onPress();
     });
     await settle();
     expect(findCodes(tree).length).toBeGreaterThan(0);
