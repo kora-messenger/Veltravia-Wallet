@@ -18,6 +18,7 @@
 
 import * as SecureStorage from '../storage/secureStorage';
 import { CHAINS } from '../../config/chains';
+import { generateMnemonic, normalizeMnemonic, validateMnemonic, type MnemonicStrength } from './bip39';
 
 // Types mirror WalletCore's TW* objects — the native module surface.
 interface WalletCoreNative {
@@ -69,22 +70,51 @@ export interface WalletAccount {
 
 export class WalletManager {
   /**
-   * Create a brand-new wallet: generate a 12-word BIP39 mnemonic via
-   * WalletCore, persist it encrypted, return nothing sensitive.
-   * The mnemonic is shown ONCE by the onboarding flow (read via
-   * revealSeed with the auth prompt), never stored in plain state.
+   * Generate a brand-new 12-word BIP-39 phrase WITHOUT storing it.
+   *
+   * The onboarding flow shows these words, makes the user prove they wrote them
+   * down, and only then calls `commitPhrase`. Returning the phrase instead of
+   * writing it means an abandoned onboarding leaves no half-created wallet.
+   *
+   * Generation is local (bip39.ts + the platform CSPRNG). WalletCore is not
+   * required to create or restore a phrase, only to derive addresses from it.
    */
-  async createWallet(): Promise<void> {
-    const phrase = core().HDWalletCreateMnemonic(128); // 12 words
-    await SecureStorage.storeSeed(phrase);
+  generatePhrase(strength: MnemonicStrength = 128): string {
+    return generateMnemonic(strength);
   }
 
-  /** Import an existing wallet from a 12/24-word phrase. Validates first. */
+  /** Store a phrase the user has been shown and confirmed. */
+  async commitPhrase(phrase: string): Promise<boolean> {
+    const check = validateMnemonic(phrase);
+    if (!check.ok) return false;
+    await SecureStorage.storeSeed(normalizeMnemonic(phrase));
+    return true;
+  }
+
+  /**
+   * Create a brand-new wallet and store it in one step (no backup screen).
+   * Kept for callers that do not show the phrase; onboarding uses
+   * generatePhrase + commitPhrase so the user can write it down first.
+   */
+  async createWallet(): Promise<void> {
+    await SecureStorage.storeSeed(this.generatePhrase(128));
+  }
+
+  /**
+   * Import an existing wallet from a phrase. Real BIP-39 validation: the
+   * checksum and the wordlist are checked, not just the word count.
+   */
   async importWallet(phrase: string): Promise<boolean> {
-    if (!core().HDWalletMnemonicIsValid(phrase.trim())) {
-      return false;
+    const check = validateMnemonic(phrase);
+    if (!check.ok) return false;
+    // If the native bridge is present, let WalletCore confirm too — it is the
+    // authority once it ships, and disagreement means we do not store.
+    try {
+      if (!core().HDWalletMnemonicIsValid(normalizeMnemonic(phrase))) return false;
+    } catch {
+      /* no native bridge in this build: the local BIP-39 check stands */
     }
-    await SecureStorage.storeSeed(phrase.trim());
+    await SecureStorage.storeSeed(normalizeMnemonic(phrase));
     return true;
   }
 

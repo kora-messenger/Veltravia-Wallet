@@ -1,9 +1,10 @@
 /**
  * Veltravia Wallet — "Add existing wallet" (recovery phrase import).
  *
- * v1: the phrase textarea + word count. Phase 2 (Wallet Core) validates the
- * phrase and derives real keys; for now a 12/24-word phrase continues to the
- * "Name your wallet" screen with origin 'imported'.
+ * The phrase is checked for real: BIP-39 wordlist membership AND the checksum,
+ * so a typo or a made-up 12 words cannot masquerade as a wallet. Only a valid
+ * phrase is written to the keystore, through the same storeSeed call every
+ * other wallet path uses.
  */
 
 import PrimaryButton from '../../components/PrimaryButton';
@@ -20,25 +21,44 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import { BackIcon } from '../../components/icons';
+import { normalizeMnemonic, validateMnemonic } from '../../core/wallet/bip39';
+import { walletManager } from '../../core/wallet/walletManager';
 
 export default function ImportWalletScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const [phrase, setPhrase] = useState('');
   const [checking, setChecking] = useState(false);
+  const [storeError, setStoreError] = useState<string | null>(null);
 
-  const words = phrase.trim().split(/\s+/).filter(Boolean);
-  const valid = words.length === 12 || words.length === 24;
+  const words = normalizeMnemonic(phrase).split(' ').filter(Boolean);
+  const check = validateMnemonic(phrase);
+  const valid = check.ok;
+  const error =
+    !check.ok && words.length > 0
+      ? check.reason === 'count'
+        ? 'A recovery phrase is 12, 15, 18, 21 or 24 words.'
+        : check.reason === 'unknown-word'
+          ? `"${check.detail}" is not a recovery-phrase word.`
+          : check.reason === 'checksum'
+            ? "That phrase doesn't add up. Check the words and their order."
+            : null
+      : null;
 
   const surface = theme.mode === 'dark' ? theme.surfaceAlt : theme.surface;
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!valid || checking) return;
     setChecking(true);
-    // Phase 2: Wallet Core validates + derives. v1 proceeds to naming.
-    setTimeout(() => {
-      navigation.replace('NameWallet', { origin: 'imported' });
-    }, 600);
+    const stored = await walletManager.importWallet(phrase);
+    setChecking(false);
+    if (!stored) {
+      // WalletCore disagreed, or the keystore refused. Say so; do not proceed
+      // to a wallet that has no phrase behind it.
+      setStoreError('That phrase could not be stored on this device. Try again.');
+      return;
+    }
+    navigation.replace('NameWallet', { origin: 'imported' });
   };
 
   return (
@@ -61,19 +81,30 @@ export default function ImportWalletScreen({ navigation }: { navigation: any }) 
         <View style={[styles.box, { backgroundColor: surface, borderColor: theme.border }]}>
           <TextInput
             value={phrase}
-            onChangeText={setPhrase}
             placeholder="Type or paste your recovery phrase"
             placeholderTextColor={theme.inkMuted}
             multiline
             autoCorrect={false}
             autoCapitalize="none"
             style={[styles.input, { color: theme.ink }]}
+            testID="importPhraseInput"
+            onChangeText={(t) => {
+              setPhrase(t);
+              if (storeError) setStoreError(null);
+            }}
           />
         </View>
 
-        <Text style={[styles.count, { color: valid ? theme.positive : theme.inkMuted }]}>
+        <Text style={[styles.count, { color: valid ? theme.positive : theme.inkMuted }]} testID="importWordCount">
           {words.length === 0 ? '12 or 24 words' : `${words.length} word${words.length === 1 ? '' : 's'}`}
+          {valid ? ' · phrase checks out' : ''}
         </Text>
+
+        {(error || storeError) && (
+          <Text style={[styles.count, { color: '#E5484D' }]} testID="importPhraseError">
+            {storeError ?? error}
+          </Text>
+        )}
       </ScrollView>
 
       <View style={{ paddingBottom: insets.bottom + 12, paddingHorizontal: 20 }}>

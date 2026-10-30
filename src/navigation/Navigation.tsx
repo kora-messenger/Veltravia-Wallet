@@ -28,6 +28,7 @@ import ManageAccountScreen from '../screens/wallet/ManageAccountScreen';
 import BalanceDetailsScreen from '../screens/wallet/BalanceDetailsScreen';
 import AiChatScreen from '../screens/ai/AiChatScreen';
 import PasscodeScreen from '../screens/onboarding/PasscodeScreen';
+import RecoveryPhraseScreen from '../screens/onboarding/RecoveryPhraseScreen';
 import SelectRecoveryMethodScreen from '../screens/SelectRecoveryMethodScreen';
 import BuyScreen from '../features/buy/BuyScreen';
 import SelectCurrencyScreen from '../features/buy/SelectCurrencyScreen';
@@ -87,6 +88,7 @@ const ActivityScreen = require('../screens/ActivityScreen').default;
 export type RootStackParamList = {
   Onboarding: { finish?: 'create' | 'import' } | undefined;
   Passcode: { flow: 'create' | 'import' };
+  RecoveryPhrase: undefined;
   MainTabs: undefined;
   Wallets: undefined;
   NameWallet: { origin?: 'created' | 'imported' } | undefined;
@@ -255,8 +257,9 @@ export default function Navigation() {
               autoLoadFor={route.params?.finish ?? null}
               onAutoLoadDone={(which: 'create' | 'import') => {
                 if (which === 'create') {
-                  navigationRef.current?.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
-                  setNotifPrompt(true);
+                  // No wallet exists until the phrase is shown, written down and
+                  // confirmed: the phrase IS the wallet.
+                  navigationRef.current?.navigate('RecoveryPhrase');
                 } else {
                   navigationRef.current?.navigate('SelectRecoveryMethod');
                 }
@@ -280,6 +283,19 @@ export default function Navigation() {
                 navigationRef.current?.navigate('Onboarding', { finish: route.params.flow });
                 // 'biometric' outcome is consumed later by settings;
                 // both allowed and denied continue to the same next step.
+              }}
+            />
+          )}
+        </Stack.Screen>
+        <Stack.Screen name="RecoveryPhrase" options={{ animation: 'slide_from_right', gestureEnabled: false }}>
+          {() => (
+            <RecoveryPhraseScreen
+              // Backing out leaves no wallet behind: nothing is stored until the
+              // user proves they wrote the phrase down.
+              onBack={() => navigationRef.current?.navigate('Onboarding')}
+              onDone={() => {
+                navigationRef.current?.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+                setNotifPrompt(true);
               }}
             />
           )}

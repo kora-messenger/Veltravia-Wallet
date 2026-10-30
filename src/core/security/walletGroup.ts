@@ -22,6 +22,14 @@ import * as Keychain from 'react-native-keychain';
 import nacl from 'tweetnacl';
 import { concat, fromAscii, fromHex, randomBytes, sha256, toHex } from '../crypto/hash';
 import { digest } from '../storage/passcode';
+import {
+  lockKeyCandidates,
+  lockKeyFor,
+  lockKeyV1,
+  lockKeyV2,
+  type LockKeyCandidate,
+  type LockKeyId,
+} from '../crypto/kdf';
 import { readSeed } from '../storage/secureStorage';
 
 const SERVICE = 'com.veltravia.wallet.walletgroup';
@@ -55,6 +63,12 @@ export interface WalletGroup {
   groupId: string;
   /** Group key, hex. Seed-derived, or rotated when a PAIRED device is removed. */
   key: string;
+  /**
+   * Which derivation produced `key`: 'v2' (HKDF, domain separated) or 'v1' (the
+   * original iterated digest). Absent on records written before the change, and
+   * read as 'v1' so no existing wallet is orphaned.
+   */
+  keyVersion?: LockKeyId;
   createdAt: number;
   devices: GroupDevice[];
   /** Where the identity came from. */
@@ -86,12 +100,36 @@ const hex = (n: number) => toHex(randomBytes(n));
  * The group for a wallet whose seed we can read: deterministic, so a second
  * device lands on the same record without any pairing step.
  */
-export function deriveSeedGroup(seed: string): { groupId: string; key: string } {
+export function deriveSeedGroup(seed: string, keyVersion: LockKeyId = 'v2'): {
+  groupId: string;
+  key: string;
+  keyVersion: LockKeyId;
+} {
+  // The GROUP ID must never change: it is the record's address on the server and
+  // the salt for the v2 key, so re-deriving it under a new scheme would move
+  // every existing wallet to a different record.
+  const groupId = digest(seed, 'veltravia-group-id-v1').slice(0, 32);
   return {
-    // 3000-round salted digest, truncated: a stable but costly-to-compute id.
-    groupId: digest(seed, 'veltravia-group-id-v1').slice(0, 32),
-    key: digest(seed, 'veltravia-group-key-v1'),
+    groupId,
+    key: keyVersion === 'v2' ? lockKeyV2(seed, groupId) : lockKeyV1(seed),
+    keyVersion,
   };
+}
+
+/**
+ * Keys this device may use to open a peer's box, most preferred first.
+ *
+ * Reads the announcement's key id first, then every candidate, so a wallet that
+ * predates v2 and one that was created after it can still read each other.
+ */
+export function groupBoxKeys(group: WalletGroup, seed: string, announced?: string): LockKeyCandidate[] {
+  const ids: LockKeyId[] = [];
+  const announcedId = announced === 'v2' || announced === 'v1' ? announced : undefined;
+  if (announcedId) ids.push(announcedId);
+  const own = group.keyVersion ?? 'v1';
+  if (!ids.includes(own)) ids.push(own);
+  for (const c of lockKeyCandidates(seed, group.groupId)) if (!ids.includes(c.kid)) ids.push(c.kid);
+  return ids.map((kid) => lockKeyFor(kid, seed, group.groupId));
 }
 
 async function readSeedSafely(): Promise<string | null> {
@@ -242,7 +280,7 @@ export async function getGroup(): Promise<WalletGroup | null> {
   const stored = await readStored();
   const seed = await readSeedSafely();
   if (seed) {
-    const { groupId, key } = deriveSeedGroup(seed);
+    const { groupId, key, keyVersion } = deriveSeedGroup(seed);
     const own = await deviceId();
     const pub = (await deviceKeyPair()).public;
     // The phrase gives this wallet's IDENTITY. The key, however, is whatever
@@ -255,6 +293,7 @@ export async function getGroup(): Promise<WalletGroup | null> {
     cache = {
       groupId,
       key,
+      keyVersion,
       createdAt: stored?.createdAt ?? Date.now(),
       devices: [{ id: own, name: 'This device', addedAt: Date.now(), pub }],
       source: 'seed',

@@ -124,3 +124,21 @@ export function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
   for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
   return diff === 0;
 }
+
+/**
+ * CSPRNG or nothing.
+ *
+ * Math.random is not a source of cryptographic randomness, and a nonce is exactly
+ * the place where that matters. If the platform exposes no CSPRNG we fail the
+ * operation instead of minting a weak box.
+ */
+export function secureRandomBytes(n: number): Uint8Array {
+  const g: any = globalThis as any;
+  const c = g.crypto ?? g.msCrypto;
+  if (!c || typeof c.getRandomValues !== 'function') {
+    throw new Error('no CSPRNG available: refusing to generate a nonce');
+  }
+  const out = new Uint8Array(n);
+  c.getRandomValues(out);
+  return out;
+}
