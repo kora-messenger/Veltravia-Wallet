@@ -176,8 +176,6 @@ export default function PairingCodeSheet({
 
   const QRF = 236;          // the code window, corners included
   const QR_RADIUS = 26;
-  const dark = '#0B0E1A';
-  const panel = '#131A31';
 
   return (
     <AppModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -233,20 +231,21 @@ export default function PairingCodeSheet({
           </View>
         </View>
       ) : (
-        /* The QR screen itself: navy ground, gradient headline, the code in a
-           glowing window, the expiry pill, then the instruction card and Cancel. */
-        <View style={styles.darkScreen} testID="pairingCodeSheet">
-          <StatusBar barStyle="light-content" />
+        /* The QR screen itself: white ground, gradient headline, the code in a
+           glowing window, the expiry pill, then the instruction card and Cancel.
+           White in both themes, like the Restore Wallet screen. */
+        <View style={styles.qrScreen} testID="pairingCodeSheet">
+          <StatusBar barStyle="dark-content" />
 
-          <View style={[styles.darkHeader, { paddingTop: insets.top + 8 }]}>
+          <View style={[styles.qrHeader, { paddingTop: insets.top + 8 }]}>
             <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Close" style={styles.iconBtn}>
-              <ChevronLeftIcon size={22} color="#FFFFFF" />
+              <ChevronLeftIcon size={22} color="#0B0B12" />
             </Pressable>
           </View>
 
-          <View style={styles.darkHeadline} pointerEvents="none">
+          <View style={styles.qrHeadline} pointerEvents="none">
             <View style={styles.titleRow}>
-              <Text style={styles.darkTitle}>Link </Text>
+              <Text style={styles.qrTitle}>Link </Text>
               <Svg width={92} height={36}>
                 <Defs>
                   <SvgGradient id="linkWord" x1="0" y1="0" x2="1" y2="0">
@@ -259,7 +258,7 @@ export default function PairingCodeSheet({
                 </SvgText>
               </Svg>
             </View>
-            <Text style={styles.darkSub}>
+            <Text style={styles.qrSub}>
               On the other device open Veltravia Wallet → Import an existing wallet → Pair device, then scan this code.
             </Text>
           </View>
@@ -277,7 +276,7 @@ export default function PairingCodeSheet({
                 ) : session && phase !== 'expired' && phase !== 'done' ? (
                   <QrCode value={session.uri} size={QRF - 40} />
                 ) : (
-                  <Text style={[styles.darkSub, { color: '#6B6F7D' }]} testID="pairingExpired">
+                  <Text style={styles.qrSub} testID="pairingExpired">
                     {phase === 'done' ? 'Device paired' : 'That code has expired.'}
                   </Text>
                 )}
@@ -295,42 +294,42 @@ export default function PairingCodeSheet({
 
             {phase === 'confirm' || phase === 'expired' || phase === 'done' ? null : (
               <View style={styles.pill} testID="pairingTimer">
-                <ClockIcon size={16} color="#FFFFFF" />
+                <ClockIcon size={16} color="#0B0B12" />
                 <Text style={styles.pillText}>Expires in {Math.max(0, Math.ceil(remaining / 1000))}s</Text>
               </View>
             )}
 
-            <Text style={styles.fineDark}>
+            <Text style={styles.qrFine}>
               {phase === 'confirm'
                 ? 'Nothing has been shared yet. Confirming sends this wallet’s recovery phrase and lock key, sealed for that device only.'
                 : 'This code contains no keys at all. It works once, expires on its own, and the wallet only moves after you approve these digits.'}
             </Text>
           </View>
 
-          <View style={[styles.darkFooter, { paddingBottom: Math.max(insets.bottom, 14) }]}>
+          <View style={[styles.qrFooter, { paddingBottom: Math.max(insets.bottom, 14) }]}>
             <View style={styles.infoBox}>
               <View style={styles.infoIcon}>
-                <PhoneIcon size={20} color="#7FC4FF" />
+                <PhoneIcon size={20} color="#2EA2F8" />
               </View>
               <Text style={styles.infoText}>Make sure the QR code is clearly visible and within the frame.</Text>
             </View>
 
-            <View style={styles.darkActions}>
+            <View style={styles.qrActions}>
               {phase === 'confirm' ? (
                 <>
                   <Pressable
                     onPress={decline}
-                    style={({ pressed }) => [styles.darkBtn, { opacity: pressed ? 0.8 : 1 }]}
+                    style={({ pressed }) => [styles.qrBtn, { opacity: pressed ? 0.8 : 1 }]}
                     accessibilityLabel="Cancel pairing"
                   >
-                    <Text style={styles.darkBtnText}>Cancel</Text>
+                    <Text style={styles.qrBtnText}>Cancel</Text>
                   </Pressable>
                   <Pressable
                     onPress={confirm}
-                    style={({ pressed }) => [styles.darkBtn, styles.darkBtnPrimary, { opacity: pressed ? 0.85 : 1 }]}
+                    style={({ pressed }) => [styles.qrBtn, styles.qrBtnPrimary, { opacity: pressed ? 0.85 : 1 }]}
                     accessibilityLabel="Confirm the digits match"
                   >
-                    <Text style={[styles.darkBtnText, { color: '#FFFFFF' }]}>They match</Text>
+                    <Text style={[styles.qrBtnText, { color: '#FFFFFF' }]}>They match</Text>
                   </Pressable>
                 </>
               ) : (
@@ -340,10 +339,10 @@ export default function PairingCodeSheet({
                       cancelPairingSession();
                       onClose();
                     }}
-                    style={({ pressed }) => [styles.darkBtn, { opacity: pressed ? 0.8 : 1 }]}
+                    style={({ pressed }) => [styles.qrBtn, { opacity: pressed ? 0.8 : 1 }]}
                     accessibilityLabel="Cancel pairing"
                   >
-                    <Text style={styles.darkBtnText}>Cancel</Text>
+                    <Text style={styles.qrBtnText}>Cancel</Text>
                   </Pressable>
                   <Pressable
                     onPress={() => {
@@ -353,10 +352,10 @@ export default function PairingCodeSheet({
                       setJoiner(null);
                       setPhase('locked');
                     }}
-                    style={({ pressed }) => [styles.darkBtn, styles.darkBtnPrimary, { opacity: pressed ? 0.85 : 1 }]}
+                    style={({ pressed }) => [styles.qrBtn, styles.qrBtnPrimary, { opacity: pressed ? 0.85 : 1 }]}
                     accessibilityLabel="Show a new code"
                   >
-                    <Text style={[styles.darkBtnText, { color: '#FFFFFF' }]}>New code</Text>
+                    <Text style={[styles.qrBtnText, { color: '#FFFFFF' }]}>New code</Text>
                   </Pressable>
                 </>
               )}
@@ -388,28 +387,29 @@ const styles = StyleSheet.create({
   btn: { flex: 1, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   btnText: { fontSize: 15, fontWeight: '600' },
 
-  // the QR screen
-  darkScreen: { flex: 1, backgroundColor: '#0B0E1A' },
-  darkHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingBottom: 4 },
+  // the QR screen: white, like the restored reference
+  qrScreen: { flex: 1, backgroundColor: '#FFFFFF' },
+  qrHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingBottom: 4 },
   iconBtn: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: '#F1F2F6',
     alignItems: 'center', justifyContent: 'center',
   },
-  darkHeadline: { alignItems: 'center', paddingHorizontal: 18, paddingTop: 6 },
+  qrHeadline: { alignItems: 'center', paddingHorizontal: 18, paddingTop: 6 },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  darkTitle: {
-    fontSize: 27, lineHeight: 36, color: '#FFFFFF',
+  qrTitle: {
+    fontSize: 27, lineHeight: 36, color: '#0B0B12',
     fontFamily: 'Inter-700', fontWeight: '700', letterSpacing: -0.4,
   },
-  darkSub: {
+  qrSub: {
     marginTop: 8, paddingHorizontal: 14, textAlign: 'center',
-    fontSize: 14, lineHeight: 20, color: '#A0A3B1', fontFamily: 'Inter-400',
+    fontSize: 14, lineHeight: 20, color: '#6B6F7D', fontFamily: 'Inter-400',
   },
   frameWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, gap: 14 },
   qrCard: {
     position: 'absolute', left: 14, top: 14, right: 14, bottom: 14,
     borderRadius: 18, backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: 'rgba(11,14,26,0.07)',
     alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
   confirmBox: { alignItems: 'center', gap: 10, paddingHorizontal: 12 },
@@ -418,29 +418,29 @@ const styles = StyleSheet.create({
   pill: {
     height: 38, borderRadius: 19, paddingHorizontal: 16,
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#161C31', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: '#F4F5F9', borderWidth: 1, borderColor: 'rgba(11,14,26,0.07)',
   },
-  pillText: { color: '#FFFFFF', fontSize: 14, fontFamily: 'Inter-500' },
-  fineDark: {
+  pillText: { color: '#0B0B12', fontSize: 14, fontFamily: 'Inter-500' },
+  qrFine: {
     fontSize: 12, lineHeight: 17, textAlign: 'center',
-    color: '#8B90A0', fontFamily: 'Inter-400', paddingHorizontal: 20,
+    color: '#6B6F7D', fontFamily: 'Inter-400', paddingHorizontal: 20,
   },
-  darkFooter: { paddingHorizontal: 16, paddingTop: 6 },
+  qrFooter: { paddingHorizontal: 16, paddingTop: 6 },
   infoBox: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#131A31', borderRadius: 16, padding: 14, marginBottom: 12,
+    backgroundColor: '#F4F5F9', borderRadius: 16, padding: 14, marginBottom: 12,
   },
   infoIcon: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(46,162,248,0.14)',
+    backgroundColor: 'rgba(46,162,248,0.12)',
     alignItems: 'center', justifyContent: 'center',
   },
-  infoText: { flex: 1, color: '#C9CCD6', fontSize: 13, lineHeight: 18, fontFamily: 'Inter-400' },
-  darkActions: { flexDirection: 'row', gap: 10 },
-  darkBtn: {
+  infoText: { flex: 1, color: '#4A4E5A', fontSize: 13, lineHeight: 18, fontFamily: 'Inter-400' },
+  qrActions: { flexDirection: 'row', gap: 10 },
+  qrBtn: {
     flex: 1, height: 52, borderRadius: 26,
-    backgroundColor: '#131A31', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#F1F2F6', alignItems: 'center', justifyContent: 'center',
   },
-  darkBtnPrimary: { backgroundColor: '#6C63FF' },
-  darkBtnText: { fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600', color: '#FFFFFF' },
+  qrBtnPrimary: { backgroundColor: '#6C63FF' },
+  qrBtnText: { fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600', color: '#0B0B12' },
 });

@@ -137,6 +137,11 @@ describe('the code sheet an existing device shows', () => {
       for (let i = 0; i < 20; i++) await Promise.resolve();
     });
     expect(tree.root.findAll((n) => n.props.testID === 'pairingCodeSheet').length).toBeGreaterThan(0);
+    // the code screen is white, not the navy card it used to be
+    const screen = tree.root.findAll((n) => n.props.testID === 'pairingCodeSheet')[0];
+    const screenStyle = [screen.props.style].flat(Infinity).filter(Boolean)
+      .reduce((a: any, b: any) => ({ ...a, ...b }), {});
+    expect(screenStyle.backgroundColor).toBe('#FFFFFF');
     // the pill counts the code's own 60 second life down, in seconds
     const timer = tree.root.findAll((n) => n.props.testID === 'pairingTimer')[0];
     const flat = (c: any): string =>

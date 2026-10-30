@@ -594,7 +594,9 @@ window with glowing gradient corners, a live expiry pill, an instruction card wi
 Cancel.
 
 - **QR screen** (`src/components/PairingCodeSheet.tsx`): the pairing code sits inside the glowing window, so it is a
-  real screen rather than a light card. The pill counts the code's own 60 second life down in seconds ("Expires in
+  real screen rather than a light card. The screen is **white in both themes** (matching Restore Wallet): ink headline
+  with the gradient second word, muted subtitle, light grey pill and instruction card, ink Cancel. The scanner stays
+  dark, because the camera feed behind it is. The pill counts the code's own 60 second life down in seconds ("Expires in
   47s"), and the badge/mmm:ss sheet layout is gone. The lock gate, six-digit confirm and cancel logic are unchanged.
 - **Scanner** (`src/screens/ScanQrScreen.tsx`): the same frame, but the window is a live camera feed. The old
   bracket-chase animation went with it, since the window now stays put. Gallery pick and torch stay as small header
