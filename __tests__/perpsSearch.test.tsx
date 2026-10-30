@@ -16,7 +16,6 @@ import PerpsSearchScreen, { TAB_LOAD_MS } from '../src/screens/PerpsSearchScreen
 import { queryMarkets, parseVolume, defaultDir, favKey, FAVORITES_TAB, SEARCH_TABS, type QueryOptions } from '../src/services/perpsSearch';
 import { PERP_SECTIONS } from '../src/services/perpsMarkets';
 import { resetPerpsFavorites, toggleFavorite } from '../src/services/perpsFavorites';
-import { resetPerpsRecents } from '../src/services/perpsRecents';
 import { resetVenuePrefs, setShowInMarkets } from '../src/services/perpsVenues';
 
 const base: QueryOptions = {
@@ -186,35 +185,49 @@ describe('Search market screen', () => {
   });
 });
 
-describe('Recents row (Trust parity)', () => {
-  beforeEach(() => { resetPerpsFavorites(); resetVenuePrefs(); resetPerpsRecents(); jest.useFakeTimers(); });
+describe('Trust layout: no Recents strip, star + pills, chips, rows, footer', () => {
+  beforeEach(() => { resetPerpsFavorites(); resetVenuePrefs(); jest.useFakeTimers(); });
   afterEach(() => jest.useRealTimers());
 
-  it('store: tapping markets bumps them, newest first, capped, clearable', () => {
-    const { addPerpsRecent, clearPerpsRecents, getPerpsRecents } = require('../src/services/perpsRecents');
-    addPerpsRecent({ venue: 'hyperliquid', symbol: 'BTC' });
-    addPerpsRecent({ venue: 'hyperliquid', symbol: 'ETH' });
-    addPerpsRecent({ venue: 'hyperliquid', symbol: 'BTC' }); // bump, no duplicate
-    expect(getPerpsRecents().map((r: any) => r.symbol)).toEqual(['BTC', 'ETH']);
-    clearPerpsRecents();
-    expect(getPerpsRecents()).toEqual([]);
-  });
-
-  it('screen: no Recents until a market is opened; the card appears; Clear all empties; a card opens the market', async () => {
-    const { addPerpsRecent } = require('../src/services/perpsRecents');
+  it('never shows a Recents strip, even after markets have been opened', async () => {
     const t = await mount();
     expect(texts(t)).not.toContain('Recents');
-    // opening a market page records it (the market page does this on mount)
-    await act(async () => { addPerpsRecent({ venue: 'hyperliquid', symbol: 'BTC' }); });
-    expect(texts(t)).toContain('Recents');
-    expect(texts(t)).toEqual(expect.arrayContaining(['BTC', 'Perps']));
-    // tapping the card opens that market's page
-    const nav = t.root.findByType(PerpsSearchScreen).props.navigation;
-    const spy = jest.spyOn(nav, 'navigate');
-    await press(t, 'Recent BTC');
-    expect(spy).toHaveBeenCalledWith('PerpsMarket', { venue: 'hyperliquid', symbol: 'BTC' });
-    await press(t, 'Clear all recents');
-    expect(texts(t)).not.toContain('Recents');
+    expect(texts(t)).not.toContain('Clear all');
+    await act(async () => { t.unmount(); });
+  });
+
+  it('opens on the star plus the segmented pills, Popular selected', async () => {
+    const t = await mount();
+    expect(t.root.findAll((n) => n.props.accessibilityLabel === 'Favorites').length).toBeGreaterThan(0);
+    for (const title of ['Popular', 'New', 'Stocks', 'Crypto']) {
+      expect(texts(t)).toContain(title);
+      expect(t.root.findAll((n) => n.props.accessibilityLabel === `Tab ${title}`).length).toBeGreaterThan(0);
+    }
+    // the provider and sort chips sit under the pills
+    expect(t.root.findAll((n) => n.props.accessibilityLabel === 'All providers').length).toBeGreaterThan(0);
+    expect(t.root.findAll((n) => n.props.accessibilityLabel === 'Sort').length).toBeGreaterThan(0);
+    await act(async () => { t.unmount(); });
+  });
+
+  it('rows carry logo, ticker, leverage and volume, with no star column (Trust)', async () => {
+    const t = await mount();
+    const row = t.root.findAll((n) => n.props.accessibilityLabel === 'Market BTC' && typeof n.props.onPress === 'function')[0];
+    const rowTexts: string[] = [];
+    for (const n of row.findAll(() => true)) {
+      if (typeof n.props.children === 'string') rowTexts.push(n.props.children);
+    }
+    expect(rowTexts.join(' ')).toContain('BTC');
+    // favoriting now lives on the market page, so no per-row star button
+    expect(t.root.findAll((n) => String(n.props.accessibilityLabel || '').startsWith('Favorite BTC')).length).toBe(0);
+    // a long press still toggles it without leaving the list
+    expect(typeof row.props.onLongPress).toBe('function');
+    await act(async () => { t.unmount(); });
+  });
+
+  it('keeps the floating search pill and the round close button', async () => {
+    const t = await mount();
+    expect(t.root.findAll((n) => n.props.accessibilityLabel === 'Search market').length).toBeGreaterThan(0);
+    expect(t.root.findAll((n) => n.props.accessibilityLabel === 'Close search').length).toBeGreaterThan(0);
     await act(async () => { t.unmount(); });
   });
 
@@ -227,19 +240,10 @@ describe('Recents row (Trust parity)', () => {
     await act(async () => { t.unmount(); });
   });
 
-  it('screen: hidden venues drop out of the Recents row too', async () => {
-    const { addPerpsRecent } = require('../src/services/perpsRecents');
-    const { setShowInMarkets } = require('../src/services/perpsVenues');
-    addPerpsRecent({ venue: 'aster', symbol: 'ANT' });
-    await act(async () => { setShowInMarkets('aster', false); });
-    const t = await mount();
-    expect(texts(t)).not.toContain('Recents');
-    await act(async () => { t.unmount(); });
-  });
 });
 
 describe('Market pages: swiping the list switches tabs', () => {
-  beforeEach(() => { resetPerpsFavorites(); resetVenuePrefs(); resetPerpsRecents(); jest.useFakeTimers(); });
+  beforeEach(() => { resetPerpsFavorites(); resetVenuePrefs(); jest.useFakeTimers(); });
   afterEach(() => jest.useRealTimers());
 
   it('a sideways swipe of the list lands on that tab, with the same spinner beat', async () => {

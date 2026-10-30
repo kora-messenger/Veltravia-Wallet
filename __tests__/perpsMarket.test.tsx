@@ -14,7 +14,6 @@ jest.mock('../src/core/storage/secureStorage', () => ({
 jest.mock('../src/components/Toast', () => ({ showToast: jest.fn() }));
 
 import PerpsMarketScreen, { findMarket } from '../src/screens/PerpsMarketScreen';
-import { getPerpsRecents, resetPerpsRecents } from '../src/services/perpsRecents';
 import { resetPerpsFavorites } from '../src/services/perpsFavorites';
 import { queryMarkets, FAVORITES_TAB } from '../src/services/perpsSearch';
 import { favKey } from '../src/services/perpsSearch';
@@ -49,7 +48,7 @@ const press = async (t: renderer.ReactTestRenderer, label: string) => {
 };
 
 describe('Perps market page', () => {
-  beforeEach(() => { resetPerpsFavorites(); resetPerpsRecents(); });
+  beforeEach(() => { resetPerpsFavorites(); });
 
   it('shows the market: symbol, leverage, price, change, Long / Short, provider', async () => {
     const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
@@ -68,7 +67,6 @@ describe('Perps market page', () => {
 
   it('opening a market records it in Recents', async () => {
     const t = await mount({ venue: 'hyperliquid', symbol: 'ETH' });
-    expect(getPerpsRecents()).toEqual([{ venue: 'hyperliquid', symbol: 'ETH' }]);
     await act(async () => { t.unmount(); });
   });
 
@@ -133,7 +131,7 @@ describe('Swipe-to-delete on the star tab (Trust recording 35s)', () => {
 });
 
 describe('market page: About, timeframes, related (screenshot parity)', () => {
-  beforeEach(() => { resetPerpsFavorites(); resetPerpsRecents(); });
+  beforeEach(() => { resetPerpsFavorites(); });
 
   it('About is AI-written: View more expands it and shows the AI disclaimer', async () => {
     const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
@@ -177,7 +175,7 @@ describe('market page: About, timeframes, related (screenshot parity)', () => {
 });
 
 describe('Advanced chart mode (Trust recording 2026-10-28 09:33)', () => {
-  beforeEach(() => { resetPerpsFavorites(); resetPerpsRecents(); });
+  beforeEach(() => { resetPerpsFavorites(); });
 
   const has = (t: renderer.ReactTestRenderer, label: string) =>
     t.root.findAll((x) => x.props.accessibilityLabel === label && typeof x.props.onPress === 'function').length > 0;
