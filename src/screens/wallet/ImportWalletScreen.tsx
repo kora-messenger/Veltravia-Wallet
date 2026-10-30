@@ -37,6 +37,7 @@ import { walletManager } from '../../core/wallet/walletManager';
 import { pasteFromClipboard } from '../../core/clipboard';
 import { useWallets } from '../../wallets/WalletsProvider';
 import { registerScanTarget } from '../../services/scanTarget';
+import { parsePairingCode } from '../../core/security/pairingSession';
 
 /** Keep the word count and spacing, lose the words themselves. */
 function maskPhrase(phrase: string): string {
@@ -92,23 +93,38 @@ export default function ImportWalletScreen({ navigation }: { navigation: any }) 
   };
 
   const onScan = () => {
+    // This scanner has two jobs on one screen: read a secret phrase into the box,
+    // or read another device's pairing code and hand it to the pairing flow.
     const off = registerScanTarget(
-      async (value: string) => {
+      (value: string) => {
         off();
-        // A scanned phrase fills the box for review; it is still validated.
-        setPhrase(String(value));
+        const pairing = parsePairingCode(value);
+        if (pairing.ok) {
+          // Pairing identifies a session only; the six digits are typed on the
+          // verify screen and the wallet lands after they match.
+          navigation.navigate('PairVerify', { uri: value });
+          return;
+        }
+        // Otherwise it is a phrase: fill the box and let Continue check it.
+        setPhrase(normalizeMnemonic(value));
         setHidden(false);
         if (storeError) setStoreError(null);
       },
       undefined,
       {
-        title: 'Scan secret phrase',
-        // Same scanner as everywhere else; only a phrase-shaped code belongs here.
+        title: 'Scan QR code',
+        hint: 'A secret phrase, or a pairing code from another device',
         accept: (value) => {
-          const verdict = validateMnemonic(value);
-          return verdict.ok
-            ? { ok: true as const, value: normalizeMnemonic(value) }
-            : { ok: false as const, reason: "That QR code isn't a secret phrase." };
+          if (validateMnemonic(value).ok) {
+            return { ok: true as const, value: normalizeMnemonic(value) };
+          }
+          if (parsePairingCode(value).ok) {
+            return { ok: true as const, value };
+          }
+          return {
+            ok: false as const,
+            reason: "That QR code isn't a secret phrase or a pairing code.",
+          };
         },
       },
     );

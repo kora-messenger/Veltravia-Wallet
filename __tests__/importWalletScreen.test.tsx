@@ -57,9 +57,11 @@ jest.mock('../src/core/clipboard', () => ({
 }));
 
 const scanTargets: Array<(v: string) => Promise<void>> = [];
+const purposes: any[] = [];
 jest.mock('../src/services/scanTarget', () => ({
-  registerScanTarget: (fn: any) => {
+  registerScanTarget: (fn: any, _close: any, purpose: any) => {
     scanTargets.push(fn);
+    purposes.push(purpose);
     return jest.fn();
   },
 }));
@@ -68,6 +70,14 @@ import ImportWalletScreen from '../src/screens/wallet/ImportWalletScreen';
 import { readSeed } from '../src/core/storage/secureStorage';
 
 const VECTOR = 'legal winner thank year wave sausage worth useful legal winner thank yellow';
+
+const PAIR_CODE =
+  'veltravia-pair://2?s=' +
+  'a'.repeat(32) +
+  '&p=' +
+  'b'.repeat(64) +
+  '&e=' +
+  String(Date.now() + 5 * 60 * 1000);
 
 const navigation = { goBack: jest.fn(), navigate: jest.fn(), reset: jest.fn() };
 
@@ -107,6 +117,7 @@ const typePhrase = async (t: any, value: string) => {
 beforeEach(() => {
   mockCreateWallet.mockClear();
   navigation.reset.mockClear();
+  navigation.navigate.mockClear();
   mockPaste.mockClear();
 });
 
@@ -193,12 +204,46 @@ describe('Restore wallet', () => {
     expect(byId(t, 'restoreContinue').props.disabled).toBe(false);
   });
 
-  it('a scanned phrase lands in the box for review, not straight into a restore', async () => {
+  it('scan job 1: a secret phrase lands in the box for review, not a straight restore', async () => {
     const t = mount();
     await act(async () => byId(t, 'restoreScan').props.onPress());
     expect(scanTargets.length).toBeGreaterThan(0);
     expect(navigation.navigate).toHaveBeenCalledWith('ScanQr');
+
     await act(async () => scanTargets[scanTargets.length - 1](VECTOR));
+    expect(anyById(t, 'restorePhraseInput').props.value).toBe(VECTOR);
+    expect(byId(t, 'restoreContinue').props.disabled).toBe(false);
+    // Scanning fills the box; it never restores by itself.
     expect(mockCreateWallet).not.toHaveBeenCalled();
+  });
+
+  it('scan job 2: a pairing code goes to the verify screen instead of the phrase box', async () => {
+    const t = mount();
+    await act(async () => byId(t, 'restoreScan').props.onPress());
+
+    await act(async () => scanTargets[scanTargets.length - 1](PAIR_CODE));
+    expect(navigation.navigate).toHaveBeenCalledWith('PairVerify', { uri: PAIR_CODE });
+    expect(anyById(t, 'restorePhraseInput').props.value).toBe('');
+  });
+
+  it('refuses a code that is neither, and keeps scanning', async () => {
+    const t = mount();
+    await act(async () => byId(t, 'restoreScan').props.onPress());
+    const target = scanTargets[scanTargets.length - 1];
+
+    // The screen's own accept check refuses it, before the handler ever runs.
+    const purpose = purposes[purposes.length - 1];
+    expect(purpose.accept('ethereum:0x123')).toEqual({
+      ok: false,
+      reason: "That QR code isn't a secret phrase or a pairing code.",
+    });
+    expect(purpose.accept(VECTOR)).toEqual({ ok: true, value: VECTOR });
+    expect(purpose.accept(PAIR_CODE)).toEqual({ ok: true, value: PAIR_CODE });
+    expect(anyById(t, 'restorePhraseInput').props.value).toBe('');
+    expect(navigation.navigate).toHaveBeenCalledTimes(1); // only the ScanQr trip
+
+    // Still armed after a refusal: a real phrase is accepted next.
+    await act(async () => target(VECTOR));
+    expect(anyById(t, 'restorePhraseInput').props.value).toBe(VECTOR);
   });
 });

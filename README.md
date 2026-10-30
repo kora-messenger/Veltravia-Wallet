@@ -582,6 +582,11 @@ A paired phone used to arrive unlocked with no lock password, which meant adding
 - **Tests** — `__tests__/pairingLockInheritance.test.ts` (6): locked wallet arrives locked and the same password opens it (wrong password rejected); the password never appears in relay traffic and the verifier is a salt:digest; an unlocked wallet does not invent a lock; a local password is never overwritten; exporting does not change the host; the inherited lock actually trips `movementBlock` and unlocking locally clears it. Full suite: 410 passing.
 
 
+**Restore screen scanner does two jobs (Oct 30).** The scanner opened from Restore wallet accepts either a
+secret phrase (validated, then dropped into the box for review) or another device's pairing code (checked
+against the v2 pairing format, then handed to the six-digit verify screen). Anything else is refused with a
+reason and the scanner stays open. The header reads "Scan QR code".
+
 **One scanner, many jobs (Oct 30).** The QR screen keeps a single chrome (close left, "Scan QR code"
 centred, gallery and torch right, white corner brackets, dimmed surround) and each entry point now
 declares what its result is for: a *purpose* with a title and an `accept` check. The restore screen scans
