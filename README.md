@@ -588,6 +588,26 @@ filled grey circle when selected, unselected tabs are bare text with no pill (on
 empty watchlist shows a small flying-saucer illustration with "Your watchlist will appear here". Starred markets
 appear in a Watchlist section above Popular on the Perps home. Art: `src/components/WatchlistEmptyArt.tsx`.
 
+**Scanner rebuilt to the plain full-screen reference (Oct 30, `ScanQrScreen`).** The heavy navy chrome is gone: the
+camera fills the screen and only three translucent controls float on it. Measured off the reference shot (471px wide,
+x0.873 to dp) rather than estimated: window 317px = 67% of width with 62px arms and a 12px stroke, icon centres at
+40 / 314 / 370dp, title cap height 16px.
+
+- Four separate white corner brackets (`Svg` paths with round caps), no border, no box in the middle, feed visible.
+- Thin beam sweeping the window (`Animated`, native driver), 2.4s each way.
+- Detection: brackets take a quick breath, the capture bell lands with it, then the existing result flow runs.
+- A code counts once its centre is inside the window (`src/core/scan/window.ts`, unit tested). If a device reports
+  geometry in another space, a code that keeps returning outside the window is still taken after six sightings, so a
+  coordinate mismatch can never end in a scanner that reads nothing.
+- Real states: camera starting, permission refused (Allow / Settings / Close), camera unavailable (retry or pick an
+  image), gallery decode failure, no QR found in the image.
+- Gallery images are decoded on device (`jpeg-js` + `jsQR`, now also trying inverted images). JPEG only: a HEIC or
+  heavily-cropped PNG can fail, and the screen says so instead of failing silently.
+
+**Not verified on a device.** There is no Android toolchain or phone in the build sandbox, so camera, torch, gallery
+and detection were tested through the suite (469 tests, `scanQr`, `scanQrSnap`, `scanWindow`), not on hardware. Build
+the APK and the last mile is a real scan.
+
 **Link-device screens rebuilt to the dark reference (Oct 30).** Two screens now share one look, with no logo or app
 name: a deep navy ground, a back chevron, a headline whose second word carries the blue-to-purple gradient, the code
 window with glowing gradient corners, a live expiry pill, an instruction card with a phone icon, and a full-width

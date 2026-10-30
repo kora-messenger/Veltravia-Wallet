@@ -1,25 +1,25 @@
 /**
- * Veltravia Wallet — "Link device" scanner.
+ * Veltravia Wallet - QR scanner.
  *
- * Rebuilt to the reference screen: deep navy ground with a soft brand shape in
- * the top corner, a back chevron, the "Scan QR Code" headline with the second
- * half in the blue-to-purple gradient, the pairing subtitle, a live camera
- * window with glowing gradient corners, the expiry pill under it, and the
- * instruction card with the full-width Cancel above the safe area.
+ * Built to the reference shot (measured, not estimated): the camera fills the
+ * screen, controls float on it in translucent dark, the title is centred bold
+ * white, and the code is framed by four separate white corner brackets with no
+ * border and no box inside.
  *
- * No logo, no app name.
+ * Measured off the reference (471px wide shot → x0.873 to dp):
+ *   frame 317px = 67% of width, arms 62px = 54dp, stroke 12px = 10dp
+ *   corner icon centres 46 / 359 / 423px = 40 / 314 / 370dp, title cap 16px
  *
  * One scanner serves the app: a caller registers a purpose (services/scanTarget)
- * to change the title and to vet the code. With no purpose registered the screen
- * is the link-device scanner — pairing copy and a live 60s expiry pill, matching
- * the lifetime of a pairing code (core/security/pairingSession).
+ * to name the screen and to vet the code. With nobody waiting, a scan opens the
+ * result sheet (ScanResultSheet) so the code is never just discarded.
  *
  * The camera feed never leaves the device. Gallery images are decoded locally
  * (jpeg-js + jsQR).
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, Pressable, ActivityIndicator, useWindowDimensions, StatusBar, Linking,
+  View, Text, StyleSheet, Pressable, ActivityIndicator, useWindowDimensions, StatusBar, Linking, Animated, Easing,
 } from 'react-native';
 import {
   Camera, useCameraDevice, useCodeScanner, useCameraPermission,
@@ -28,31 +28,54 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import jpeg from 'jpeg-js';
 import jsQR from 'jsqr';
 import { useNavigation } from '@react-navigation/native';
-import Svg, {
-  Defs, LinearGradient as SvgGradient, Stop, Rect, Mask, Path, Text as SvgText,
-} from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeftIcon, GalleryIcon, FlashIcon, ClockIcon, PhoneIcon } from '../components/icons';
-import GlowCorners, { GLOW_FROM, GLOW_TO } from '../components/GlowCorners';
-import { hasScanTarget, offerScanResult, clearScanTarget, activeScanTitle, activeScanHint } from '../services/scanTarget';
+import { CloseIcon, GalleryIcon, FlashIcon } from '../components/icons';
+import { hasScanTarget, offerScanResult, clearScanTarget, activeScanTitle } from '../services/scanTarget';
 import { parseQr, type ParsedQr } from '../services/qrParse';
-import { parsePairingCode, PAIRING_TTL_MS } from '../core/security/pairingSession';
+import { parsePairingCode } from '../core/security/pairingSession';
 import ScanResultSheet from '../components/ScanResultSheet';
 import { copyToClipboard } from '../core/clipboard';
 import { captureFeedback, captureBell } from '../core/scanFeedback';
 import { showToast } from '../components/Toast';
+import { scanWindow, isInsideWindow } from '../core/scan/window';
 
-const NAVY = '#0B0E1A';
-const PANEL = '#131A31';
-const PILL = '#161C31';
-const RADIUS = 28;      // scan window corner radius
-const ARM = 46;         // length of each glowing corner arm
-const EDGE = 18;
+const WHITE = '#FFFFFF';
+const VEIL = 'rgba(0,0,0,0.42)';   // the translucent buttons and their ground
+const BEAM_MS = 2400;
 
-/** "Scan QR code" → ["Scan ", "QR code"], so the second half can take the gradient. */
-function splitTitle(title: string): [string, string] {
-  const m = /^(Scan )(.+)$/.exec(title);
-  return m ? [m[1], m[2]] : ['', title];
+/** Four corner brackets: two rounded strokes per corner, nothing in between. */
+function CornerBrackets({ size, stroke, arm }: { size: number; stroke: number; arm: number }) {
+  const i = stroke / 2;              // the stroke straddles the path: inset it
+  const s = size - stroke;
+  const r = Math.max(stroke / 2, 6);
+  const a = Math.max(arm - stroke / 2, r + 4);
+  const corners: [number, number, number, number, number, number][] = [
+    // x, y, then the two directions the arms point
+    [i, i, 1, 1, -1, -1],
+    [i + s, i, -1, 1, 1, -1],
+    [i + s, i + s, -1, -1, 1, 1],
+    [i, i + s, 1, -1, -1, 1],
+  ];
+  return (
+    <Svg width={size} height={size} pointerEvents="none">
+      {corners.map(([x, y, sx, sy, qx, qy], idx) => {
+        const d = `M ${x + sx * (r + a)} ${y} L ${x + sx * r} ${y} Q ${x} ${y} ${x} ${y + sy * r} L ${x} ${y + sy * (r + a)}`;
+        return (
+          <Path
+            key={idx}
+            d={d}
+            stroke={WHITE}
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+            testID={`scanCorner${idx}`}
+          />
+        );
+      })}
+    </Svg>
+  );
 }
 
 export default function ScanQrScreen() {
@@ -64,69 +87,122 @@ export default function ScanQrScreen() {
   const [torch, setTorch] = useState(false);
   const [decoding, setDecoding] = useState(false);
   const [sheet, setSheet] = useState<ParsedQr | null>(null);
+  const [opening, setOpening] = useState(true);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const done = useRef(false);
 
-  // Link-device mode: nothing else asked for the scanner, so this is the pairing
-  // scanner and the code on the other device is the one that times out.
-  const linkMode = !hasScanTarget() || !activeScanHint();
-  const [expiryTick, setExpiryTick] = useState(0);
-  const [secondsLeft, setSecondsLeft] = useState(Math.round(PAIRING_TTL_MS / 1000));
+  // Size and place the window from the reference, never from a fixed number, so
+  // small phones and tablets both keep the same proportion.
+  const win = scanWindow(width, height);
+  const frameSize = win.size;
+  const frameX = win.x;
+  const frameY = win.y;
+
+  // A code counts once it is inside the window, not merely in view.
+  const inWindow = useCallback(
+    (frame?: { x: number; y: number; width: number; height: number }) => isInsideWindow(frame, win),
+    [win],
+  );
 
   useEffect(() => {
-    if (!linkMode) return;
-    setSecondsLeft(Math.round(PAIRING_TTL_MS / 1000));
-    const id = setInterval(() => {
-      setSecondsLeft((s) => {
-        if (s <= 1) { clearInterval(id); return 0; }
-        return s - 1;
-      });
-    }, 1000);
-    return () => clearInterval(id);
-  }, [linkMode, expiryTick]);
+    const t = setTimeout(() => setOpening(false), 700);
+    return () => clearTimeout(t);
+  }, []);
 
-  const windowSize = Math.min(width - 96, 268);
-  const fx = (width - windowSize) / 2;
-  const fy = Math.max(insets.top + 168, height * 0.34);
+  // The beam: one thin line sweeping the window, looped, cheap to run.
+  const beam = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const travel = Animated.loop(Animated.sequence([
+      Animated.timing(beam, { toValue: 1, duration: BEAM_MS, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      Animated.timing(beam, { toValue: 0, duration: BEAM_MS, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+    ]));
+    travel.start();
+    return () => travel.stop();
+  }, [beam]);
 
-  // A result only counts once; the screen pops on the first valid code.
+  // Detection response: the brackets take a quick breath. Nothing blocks the view.
+  const pulse = useRef(new Animated.Value(0)).current;
+  const thump = useCallback(() => {
+    Animated.sequence([
+      Animated.timing(pulse, { toValue: 1, duration: 110, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 0, duration: 260, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+    ]).start();
+  }, [pulse]);
+
   const deliver = useCallback((value: string) => {
     if (done.current) return;
     done.current = true;
-    captureFeedback();                 // bell + tick, exactly when the code is taken
+    thump();
+    setTimeout(() => { captureFeedback(); }, 90);   // bell as the brackets answer
     const parsed = parseQr(value);
     if (hasScanTarget()) {
       // The waiting screen decides whether this code is its business. A refusal
-      // leaves the scanner open with the reason, instead of handing over junk.
+      // keeps the scanner open with the reason, instead of handing over junk.
       const outcome = offerScanResult(parsed.value);
-      if (outcome.status === 'delivered') {
-        navigation.goBack();
-        return;
-      }
+      if (outcome.status === 'delivered') { navigation.goBack(); return; }
       if (outcome.status === 'rejected') {
         done.current = false;
         showToast(outcome.reason, { kind: 'info', duration: 3000 });
         return;
       }
     }
-    // Nobody was waiting (home scan button) or the code is actionless: keep the
-    // sheet on screen instead of a toast so the reason stays visible.
+    // Nobody waiting, or the code needs a decision: keep it on screen in the sheet.
     setSheet(parsed);
-  }, [navigation]);
+  }, [navigation, thump]);
+
+  // Cameras report code geometry in different spaces (screen, preview, or not at
+  // all). The window decides what counts, but a code that keeps coming back
+  // outside it is still taken after a moment: a wrong coordinate space must not
+  // leave someone with a scanner that never reads anything.
+  const misses = useRef<Map<string, number>>(new Map());
+  const OUTSIDE_LIMIT = 6;
 
   const codeScanner = useCodeScanner({
     codeTypes: ['qr'],
     onCodeScanned: (codes) => {
       if (done.current) return;
-      const hit = codes.find((c) => !!c?.value && !!c.value.trim());
-      if (!hit?.value) return;
-      deliver(hit.value.trim());
+      const live = codes.filter((c) => !!c?.value?.trim());
+      if (!live.length) return;
+      const framed = live.find((c) => inWindow(c.frame as any));
+      if (framed?.value) { deliver(framed.value.trim()); return; }
+      for (const c of live) {
+        const v = String(c.value).trim();
+        const seen = (misses.current.get(v) ?? 0) + 1;
+        misses.current.set(v, seen);
+        if (seen >= OUTSIDE_LIMIT) { deliver(v); return; }
+      }
     },
   });
 
-  const closeSheet = useCallback(() => setSheet(null), []);
+  const rescan = useCallback(() => { setSheet(null); done.current = false; }, []);
 
-  // The sheet's primary action depends on what was read: copy an address, open a
-  // link, or start a WalletConnect pairing (not wired yet, so say so plainly).
+  const close = useCallback(() => {
+    clearScanTarget();
+    navigation.goBack();
+  }, [navigation]);
+
+  const openGallery = useCallback(async () => {
+    try {
+      const res = await launchImageLibrary({ mediaType: 'photo', quality: 0.9, maxWidth: 1600, maxHeight: 1600, includeBase64: true, selectionLimit: 1 });
+      const b64 = res.assets?.[0]?.base64;
+      if (!b64) return;
+      setDecoding(true);
+      // Decode locally only: the photo never leaves the device.
+      const buf = (globalThis as any).Buffer;
+      const img = jpeg.decode(buf.from(b64, 'base64'), { useTArray: true });
+      const code = jsQR(
+        new Uint8ClampedArray(img.data.buffer as ArrayBuffer, img.data.byteOffset, img.data.length),
+        img.width, img.height, { inversionAttempts: 'attemptBoth' },
+      );
+      if (code?.data) { captureBell(); deliver(code.data); }
+      else showToast('No QR code found in that image', { kind: 'error' });
+    } catch {
+      showToast("Couldn't read that image", { kind: 'error' });
+    } finally {
+      setDecoding(false);
+    }
+  }, [deliver]);
+
   const sheetPrimary = useCallback(() => {
     if (!sheet) return;
     if (sheet.kind === 'url') {
@@ -154,177 +230,131 @@ export default function ScanQrScreen() {
     showToast(ok ? 'Address copied' : "Couldn't copy the address", { kind: ok ? 'success' : 'error' });
   }, [sheet, navigation]);
 
-  const rescan = useCallback(() => { setSheet(null); done.current = false; }, []);
+  // ---- permission and camera states -------------------------------------------------
 
-  const close = useCallback(() => {
-    clearScanTarget();
-    navigation.goBack();
-  }, [navigation]);
-
-  const openGallery = useCallback(async () => {
-    try {
-      const res = await launchImageLibrary({ mediaType: 'photo', quality: 0.9, maxWidth: 1600, maxHeight: 1600, includeBase64: true, selectionLimit: 1 });
-      const b64 = res.assets?.[0]?.base64;
-      if (!b64) return;
-      setDecoding(true);
-      // Decode locally only: the photo never leaves the device.
-      const buf = (globalThis as any).Buffer;
-      const img = jpeg.decode(buf.from(b64, 'base64'), { useTArray: true });
-      const code = jsQR(new Uint8ClampedArray(img.data.buffer as ArrayBuffer, img.data.byteOffset, img.data.length), img.width, img.height, { inversionAttempts: 'dontInvert' });
-      if (code?.data) { captureBell(); deliver(code.data); }
-      else showToast('No QR code found in that image', { kind: 'error' });
-    } catch {
-      showToast("Couldn't read that image", { kind: 'error' });
-    } finally {
-      setDecoding(false);
-    }
-  }, [deliver]);
-
-  if (!hasPermission) {
+  if (hasPermission === false) {
     return (
       <View style={[styles.root, styles.center]}>
         <StatusBar barStyle="light-content" />
-        <Text style={styles.permTitle}>Camera access needed</Text>
-        <Text style={styles.permBody}>Veltravia scans QR codes locally. Nothing is ever uploaded.</Text>
-        <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
-          <Pressable style={styles.permBtn} onPress={() => Linking.openSettings()}>
-            <Text style={styles.permBtnText}>Settings</Text>
-          </Pressable>
-          <Pressable style={[styles.permBtn, { backgroundColor: '#6C63FF' }]} onPress={() => requestPermission()}>
-            <Text style={styles.permBtnText}>Allow camera</Text>
-          </Pressable>
-        </View>
-        <Pressable hitSlop={10} style={styles.permSkip} onPress={close}>
-          <Text style={styles.permSkipText}>Close</Text>
+        <View style={styles.stateIcon}><CloseIcon size={22} color={WHITE} /></View>
+        <Text style={styles.stateTitle}>Camera access is off</Text>
+        <Text style={styles.stateBody}>
+          Veltravia reads QR codes on this device only. Nothing is uploaded, and nothing is scanned until you allow it.
+        </Text>
+        <Pressable style={styles.statePrimary} onPress={() => requestPermission()} accessibilityLabel="Allow camera">
+          <Text style={styles.statePrimaryText}>Allow camera</Text>
+        </Pressable>
+        <Pressable onPress={() => Linking.openSettings()} hitSlop={10} accessibilityLabel="Open settings">
+          <Text style={styles.stateLink}>Open settings</Text>
+        </Pressable>
+        <Pressable onPress={close} hitSlop={10} accessibilityLabel="Close scanner">
+          <Text style={styles.stateLink}>Close</Text>
         </Pressable>
       </View>
     );
   }
 
-  if (device == null) {
+  if (cameraError) {
     return (
       <View style={[styles.root, styles.center]}>
         <StatusBar barStyle="light-content" />
-        <ActivityIndicator color="#FFFFFF" size="large" />
+        <Text style={styles.stateTitle}>Camera unavailable</Text>
+        <Text style={styles.stateBody}>{cameraError}</Text>
+        <Pressable style={styles.statePrimary} onPress={() => setCameraError(null)} accessibilityLabel="Try again">
+          <Text style={styles.statePrimaryText}>Try again</Text>
+        </Pressable>
+        <Pressable onPress={openGallery} hitSlop={10} accessibilityLabel="Pick a QR image">
+          <Text style={styles.stateLink}>Pick an image instead</Text>
+        </Pressable>
+        <Pressable onPress={close} hitSlop={10} accessibilityLabel="Close scanner">
+          <Text style={styles.stateLink}>Close</Text>
+        </Pressable>
       </View>
     );
   }
 
-  const [lead, gradientWord] = splitTitle(activeScanTitle('Scan QR Code'));
-  const subtitle = activeScanHint() ?? 'Open your existing device and scan the QR code to pair.';
-  const expired = secondsLeft <= 0;
+  const title = activeScanTitle('Scan QR code');
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
-
-      {/* soft brand shape in the top corner, behind everything */}
-      <Svg style={StyleSheet.absoluteFill} pointerEvents="none" width={width} height={height}>
-        <Defs>
-          <SvgGradient id="blob" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={GLOW_TO} stopOpacity="0.55" />
-            <Stop offset="1" stopColor={GLOW_FROM} stopOpacity="0" />
-          </SvgGradient>
-        </Defs>
-        <Path
-          d={`M0,0 L ${width * 0.62},0 C ${width * 0.42},${height * 0.09} ${width * 0.2},${height * 0.16} 0,${height * 0.22} Z`}
-          fill="url(#blob)"
-          opacity={0.5}
+      {device ? (
+        <Camera
+          style={StyleSheet.absoluteFill}
+          device={device}
+          isActive
+          torch={torch ? 'on' : 'off'}
+          codeScanner={codeScanner}
+          onError={(e) => setCameraError(e?.message ? `Veltravia could not start the camera. ${e.message}` : 'Veltravia could not start the camera.')}
         />
-      </Svg>
-
-      <Camera
-        style={StyleSheet.absoluteFill}
-        device={device}
-        isActive
-        torch={torch ? 'on' : 'off'}
-        codeScanner={codeScanner}
-      />
-
-      {/* everything except the rounded window is dimmed */}
-      <Svg style={StyleSheet.absoluteFill} pointerEvents="none" width={width} height={height}>
-        <Defs>
-          <Mask id="window">
-            <Rect x={0} y={0} width={width} height={height} fill="#FFFFFF" />
-            <Rect x={fx} y={fy} width={windowSize} height={windowSize} rx={RADIUS} fill="#000000" />
-          </Mask>
-          <SvgGradient id="corner" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={GLOW_FROM} />
-            <Stop offset="1" stopColor={GLOW_TO} />
-          </SvgGradient>
-        </Defs>
-        <Rect x={0} y={0} width={width} height={height} fill={NAVY} opacity={0.82} mask="url(#window)" />
-        <Rect
-          x={fx} y={fy} width={windowSize} height={windowSize} rx={RADIUS}
-          fill="none" stroke="#FFFFFF" strokeOpacity={0.1} strokeWidth={1}
-        />
-        <GlowCorners x={fx} y={fy} size={windowSize} radius={RADIUS} arm={ARM} stroke="url(#corner)" />
-      </Svg>
-
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Pressable style={styles.iconBtn} onPress={close} hitSlop={10} accessibilityLabel="Close scanner" testID="scanBack">
-          <ChevronLeftIcon size={22} color="#FFFFFF" />
-        </Pressable>
-        <View style={styles.headerRight}>
-          <Pressable style={styles.iconBtn} onPress={openGallery} disabled={decoding} hitSlop={10} accessibilityLabel="Pick a QR image">
-            {decoding ? <ActivityIndicator size="small" color="#FFFFFF" /> : <GalleryIcon size={18} color="#FFFFFF" />}
-          </Pressable>
-          <Pressable style={styles.iconBtn} onPress={() => setTorch((v) => !v)} hitSlop={10} accessibilityLabel="Torch">
-            <FlashIcon size={18} color={torch ? '#FFD24A' : '#FFFFFF'} />
-          </Pressable>
-        </View>
-      </View>
-
-      <View style={[styles.headline, { top: insets.top + 64 }]} pointerEvents="none">
-        <View style={styles.titleRow}>
-          <Text style={styles.titleLead}>{lead}</Text>
-          <Svg width={112} height={36}>
-            <Defs>
-              <SvgGradient id="headWord" x1="0" y1="0" x2="1" y2="0">
-                <Stop offset="0" stopColor={GLOW_FROM} />
-                <Stop offset="1" stopColor={GLOW_TO} />
-              </SvgGradient>
-            </Defs>
-            <SvgText x={0} y={27} fontSize={27} fontFamily="Inter-700" fontWeight="700" fill="url(#headWord)">
-              {gradientWord}
-            </SvgText>
-          </Svg>
-        </View>
-        <Text style={styles.subtitle} testID="scanSubtitle">{subtitle}</Text>
-      </View>
-
-      {/* expiry pill: the code on the other device is short-lived */}
-      {linkMode ? (
-        <Pressable
-          onPress={() => { if (expired) setExpiryTick((t) => t + 1); }}
-          disabled={!expired}
-          style={[styles.pill, { top: fy + windowSize + 22 }]}
-          testID="scanExpiry"
-          accessibilityLabel={expired ? 'Code expired, tap to rescan' : `Expires in ${secondsLeft} seconds`}
-        >
-          <ClockIcon size={16} color="#FFFFFF" />
-          <Text style={styles.pillText}>
-            {expired ? 'Code expired · tap to rescan' : `Expires in ${secondsLeft}s`}
-          </Text>
-        </Pressable>
       ) : null}
 
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 14) }]}>
-        <View style={styles.infoBox}>
-          <View style={styles.infoIcon}>
-            <PhoneIcon size={20} color="#7FC4FF" />
-          </View>
-          <Text style={styles.infoText}>Make sure the QR code is clearly visible and within the frame.</Text>
+      {(opening || !device) ? (
+        <View style={[StyleSheet.absoluteFill, styles.center]} pointerEvents="none">
+          <ActivityIndicator color={WHITE} />
+          <Text style={styles.opening}>Starting camera…</Text>
         </View>
-        <Pressable style={styles.cancel} onPress={close} testID="scanCancel" accessibilityLabel="Cancel">
-          <Text style={styles.cancelText}>Cancel</Text>
+      ) : null}
+
+      {/* top bar: floats on the feed, nothing behind it but the buttons */}
+      <View style={[styles.bar, { paddingTop: insets.top + 8 }]}>
+        <Pressable style={styles.roundBtn} onPress={close} hitSlop={10} accessibilityLabel="Close scanner" testID="scanClose">
+          <CloseIcon size={17} color={WHITE} />
         </Pressable>
+        <Text style={styles.title} numberOfLines={1} testID="scanTitle">{title}</Text>
+        <View style={styles.barRight}>
+          <Pressable
+            style={[styles.squareBtn, decoding ? { opacity: 0.6 } : null]}
+            onPress={openGallery}
+            disabled={decoding}
+            hitSlop={8}
+            accessibilityLabel="Pick a QR image"
+            testID="scanGallery"
+          >
+            {decoding ? <ActivityIndicator size="small" color={WHITE} /> : <GalleryIcon size={20} color={WHITE} />}
+          </Pressable>
+          <Pressable
+            style={[styles.squareBtn, torch ? styles.squareBtnOn : null]}
+            onPress={() => setTorch((v) => !v)}
+            hitSlop={8}
+            accessibilityLabel={torch ? 'Turn the flashlight off' : 'Turn the flashlight on'}
+            accessibilityState={{ selected: torch }}
+            testID="scanTorch"
+          >
+            <FlashIcon size={20} color={torch ? '#FFD24A' : WHITE} />
+          </Pressable>
+        </View>
       </View>
+
+      {/* the window: brackets only, the feed stays visible through it */}
+      <Animated.View
+        style={[
+          styles.window,
+          {
+            left: frameX, top: frameY, width: frameSize, height: frameSize,
+            opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.72] }),
+            transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] }) }],
+          },
+        ]}
+        pointerEvents="none"
+        testID="scanWindow"
+      >
+        <CornerBrackets size={frameSize} stroke={10} arm={54} />
+        <Animated.View
+          style={[
+            styles.beam,
+            { transform: [{ translateY: beam.interpolate({ inputRange: [0, 1], outputRange: [10, frameSize - 12] }) }] },
+          ]}
+        >
+          <View style={styles.beamGlow} />
+          <View style={styles.beamCore} />
+        </Animated.View>
+      </Animated.View>
 
       <ScanResultSheet
         visible={sheet !== null}
         parsed={sheet}
-        onClose={closeSheet}
+        onClose={() => setSheet(null)}
         onRescan={rescan}
         onPrimary={sheetPrimary}
       />
@@ -333,49 +363,53 @@ export default function ScanQrScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: NAVY },
+  root: { flex: 1, backgroundColor: '#000000' },
   center: { alignItems: 'center', justifyContent: 'center' },
-  header: { position: 'absolute', left: EDGE, right: EDGE, top: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  iconBtn: {
+
+  bar: {
+    position: 'absolute', left: 0, right: 0, top: 0,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingBottom: 8,
+  },
+  roundBtn: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: VEIL, alignItems: 'center', justifyContent: 'center',
   },
-  headline: { position: 'absolute', left: EDGE, right: EDGE, alignItems: 'center' },
-  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  titleLead: {
-    fontSize: 27, lineHeight: 36, color: '#FFFFFF',
-    fontFamily: 'Inter-700', fontWeight: '700', letterSpacing: -0.4,
+  title: {
+    flex: 1, textAlign: 'center', color: WHITE,
+    fontSize: 20, fontFamily: 'Inter-700', fontWeight: '700',
+    marginHorizontal: 8,
   },
-  subtitle: {
-    marginTop: 8, paddingHorizontal: 24, textAlign: 'center',
-    fontSize: 14, lineHeight: 20, color: '#A0A3B1', fontFamily: 'Inter-400',
+  barRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  squareBtn: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: VEIL, alignItems: 'center', justifyContent: 'center',
   },
-  pill: {
-    position: 'absolute', alignSelf: 'center',
-    height: 38, borderRadius: 19, paddingHorizontal: 16,
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: PILL, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+  squareBtnOn: { backgroundColor: 'rgba(255,210,74,0.22)' },
+
+  window: { position: 'absolute' },
+  beam: { position: 'absolute', left: 12, right: 12, alignItems: 'center' },
+  beamGlow: {
+    position: 'absolute', top: 4, height: 14, left: 0, right: 0,
+    backgroundColor: 'rgba(108,99,255,0.22)', borderRadius: 8,
   },
-  pillText: { color: '#FFFFFF', fontSize: 14, fontFamily: 'Inter-500' },
-  footer: { position: 'absolute', left: 16, right: 16, bottom: 0 },
-  infoBox: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: PANEL, borderRadius: 16, padding: 14, marginBottom: 12,
+  beamCore: { height: 1.5, left: 0, right: 0, backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 1 },
+
+  opening: { marginTop: 10, color: 'rgba(255,255,255,0.75)', fontSize: 13, fontFamily: 'Inter-400' },
+
+  stateIcon: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
   },
-  infoIcon: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(46,162,248,0.14)',
-    alignItems: 'center', justifyContent: 'center',
+  stateTitle: { color: WHITE, fontSize: 19, fontFamily: 'Inter-700', fontWeight: '700', textAlign: 'center' },
+  stateBody: {
+    color: 'rgba(255,255,255,0.72)', fontSize: 14, lineHeight: 20, textAlign: 'center',
+    paddingHorizontal: 36, marginTop: 10, fontFamily: 'Inter-400',
   },
-  infoText: { flex: 1, color: '#C9CCD6', fontSize: 13, lineHeight: 18, fontFamily: 'Inter-400' },
-  cancel: { height: 52, borderRadius: 26, backgroundColor: PANEL, alignItems: 'center', justifyContent: 'center' },
-  cancelText: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600' },
-  permTitle: { color: '#FFFFFF', fontSize: 18, fontFamily: 'Inter-700', fontWeight: '700' },
-  permBody: { color: 'rgba(255,255,255,0.7)', fontSize: 14, fontFamily: 'Inter-400', marginTop: 8, textAlign: 'center', lineHeight: 20, paddingHorizontal: 32 },
-  permBtn: { height: 46, borderRadius: 23, paddingHorizontal: 22, backgroundColor: '#333333', alignItems: 'center', justifyContent: 'center' },
-  permBtnText: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600' },
-  permSkip: { marginTop: 18, padding: 8 },
-  permSkipText: { color: 'rgba(255,255,255,0.8)', fontSize: 15, fontFamily: 'Inter-500' },
+  statePrimary: {
+    marginTop: 22, height: 48, paddingHorizontal: 30, borderRadius: 24,
+    backgroundColor: '#6C63FF', alignItems: 'center', justifyContent: 'center',
+  },
+  statePrimaryText: { color: WHITE, fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600' },
+  stateLink: { color: 'rgba(255,255,255,0.85)', fontSize: 14, fontFamily: 'Inter-500', marginTop: 16 },
 });

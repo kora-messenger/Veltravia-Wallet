@@ -16,12 +16,16 @@ jest.mock('react-native-vision-camera', () => {
 jest.mock('../src/theme/ThemeProvider', () => ({ useTheme: () => ({ theme: { mode: 'dark', ink: '#fff', background: '#000' } }) }));
 jest.mock('../src/components/Toast', () => ({ showToast: jest.fn() }));
 
-import { NativeModules } from 'react-native';
+import { Dimensions, NativeModules } from 'react-native';
 import ScanQrScreen from '../src/screens/ScanQrScreen';
 import { registerScanTarget, clearScanTarget } from '../src/services/scanTarget';
 
 const mockFeedback = { capture: jest.fn(), bell: jest.fn() };
-beforeAll(() => { (NativeModules as any).VeltraviaScanFeedback = mockFeedback; });
+beforeAll(() => {
+  (NativeModules as any).VeltraviaScanFeedback = mockFeedback;
+  // pin the screen: the window is 277dp at 67/307 on a 411x891 phone
+  jest.spyOn(Dimensions, 'get').mockReturnValue({ width: 411, height: 891, scale: 2, fontScale: 1 } as any);
+});
 
 const mount = () => renderer.create(
   <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 411, height: 891 }, insets: { top: 24, left: 0, right: 0, bottom: 16 } }}>
@@ -61,6 +65,36 @@ describe('the scanner reads a code as soon as it is inside the frame', () => {
     await act(async () => { t.unmount(); });
   });
 
+  it('ignores a code that is in view but outside the window', async () => {
+    jest.useFakeTimers();
+    const got: string[] = [];
+    registerScanTarget((v) => got.push(v));
+    let t: renderer.ReactTestRenderer;
+    await act(async () => { t = mount(); });
+    await act(async () => {
+      // centre at (330, 730): below the 307..584 window
+      captured.onCodeScanned([{ type: 'qr', value: 'outside', frame: { x: 300, y: 700, width: 60, height: 60 } }]);
+    });
+    expect(got).toEqual([]);
+    await act(async () => { t.unmount(); });
+  });
+
+  it('but a code that keeps coming back outside the window is still taken', async () => {
+    // a device reporting geometry in another space must not brick the scanner
+    jest.useFakeTimers();
+    const got: string[] = [];
+    registerScanTarget((v) => got.push(v));
+    let t: renderer.ReactTestRenderer;
+    await act(async () => { t = mount(); });
+    for (let i = 0; i < 6; i++) {
+      await act(async () => {
+        captured.onCodeScanned([{ type: 'qr', value: 'stubborn', frame: { x: 300, y: 700, width: 60, height: 60 } }]);
+      });
+    }
+    expect(got).toEqual(['stubborn']);
+    await act(async () => { t.unmount(); });
+  });
+
   it('still reads a code whose position is unknown, without waiting', async () => {
     jest.useFakeTimers();
     const got: string[] = [];
@@ -80,7 +114,10 @@ describe('the scanner reads a code as soon as it is inside the frame', () => {
     await act(async () => {
       captured.onCodeScanned([{ type: 'qr', value: '0xabc', frame: { x: 150, y: 400, width: 90, height: 90 } }]);
     });
-    expect(mockFeedback.capture).toHaveBeenCalledTimes(1);   // bell + tick the moment it is read
+    // the bell lands with the brackets' breath, not before it
+    expect(mockFeedback.capture).not.toHaveBeenCalled();
+    await act(async () => { jest.advanceTimersByTime(120); });
+    expect(mockFeedback.capture).toHaveBeenCalledTimes(1);
     await act(async () => { t.unmount(); });
   });
 
