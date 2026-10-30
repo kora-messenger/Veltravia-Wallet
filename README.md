@@ -582,6 +582,12 @@ A paired phone used to arrive unlocked with no lock password, which meant adding
 - **Tests** — `__tests__/pairingLockInheritance.test.ts` (6): locked wallet arrives locked and the same password opens it (wrong password rejected); the password never appears in relay traffic and the verifier is a salt:digest; an unlocked wallet does not invent a lock; a local password is never overwritten; exporting does not change the host; the inherited lock actually trips `movementBlock` and unlocking locally clears it. Full suite: 410 passing.
 
 
+**Market browser, matched to Trust's recording (Oct 30).** The Search market screen keeps its Recents strip (Trust
+shows it once you have opened markets) and the per-row star. Three details now match the video: the star tab is a
+filled grey circle when selected, unselected tabs are bare text with no pill (only the active tab gets one), and an
+empty watchlist shows a small flying-saucer illustration with "Your watchlist will appear here". Starred markets
+appear in a Watchlist section above Popular on the Perps home. Art: `src/components/WatchlistEmptyArt.tsx`.
+
 **Pair a New Device intro (Oct 30 design).** The pairing sheet now opens on a designed card instead of a wall of
 instructions: a vector illustration (dark phone showing the code, light phone scanning it, a shield joining them
 with a dashed glow), "Pair a New Device", one line of explanation, three feature rows (Secure & Encrypted, Link to
