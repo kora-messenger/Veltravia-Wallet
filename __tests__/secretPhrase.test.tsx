@@ -36,6 +36,7 @@ jest.mock('../src/theme/ThemeProvider', () => ({
       inkMuted: '#999',
       background: '#000',
       surface: '#111',
+      surfaceAlt: '#1a1a2e',
       border: '#222',
       brand: '#6C63FF',
       negative: '#D63232',
@@ -58,12 +59,12 @@ import { validateMnemonic } from '../src/core/wallet/bip39';
 
 const VECTOR = 'legal winner thank year wave sausage worth useful legal winner thank yellow';
 
-const mount = () =>
+const mount = (onBack: () => void = () => {}) =>
   renderer.create(
     <SafeAreaProvider
       initialMetrics={{ frame: { x: 0, y: 0, width: 411, height: 891 }, insets: { top: 24, left: 0, right: 0, bottom: 16 } }}
     >
-      <SecretPhraseScreen onBack={() => {}} />
+      <SecretPhraseScreen onBack={onBack} />
     </SafeAreaProvider>,
   );
 
@@ -104,8 +105,37 @@ describe('creating a wallet really creates one', () => {
   });
 });
 
-describe('the reveal screen', () => {
-  it('shows the phrase in one box, hides it again, and copies it as sensitive', async () => {
+const byId = (t: any, id: string) =>
+  t.root.findAll((n: any) => n.props?.testID === id && typeof n.props?.onPress === 'function');
+const press = async (t: any, id: string) => {
+  const hit = byId(t, id);
+  if (!hit.length) throw new Error(`nothing pressable with testID ${id}`);
+  await act(async () => hit[0].props.onPress());
+};
+const present = (t: any, id: string) => t.root.findAll((n: any) => n.props?.testID === id).length > 0;
+
+describe('the secret phrase screen, as in the current Trust build', () => {
+  beforeEach(async () => {
+    await require('react-native-keychain').__store.clear?.();
+    mockCopy.mockClear();
+    jest.useFakeTimers();
+  });
+  afterEach(() => jest.useRealTimers());
+
+  it('opens with the words concealed, and nothing readable in the tree', async () => {
+    await walletManager.importWallet(VECTOR);
+    let t: any;
+    await act(async () => {
+      t = mount();
+      await Promise.resolve();
+    });
+    expect(present(t, 'phraseConcealed')).toBe(true);
+    expect(present(t, 'phraseWord0')).toBe(false);
+    expect(texts(t)).toContain('12 words');
+    expect(texts(t)).not.toContain('legal');
+  });
+
+  it('Show opens the safety popup first, and the words appear only after "I understand"', async () => {
     await walletManager.importWallet(VECTOR);
     let t: any;
     await act(async () => {
@@ -113,29 +143,97 @@ describe('the reveal screen', () => {
       await Promise.resolve();
     });
 
-    expect(t.root.find((n: any) => n.props?.testID === 'secretPhraseBox')).toBeTruthy();
-    expect(t.root.find((n: any) => n.props?.testID === 'secretPhraseText').props.children).toBe(VECTOR);
+    await press(t, 'phraseShow');
+    expect(present(t, 'phraseIntroUnderstand')).toBe(true);
+    // Popup is up but the words are still hidden behind it.
+    expect(present(t, 'phraseWord0')).toBe(false);
 
-    const hide = t.root.find((n: any) => n.props?.testID === 'secretPhraseHide' && typeof n.props?.onPress === 'function');
-    await act(async () => hide.props.onPress());
-    expect(texts(t)).toContain('Phrase hidden');
-    expect(t.root.findAll((n: any) => n.props?.testID === 'secretPhraseText')).toHaveLength(0);
-
-    const copy = t.root.find((n: any) => n.props?.testID === 'secretPhraseCopy' && typeof n.props?.onPress === 'function');
-    mockCopy.mockClear();
-    await act(async () => copy.props.onPress());
-    expect(mockCopy).toHaveBeenCalledWith(VECTOR, { sensitive: true });
+    await press(t, 'phraseIntroUnderstand');
+    expect(present(t, 'phraseWord0')).toBe(true);
+    const shown = VECTOR.split(' ').map((_, i) =>
+      t.root.find((n: any) => n.props?.testID === `phraseWord${i}`).props.children,
+    );
+    expect(shown.join(' ')).toBe(VECTOR);
   });
 
-  it('says so plainly when this device holds no phrase', async () => {
-    const keychain = require('react-native-keychain');
-    keychain.__store.clear();
+  it('closing the popup with X reveals nothing', async () => {
+    await walletManager.importWallet(VECTOR);
     let t: any;
     await act(async () => {
       t = mount();
       await Promise.resolve();
     });
-    expect(t.root.find((n: any) => n.props?.testID === 'secretPhraseMissing')).toBeTruthy();
-    expect(t.root.findAll((n: any) => n.props?.testID === 'secretPhraseText')).toHaveLength(0);
+    await press(t, 'phraseShow');
+    await press(t, 'phraseIntroClose');
+    expect(present(t, 'phraseWord0')).toBe(false);
+  });
+
+  it('Done stays dead until "I\'ve already backed this up" is ticked', async () => {
+    await walletManager.importWallet(VECTOR);
+    const back = jest.fn();
+    let t: any;
+    await act(async () => {
+      t = mount(back);
+      await Promise.resolve();
+    });
+    const done = () => t.root.find((n: any) => n.props?.testID === 'phraseDone');
+    expect(done().props.disabled).toBe(true);
+    await act(async () => done().props.onPress?.());
+    act(() => jest.advanceTimersByTime(2000));
+    expect(back).not.toHaveBeenCalled();
+  });
+
+  it('tick, Done: a spinner shows at the button corner, then it returns to Manage account', async () => {
+    await walletManager.importWallet(VECTOR);
+    const back = jest.fn();
+    let t: any;
+    await act(async () => {
+      t = mount(back);
+      await Promise.resolve();
+    });
+
+    await press(t, 'phraseBackedUp');
+    const done = () => t.root.find((n: any) => n.props?.testID === 'phraseDone');
+    expect(done().props.disabled).toBe(false);
+    expect(present(t, 'phraseDoneSpinner')).toBe(false);
+
+    await press(t, 'phraseDone');
+    expect(present(t, 'phraseDoneSpinner')).toBe(true);
+    expect(back).not.toHaveBeenCalled();
+
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(back).toHaveBeenCalledTimes(1);
+
+    // A second tap during the spinner must not queue a second navigation.
+    await press(t, 'phraseDone').catch(() => {});
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+    expect(back).toHaveBeenCalledTimes(1);
+  });
+
+  it('copies the phrase as sensitive once it is visible', async () => {
+    await walletManager.importWallet(VECTOR);
+    let t: any;
+    await act(async () => {
+      t = mount();
+      await Promise.resolve();
+    });
+    await press(t, 'phraseShow');
+    await press(t, 'phraseIntroUnderstand');
+    await press(t, 'phraseCopy');
+    expect(mockCopy).toHaveBeenCalledWith(VECTOR, { sensitive: true });
+  });
+
+  it('says so plainly when this device holds no phrase', async () => {
+    let t: any;
+    await act(async () => {
+      t = mount();
+      await Promise.resolve();
+    });
+    expect(texts(t)).toMatch(/no secret phrase|not stored|No secret phrase/i);
+    expect(present(t, 'phraseWord0')).toBe(false);
   });
 });

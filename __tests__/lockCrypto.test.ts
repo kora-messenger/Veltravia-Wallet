@@ -72,9 +72,15 @@ describe('the sealed box', () => {
     expect(sealed.startsWith('sv2.')).toBe(true);
     expect(openFor(lockKeyV2(SEED, GROUP), sealed, CTX)).toBe(JSON.stringify({ locked: true }));
 
+    // Flip one hex digit at several positions (nonce, body, tag). Each flip is
+    // guaranteed to CHANGE the byte, so every variant must be rejected.
     const raw = sealed.slice(4);
-    const flip = (raw[10] === 'a' ? 'b' : 'a') + raw.slice(1);
-    expect(openFor(lockKeyV2(SEED, GROUP), 'sv2.' + flip[0] + flip.slice(1), CTX)).toBeNull();
+    for (const at of [0, 10, Math.floor(raw.length / 2), raw.length - 1]) {
+      const ch = raw[at] === 'a' ? 'b' : 'a';
+      const tampered = raw.slice(0, at) + ch + raw.slice(at + 1);
+      expect(tampered).not.toBe(raw);
+      expect(openFor(lockKeyV2(SEED, GROUP), 'sv2.' + tampered, CTX)).toBeNull();
+    }
   });
 
   it('binds the group id, so another wallet cannot substitute its state', () => {

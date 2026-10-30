@@ -583,6 +583,19 @@ A paired phone used to arrive unlocked with no lock password, which meant adding
 
 ### The recovery phrase is real now, on Trust's flow (Oct 30)
 
+**Secret phrase screen, matched to the current Trust build (video, Oct 30).** The screen opens with
+the words *concealed*: a blurred stand-in inside the card, a "12 words" label and a Show pill. Show opens
+the "Keep your secret phrase safe" popup (X closes it and reveals nothing); only **I understand** puts the
+real words in the card. "I've already backed this up" sits in a card pinned above the button, and **Done**
+stays dim until it is ticked. Tapping Done shows a small spinner at the button's right corner, then returns
+to Manage account; a second tap during the spinner does nothing. The phrase lives in component state only.
+
+**Lock sealing hardened (not yet used by the registry).** The lock box is now XSalsa20-Poly1305 with the
+group id, key id and purpose bound inside the authenticated data, so another wallet's blob cannot be
+substituted. Nonces come from a CSPRNG and generation fails closed without one. A domain-separated HKDF
+lock key (`v2`) exists next to the legacy `v1`, which is kept byte-identical so existing wallets are not
+orphaned. The shared registry client is unchanged and `LOCK_REGISTRY_ENABLED` stays false.
+
 Until today the app had no phrase at all: "Create wallet" went straight to the home
 screen and Import accepted any twelve words you typed and stored nothing.
 
