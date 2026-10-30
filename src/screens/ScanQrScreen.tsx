@@ -24,7 +24,7 @@ import jsQR from 'jsqr';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CloseIcon, GalleryIcon, FlashIcon } from '../components/icons';
-import { deliverScanResult, clearScanTarget, hasScanTarget } from '../services/scanTarget';
+import { hasScanTarget, offerScanResult, clearScanTarget, activeScanTitle, activeScanHint } from '../services/scanTarget';
 import { parseQr, type ParsedQr } from '../services/qrParse';
 import { parsePairingCode } from '../core/security/pairingSession';
 import ScanResultSheet from '../components/ScanResultSheet';
@@ -62,7 +62,21 @@ export default function ScanQrScreen() {
     const parsed = parseQr(value);
     // Screens that opened the scanner want the usable value (address, URL), not
     // the envelope a payment URI wraps it in.
-    if (hasScanTarget() && deliverScanResult(parsed.value)) { navigation.goBack(); return; }
+    if (hasScanTarget()) {
+    // The waiting screen decides whether this code is its business. A refusal
+    // leaves the scanner open with the reason, instead of handing over junk.
+    const outcome = offerScanResult(parsed.value);
+    if (outcome.status === 'delivered') {
+      navigation.goBack();
+      return;
+    }
+    if (outcome.status === 'rejected') {
+      done.current = false;
+      chasing.current = false;
+      showToast(outcome.reason, { kind: 'info', duration: 3000 });
+      return;
+    }
+  }
     // Nobody was waiting (home scan button) or the code is actionless: keep the
     // sheet on screen instead of a toast so the reason stays visible (Trust).
     setSheet(parsed);
@@ -237,7 +251,9 @@ export default function ScanQrScreen() {
             <FlashIcon size={21} color={torch ? '#FFD24A' : '#FFFFFF'} />
           </Pressable>
         </View>
-        <Text style={[styles.title, { top: (BTN - 21) / 2 }]} pointerEvents="none">Scan QR code</Text>
+        <Text style={[styles.title, { top: (BTN - 21) / 2 }]} pointerEvents="none" testID="scanTitle">
+          {activeScanTitle()}
+        </Text>
       </View>
 
       <ScanResultSheet

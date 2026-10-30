@@ -30,6 +30,7 @@ import AiChatScreen from '../screens/ai/AiChatScreen';
 import PasscodeScreen from '../screens/onboarding/PasscodeScreen';
 import SecretPhraseScreen from '../screens/wallet/SecretPhraseScreen';
 import { walletManager } from '../core/wallet/walletManager';
+import { parsePairingCode } from '../core/security/pairingSession';
 import SelectRecoveryMethodScreen from '../screens/SelectRecoveryMethodScreen';
 import BuyScreen from '../features/buy/BuyScreen';
 import SelectCurrencyScreen from '../features/buy/SelectCurrencyScreen';
@@ -316,12 +317,24 @@ export default function Navigation() {
               // Pair device: scan the code an existing device shows (Manage account
               // → Pair a new device), so this phone joins the wallet group.
               onPairDevice={() => {
-                const off = registerScanTarget(async (value) => {
-                  off();
-                  // Scanning only identifies the session. The six digits are typed
-                  // on the verify screen, and the wallet lands only after they match.
-                  navigationRef.current?.navigate('PairVerify', { uri: value });
-                });
+                const off = registerScanTarget(
+                  async (value) => {
+                    off();
+                    // Scanning only identifies the session. The six digits are typed
+                    // on the verify screen, and the wallet lands only after they match.
+                    navigationRef.current?.navigate('PairVerify', { uri: value });
+                  },
+                  undefined,
+                  {
+                    title: 'Scan pairing code',
+                    // Checked here, not after navigating, so a wrong code never
+                    // gets as far as the six-digit screen.
+                    accept: (value) =>
+                      parsePairingCode(value).ok
+                        ? { ok: true as const, value }
+                        : { ok: false as const, reason: "That isn't a valid Veltravia pairing code." },
+                  },
+                );
                 navigationRef.current?.navigate('ScanQr');
               }}
             />

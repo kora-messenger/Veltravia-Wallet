@@ -92,13 +92,26 @@ export default function ImportWalletScreen({ navigation }: { navigation: any }) 
   };
 
   const onScan = () => {
-    const off = registerScanTarget(async (value: string) => {
-      off();
-      // A scanned phrase fills the box for review; it is still validated.
-      setPhrase(String(value));
-      setHidden(false);
-      if (storeError) setStoreError(null);
-    });
+    const off = registerScanTarget(
+      async (value: string) => {
+        off();
+        // A scanned phrase fills the box for review; it is still validated.
+        setPhrase(String(value));
+        setHidden(false);
+        if (storeError) setStoreError(null);
+      },
+      undefined,
+      {
+        title: 'Scan secret phrase',
+        // Same scanner as everywhere else; only a phrase-shaped code belongs here.
+        accept: (value) => {
+          const verdict = validateMnemonic(value);
+          return verdict.ok
+            ? { ok: true as const, value: normalizeMnemonic(value) }
+            : { ok: false as const, reason: "That QR code isn't a secret phrase." };
+        },
+      },
+    );
     navigation.navigate('ScanQr');
   };
 

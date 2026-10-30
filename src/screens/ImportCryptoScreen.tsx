@@ -119,9 +119,26 @@ export default function ImportCryptoScreen() {
   };
 
   // Scan a QR to fill the contract address; unregistered on unmount.
-  useEffect(() => registerScanTarget((v) => {
-    setAddr(v.startsWith('ethereum:') ? v.slice(9) : v);
-  }), []);
+  useEffect(
+    () =>
+      registerScanTarget(
+        (v) => {
+          setAddr(v.startsWith('ethereum:') ? v.slice(9) : v);
+        },
+        undefined,
+        {
+          title: 'Scan token address',
+          accept: (raw) => {
+            const value = raw.startsWith('ethereum:') ? raw.slice(9) : raw;
+            // A contract address, not a phrase or a pairing code.
+            return /^0x[0-9a-fA-F]{40}$/.test(value)
+              ? { ok: true as const, value }
+              : { ok: false as const, reason: "That QR code isn't a token address." };
+          },
+        },
+      ),
+    [],
+  );
   const openScanner = () => navigation.navigate('ScanQr');
 
   const paste = async () => {
