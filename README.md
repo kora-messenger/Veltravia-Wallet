@@ -588,6 +588,17 @@ filled grey circle when selected, unselected tabs are bare text with no pill (on
 empty watchlist shows a small flying-saucer illustration with "Your watchlist will appear here". Starred markets
 appear in a Watchlist section above Popular on the Perps home. Art: `src/components/WatchlistEmptyArt.tsx`.
 
+**Bottom navigation active state redesigned (Oct 30, `FloatingTabBar`).** The selected tab no longer shows a
+rounded rectangle behind the icon. Each tab now has a true circle behind its icon: 40x40 with `borderRadius: 20`
+(50%), a subtle `#EFEFF2` tint in light mode and `rgba(255,255,255,0.10)` in dark. It grows in from 0.7 scale and
+fades with a 200ms native-driven timing (150ms when leaving), so switching tabs reads as one soft movement.
+
+- Inactive tabs are fully transparent, as before.
+- **No icon moved:** the icon cell keeps its 48x32 footprint and the larger circle overflows it evenly, so spacing,
+  alignment and icon size are unchanged.
+- The floating Swap button takes the same grey circle when it is the active tab, so all five tabs match.
+- Everything else (pill shape, notch, heights, shadows, tap pulse) is untouched.
+
 **Perps Filter sheet rebuilt to the 10:43/10:44 recording (Oct 30).** Measured off the video (1080px wide =
 2.625px/dp): button 157px = 60dp, 16dp side margins, chips ~34dp pills, hairline dividers between sections, "Show
 results" #392EFA, sheet 32dp top corners.

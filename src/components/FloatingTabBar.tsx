@@ -9,7 +9,7 @@
  */
 
 import React from 'react';
-import { Pressable, View, StyleSheet } from 'react-native';
+import { Pressable, View, StyleSheet, Animated, Easing } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -39,6 +39,10 @@ const PILL_BOTTOM = 20; // gap between pill and the bottom edge of the screen
 const PILL_SIDE = 24; // side margins
 const NOTCH_R = 36; // radius of the dip around the Swap button (button radius + gap)
 const SWAP_SIZE = 58;
+// Active highlight: a true circle (radius = 50%), centred on the icon. The cell
+// keeps its 48x32 footprint so no icon moves; the circle is allowed to overflow
+// it evenly into the pill's spare height (64 - 40 = 12dp top and bottom).
+const HIGHLIGHT = 40;
 // Swap circle is centered ON the dip: its center sits exactly on the pill's top edge
 const SWAP_BOTTOM = PILL_BOTTOM + PILL_H - SWAP_SIZE / 2;
 
@@ -61,6 +65,33 @@ function pillPath(w: number): string {
     `H ${w - r} A${r} ${r} 0 0 1 ${w} ${r} ` +
     `A${r} ${r} 0 0 1 ${w - r} ${PILL_H} ` +
     `H ${r} A${r} ${r} 0 0 1 0 ${r} Z`
+  );
+}
+
+/**
+ * The active indicator: one fully rounded circle that grows and fades in when a
+ * tab becomes active, and shrinks away when it leaves. Native-driven, so the
+ * switch stays smooth while a screen is mounting.
+ */
+function ActiveHighlight({ active, color }: { active: boolean; color: string }) {
+  const v = React.useRef(new Animated.Value(active ? 1 : 0)).current;
+  React.useEffect(() => {
+    Animated.timing(v, {
+      toValue: active ? 1 : 0,
+      duration: active ? 200 : 150,
+      easing: active ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [active, v]);
+  return (
+    <Animated.View
+      pointerEvents="none"
+      testID="tabHighlight"
+      style={[
+        styles.highlight,
+        { backgroundColor: color, opacity: v, transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }) }] },
+      ]}
+    />
   );
 }
 
@@ -94,19 +125,16 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
     const focused = focusedName === name;
     const Icon = TAB_ICONS[name];
     return (
-      <Pressable key={name} onPress={() => go(name)} hitSlop={4} style={styles.tabItem}>
-        <View
-          style={[
-            styles.iconWrap,
-            {
-              backgroundColor: focused
-                ? theme.mode === 'dark'
-                  ? '#1D2133' // Trust dark-mode indicator
-                  : '#F0F0F2' // Trust light-mode indicator
-                : 'transparent',
-            },
-          ]}
-        >
+      <Pressable
+        key={name}
+        onPress={() => go(name)}
+        hitSlop={4}
+        style={styles.tabItem}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: focused }}
+      >
+        <View style={styles.iconWrap}>
+          <ActiveHighlight active={focused} color={highlightColor} />
           <AnimatedTabIcon
             ref={(h) => { tabRefs.current[name] = h; }}
           >
@@ -118,6 +146,8 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
   };
 
   const swapFocused = focusedName === 'Swap';
+  // Subtle light grey that reads as a soft tint on the pill, never a box.
+  const highlightColor = theme.mode === 'dark' ? 'rgba(255,255,255,0.10)' : '#EFEFF2';
   // Trust parity: milk interior with a tiny dark-gray hairline around it
   // (light), deep navy surface with a faint light hairline (dark).
   const pillBg = theme.mode === 'dark' ? '#07101E' : '#FAFAFB';
@@ -157,11 +187,14 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
       {/* raised center Swap button, floating in the notch */}
       <Pressable
         onPress={() => go('Swap')}
+        accessibilityRole="tab"
+        accessibilityLabel="Swap"
+        accessibilityState={{ selected: swapFocused }}
         style={({ pressed }) => [
           styles.swapBtn,
           {
             bottom: SWAP_BOTTOM + insets.bottom,
-            backgroundColor: pillBg,
+            backgroundColor: swapFocused ? (theme.mode === 'dark' ? '#1A1E2E' : '#EFEFF2') : pillBg,
             borderColor,
             shadowOpacity: (theme.mode === 'dark' ? 0.4 : 0.14) * (pressed ? 0.6 : 1),
           },
@@ -222,10 +255,18 @@ const styles = StyleSheet.create({
   },
   iconWrap: {
     width: 48,
-    height: 32,
-    borderRadius: 16,
+    height: 32,          // unchanged footprint: nothing moves
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  highlight: {
+    position: 'absolute',
+    width: HIGHLIGHT,
+    height: HIGHLIGHT,
+    borderRadius: HIGHLIGHT / 2,   // 50%: a circle, not a box
+    // centred on the icon even though it is taller than the cell
+    top: (32 - HIGHLIGHT) / 2,
+    left: (48 - HIGHLIGHT) / 2,
   },
   // Left/right icon groups stay inside the capsule's straight section so the
   // rounded ends curve around empty space, like Trust (no indicator poking out).
