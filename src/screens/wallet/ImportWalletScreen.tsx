@@ -1,20 +1,16 @@
 /**
- * Veltravia Wallet — "Restore wallet" (secret phrase entry).
+ * Veltravia Wallet — "Restore Wallet" (secret phrase entry).
  *
- * Layout, as specified (Trust restore screen, Veltravia skin):
- *   • back chevron top-left, NOTHING in the top middle, animated scanner
- *     icon top-right
- *   • the screen name "Restore wallet" sits under the back arrow, left aligned
- *   • one big box filling the screen. Its placeholder "Enter secret phrase" is
- *     centred in the middle of the box, and the words start exactly there and
- *     wrap onto new centred lines as they run long
- *   • bottom-right inside the box: "Paste" in the app's own colour. As soon as
- *     the box has anything in it, Paste disappears and two grey pills appear:
- *     Clear and Hide. Hide masks the words and becomes Show; Show puts them back
- *   • Continue at the bottom stays disabled until the phrase is a real BIP-39
- *     phrase (wordlist membership AND checksum), so a typo cannot slip through
+ * Rebuilt to the reference screen, on white: the 3D wallet art, the headline
+ * with "Wallet" in the brand gradient, a short subtitle, a bordered "Secret
+ * phrase" card holding the input and its eye toggle, a "Keep your phrase safe"
+ * card, a full-width Paste row, and the gradient Continue.
  *
- * The phrase is never logged and only reaches the keystore on a valid Continue.
+ * This screen is intentionally light in both themes — the reference is a white
+ * sheet, so it does not follow the dark palette.
+ *
+ * The phrase is never logged and only reaches the keystore on a valid Continue,
+ * where it must pass wordlist membership AND the BIP-39 checksum.
  */
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -28,10 +24,15 @@ import {
   Easing,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../../theme/ThemeProvider';
-import { BackIcon, ScanIcon } from '../../components/icons';
+import LinearGradient from 'react-native-linear-gradient';
+import Svg, { Defs, LinearGradient as SvgGradient, Stop, Text as SvgText } from 'react-native-svg';
+import {
+  BackIcon, ScanIcon, DocIcon, ShieldCheckIcon, EyeIcon, EyeOffIcon, ChevronRightIcon, CopyIcon,
+} from '../../components/icons';
 import { normalizeMnemonic, validateMnemonic } from '../../core/wallet/bip39';
 import { walletManager } from '../../core/wallet/walletManager';
 import { pasteFromClipboard } from '../../core/clipboard';
@@ -39,13 +40,23 @@ import { useWallets } from '../../wallets/WalletsProvider';
 import { registerScanTarget } from '../../services/scanTarget';
 import { parsePairingCode } from '../../core/security/pairingSession';
 
+/** Fixed light palette: the reference screen is a white sheet. */
+const C = {
+  bg: '#FFFFFF',
+  ink: '#0B0B12',
+  muted: '#7D7D85',
+  border: '#EAEAF0',
+  field: '#FAFAFC',
+  tint: '#F4F3FF',
+  brand: '#6C63FF',
+};
+
 /** Keep the word count and spacing, lose the words themselves. */
 function maskPhrase(phrase: string): string {
   return phrase.replace(/[^\s]+/g, (word) => '•'.repeat(Math.max(4, Math.min(10, word.length))));
 }
 
 export default function ImportWalletScreen({ navigation }: { navigation: any }) {
-  const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { nextWalletName, createWallet } = useWallets();
 
@@ -100,12 +111,9 @@ export default function ImportWalletScreen({ navigation }: { navigation: any }) 
         off();
         const pairing = parsePairingCode(value);
         if (pairing.ok) {
-          // Pairing identifies a session only; the six digits are typed on the
-          // verify screen and the wallet lands after they match.
           navigation.navigate('PairVerify', { uri: value });
           return;
         }
-        // Otherwise it is a phrase: fill the box and let Continue check it.
         setPhrase(normalizeMnemonic(value));
         setHidden(false);
         if (storeError) setStoreError(null);
@@ -157,142 +165,225 @@ export default function ImportWalletScreen({ navigation }: { navigation: any }) 
       : null;
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.root, { backgroundColor: theme.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
+    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <StatusBar barStyle="dark-content" />
 
       <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
-        <Pressable hitSlop={12} onPress={() => navigation.goBack()} style={styles.backBtn} testID="restoreBack">
-          <BackIcon size={24} color={theme.ink} />
+        <Pressable hitSlop={12} onPress={() => navigation.goBack()} style={styles.headerBtn} testID="restoreBack">
+          <BackIcon size={24} color={C.ink} />
         </Pressable>
-        <View style={styles.headerCenter} />
-        <Pressable hitSlop={12} onPress={onScan} style={styles.scanBtn} testID="restoreScan">
+        <Pressable hitSlop={12} onPress={onScan} style={styles.headerBtn} testID="restoreScan">
           <Animated.View style={scanStyle}>
-            <ScanIcon size={22} color={theme.ink} />
+            <ScanIcon size={22} color={C.ink} />
           </Animated.View>
         </Pressable>
       </View>
 
-      <Text style={[styles.screenTitle, { color: theme.ink }]}>Restore wallet</Text>
-
-      <View style={[styles.box, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}>
-        <TextInput
-          value={hidden ? maskPhrase(phrase) : phrase}
-          onChangeText={(t) => {
-            setPhrase(t);
-            if (storeError) setStoreError(null);
-          }}
-          editable={!hidden}
-          placeholder="Enter secret phrase"
-          placeholderTextColor={theme.inkMuted}
-          multiline
-          autoCorrect={false}
-          autoCapitalize="none"
-          spellCheck={false}
-          textAlign="center"
-          textAlignVertical="center"
-          style={[styles.input, { color: theme.ink }]}
-          testID="restorePhraseInput"
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollBody}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <Image
+          source={require('../../assets/restore-wallet-3d.png')}
+          style={styles.art}
+          resizeMode="contain"
         />
 
-        {hasText ? (
-          <View style={styles.actions}>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>Restore </Text>
+          <Svg width={90} height={36} accessibilityLabel="Wallet">
+            <Defs>
+              <SvgGradient id="walletWord" x1="0" y1="0" x2="1" y2="0">
+                <Stop offset="0" stopColor="#3B82F6" />
+                <Stop offset="1" stopColor="#8B5CF6" />
+              </SvgGradient>
+            </Defs>
+            <SvgText x={0} y={27} fontSize={28} fontFamily="Inter-700" fontWeight="700" fill="url(#walletWord)">
+              Wallet
+            </SvgText>
+          </Svg>
+        </View>
+
+        <Text style={styles.subtitle}>
+          Enter your secret phrase to restore your wallet. This will give you access to your existing assets.
+        </Text>
+
+        {/* secret phrase card */}
+        <View style={styles.card}>
+          <View style={styles.cardHead}>
+            <View style={styles.cardIcon}>
+              <DocIcon size={20} color={C.brand} />
+            </View>
+            <View style={styles.cardHeadText}>
+              <Text style={styles.cardTitle}>Secret phrase</Text>
+              <Text style={styles.cardDesc}>Enter the 12 or 24 word secret phrase in the correct order.</Text>
+            </View>
+          </View>
+
+          <View style={styles.field}>
+            <TextInput
+              value={hidden ? maskPhrase(phrase) : phrase}
+              onChangeText={(t) => {
+                setPhrase(t);
+                if (storeError) setStoreError(null);
+              }}
+              editable={!hidden}
+              placeholder="Enter secret phrase"
+              placeholderTextColor={C.muted}
+              multiline={false}
+              autoCorrect={false}
+              autoCapitalize="none"
+              spellCheck={false}
+              style={styles.input}
+              testID="restorePhraseInput"
+            />
             <Pressable
-              onPress={onClear}
-              style={[styles.grayPill, { backgroundColor: theme.surface, borderColor: theme.border }]}
-              testID="restoreClear"
-            >
-              <Text style={[styles.grayText, { color: theme.ink }]}>Clear</Text>
-            </Pressable>
-            <Pressable
+              hitSlop={10}
               onPress={() => setHidden((h) => !h)}
-              style={[styles.grayPill, { backgroundColor: theme.surface, borderColor: theme.border }]}
+              style={styles.eye}
               testID="restoreHide"
+              accessibilityLabel={hidden ? 'Show secret phrase' : 'Hide secret phrase'}
             >
-              <Text style={[styles.grayText, { color: theme.ink }]}>{hidden ? 'Show' : 'Hide'}</Text>
+              {hidden ? <EyeOffIcon size={20} color={C.muted} /> : <EyeIcon size={20} color={C.muted} />}
             </Pressable>
           </View>
-        ) : (
-          <Pressable onPress={onPaste} style={styles.pasteBtn} testID="restorePaste">
-            <Text style={[styles.pasteText, { color: theme.brand }]}>Paste</Text>
-          </Pressable>
-        )}
+
+          {hasText ? (
+            <Pressable onPress={onClear} style={styles.clearBtn} testID="restoreClear">
+              <Text style={styles.clearText}>Clear</Text>
+            </Pressable>
+          ) : null}
+        </View>
+
+        {/* safety card */}
+        <View style={styles.card}>
+          <View style={styles.cardHead}>
+            <View style={[styles.cardIcon, styles.shieldIcon]}>
+              <ShieldCheckIcon size={20} color="#12805C" />
+            </View>
+            <View style={styles.cardHeadText}>
+              <Text style={styles.cardTitle}>Keep your phrase safe</Text>
+              <Text style={styles.cardDesc}>
+                Your secret phrase gives full access to your wallet. Never share it with anyone, and never store it online.
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {problem ? (
+          <Text style={styles.problem} testID="restoreProblem">{problem}</Text>
+        ) : null}
+        {storeError ? (
+          <Text style={styles.problem} testID="restoreStoreError">{storeError}</Text>
+        ) : null}
+
+        <Pressable onPress={onPaste} style={styles.pasteRow} testID="restorePaste" accessibilityLabel="Paste">
+          <CopyIcon size={20} color={C.ink} />
+          <Text style={styles.pasteText}>Paste</Text>
+          <ChevronRightIcon size={20} color={C.muted} />
+        </Pressable>
+      </ScrollView>
+
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <Pressable
+          onPress={restore}
+          disabled={!valid || checking}
+          style={[styles.continue, { opacity: !valid || checking ? 0.45 : 1 }]}
+          testID="restoreContinue"
+        >
+          <LinearGradient
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            colors={['#6C63FF', '#4A90D9']}
+            style={StyleSheet.absoluteFill}
+          />
+          <Text style={styles.continueText}>{checking ? 'Restoring…' : 'Continue'}</Text>
+        </Pressable>
       </View>
-
-      {problem ? (
-        <Text style={[styles.problem, { color: theme.negative }]} testID="restoreProblem">
-          {problem}
-        </Text>
-      ) : null}
-      {storeError ? (
-        <Text style={[styles.problem, { color: theme.negative }]} testID="restoreStoreError">
-          {storeError}
-        </Text>
-      ) : null}
-
-      <Pressable
-        onPress={restore}
-        disabled={!valid || checking}
-        style={[
-          styles.continue,
-          { backgroundColor: theme.brand, opacity: !valid || checking ? 0.4 : 1 },
-        ]}
-        testID="restoreContinue"
-      >
-        <Text style={styles.continueText}>{checking ? 'Restoring…' : 'Continue'}</Text>
-      </Pressable>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, height: undefined },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  headerCenter: { flex: 1 },
-  scanBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  screenTitle: {
-    fontSize: 26,
-    lineHeight: 34,
+  root: { flex: 1, backgroundColor: C.bg },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12 },
+  headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  scroll: { flex: 1 },
+  scrollBody: { paddingHorizontal: 16, paddingBottom: 24 },
+  art: { width: 224, height: 154, alignSelf: 'center', marginTop: 4, marginBottom: 6 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  title: {
+    fontSize: 28,
+    lineHeight: 36,
     fontFamily: 'Inter-700',
     fontWeight: '700',
-    letterSpacing: -0.4,
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 16,
+    letterSpacing: -0.5,
+    color: C.ink,
   },
-  box: {
-    flex: 1,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 14,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    lineHeight: 24,
+  subtitle: {
+    fontSize: 14,
+    lineHeight: 20,
     fontFamily: 'Inter-400',
-    paddingHorizontal: 4,
-    paddingTop: 0,
-    paddingBottom: 0,
+    color: C.muted,
+    textAlign: 'center',
+    paddingHorizontal: 12,
+    marginTop: 8,
+    marginBottom: 20,
   },
-  actions: { position: 'absolute', right: 12, bottom: 12, flexDirection: 'row', gap: 8 },
-  grayPill: { borderRadius: 16, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 7 },
-  grayText: { fontSize: 13, fontFamily: 'Inter-600', fontWeight: '600' },
-  pasteBtn: { position: 'absolute', right: 8, bottom: 6, paddingHorizontal: 12, paddingVertical: 8 },
-  pasteText: { fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600' },
-  problem: { fontSize: 13, fontFamily: 'Inter-400', paddingHorizontal: 20, paddingBottom: 8 },
-  continue: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 26,
-    height: 52,
+  card: {
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 16,
+    backgroundColor: C.bg,
+    padding: 14,
+    marginBottom: 12,
+  },
+  cardHead: { flexDirection: 'row', gap: 12 },
+  cardIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: C.tint,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  shieldIcon: { backgroundColor: '#E8F6F1' },
+  cardHeadText: { flex: 1 },
+  cardTitle: { fontSize: 15, fontFamily: 'Inter-700', fontWeight: '700', color: C.ink },
+  cardDesc: { fontSize: 13, lineHeight: 18, fontFamily: 'Inter-400', color: C.muted, marginTop: 3 },
+  field: {
+    marginTop: 12,
+    height: 52,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 12,
+    backgroundColor: C.field,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 14,
+    paddingRight: 8,
+  },
+  input: { flex: 1, fontSize: 15, fontFamily: 'Inter-500', color: C.ink, paddingVertical: 0 },
+  eye: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  clearBtn: { alignSelf: 'flex-start', marginTop: 10, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, backgroundColor: C.field },
+  clearText: { fontSize: 13, fontFamily: 'Inter-600', fontWeight: '600', color: C.ink },
+  problem: { fontSize: 13, fontFamily: 'Inter-400', color: '#D63232', paddingHorizontal: 4, paddingBottom: 8 },
+  pasteRow: {
+    height: 52,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 14,
+    backgroundColor: C.bg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    marginTop: 2,
+  },
+  pasteText: { flex: 1, fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600', color: C.ink },
+  footer: { paddingHorizontal: 16, paddingTop: 8, backgroundColor: C.bg },
+  continue: { height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   continueText: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
 });

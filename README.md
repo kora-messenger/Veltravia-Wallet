@@ -588,6 +588,13 @@ filled grey circle when selected, unselected tabs are bare text with no pill (on
 empty watchlist shows a small flying-saucer illustration with "Your watchlist will appear here". Starred markets
 appear in a Watchlist section above Popular on the Perps home. Art: `src/components/WatchlistEmptyArt.tsx`.
 
+**Restore Wallet rebuilt to the new reference (Oct 30).** The screen now opens on the 3D wallet art, a "Restore
+Wallet" headline with the second word in the blue-to-purple gradient, a one-line subtitle, a bordered "Secret phrase"
+card holding the input and its eye toggle, a "Keep your phrase safe" card, a full-width Paste row, and the gradient
+Continue pinned at the foot. It stays white in both themes, per the brief, rather than following the dark palette.
+The supplied 3D render is bundled at `src/assets/restore-wallet-3d.png` with its dark backdrop cut out so it sits on
+white. Clear appears once there is text; the eye replaces the old Hide/Show pill. BIP-39 checks are unchanged.
+
 **Pair a New Device intro (Oct 30 design).** The pairing sheet now opens on a designed card instead of a wall of
 instructions: a vector illustration (dark phone showing the code, light phone scanning it, a shield joining them
 with a dashed glow), "Pair a New Device", one line of explanation, three feature rows (Secure & Encrypted, Link to

@@ -122,31 +122,39 @@ beforeEach(() => {
 });
 
 describe('Restore wallet', () => {
-  it('puts the title under the back arrow, nothing in the middle, scanner on the right', () => {
+  it('leads with the 3D art, the Restore Wallet headline and the two cards', () => {
     const t = mount();
     const shown = texts(t);
-    expect(shown).toContain('Restore wallet');
+    // "Wallet" is drawn with the brand gradient, so it is its own node
+    expect(shown).toContain('Restore ');
+    // texts() walks letters individually in places, so normalise the spacing
+    const flat = Array.from(shown as any).join('').replace(/\s+/g, ' ');
+    expect(flat).toContain('Enter your secret phrase to restore your wallet');
+    for (const line of ['Secret phrase', 'Keep your phrase safe', 'Paste', 'Continue']) {
+      expect(flat).toContain(line);
+    }
     expect(anyById(t, 'restoreBack')).toBeTruthy();
     expect(anyById(t, 'restoreScan')).toBeTruthy();
-    // Placeholder lives in the middle of the box; no second title between header edges.
     expect(anyById(t, 'restorePhraseInput').props.placeholder).toBe('Enter secret phrase');
+    // the art is bundled, not a remote URL
+    const img = t.root.findAll((n: any) => n.props.style && JSON.stringify(n.props.style).includes('"height":154'));
+    expect(img.length).toBeGreaterThan(0);
   });
 
-  it('shows Paste in the app colour until there is text, then Clear and Hide', async () => {
+  it('keeps the Paste row, with the eye always in the field and Clear once typed', async () => {
     const t = mount();
     expect(anyById(t, 'restorePaste')).toBeTruthy();
-    expect(anyById(t, 'restoreHide')).toBeUndefined();
+    // the eye lives in the input field, so it is there before any typing
+    expect(byId(t, 'restoreHide').props.accessibilityLabel).toBe('Hide secret phrase');
     expect(anyById(t, 'restoreClear')).toBeUndefined();
 
     await typePhrase(t, 'legal winner');
 
-    expect(anyById(t, 'restorePaste')).toBeUndefined();
-    expect(byId(t, 'restoreHide')).toBeTruthy();
     expect(byId(t, 'restoreClear')).toBeTruthy();
-    expect(texts(t)).toContain('Hide');
+    expect(texts(t)).toContain('Clear');
   });
 
-  it('Hide masks the words, turns into Show, and Show brings them back', async () => {
+  it('the eye masks the words and brings them back', async () => {
     const t = mount();
     await typePhrase(t, VECTOR);
 
@@ -156,11 +164,11 @@ describe('Restore wallet', () => {
     // Masked per word, spacing and word count preserved.
     expect(masked.split(' ').every((w) => /^•+$/.test(w))).toBe(true);
     expect(masked.split(' ')).toHaveLength(VECTOR.split(' ').length);
-    expect(texts(t)).toContain('Show');
+    expect(byId(t, 'restoreHide').props.accessibilityLabel).toBe('Show secret phrase');
 
     await act(async () => byId(t, 'restoreHide').props.onPress());
     expect(anyById(t, 'restorePhraseInput').props.value).toBe(VECTOR);
-    expect(texts(t)).toContain('Hide');
+    expect(byId(t, 'restoreHide').props.accessibilityLabel).toBe('Hide secret phrase');
   });
 
   it('Clear empties the box and brings Paste back', async () => {
@@ -170,7 +178,8 @@ describe('Restore wallet', () => {
 
     expect(anyById(t, 'restorePhraseInput').props.value).toBe('');
     expect(anyById(t, 'restorePaste')).toBeTruthy();
-    expect(anyById(t, 'restoreHide')).toBeUndefined();
+    expect(anyById(t, 'restoreClear')).toBeUndefined();
+    expect(anyById(t, 'restorePhraseInput').props.value).toBe('');
   });
 
   it('keeps Continue disabled until the phrase actually validates', async () => {
