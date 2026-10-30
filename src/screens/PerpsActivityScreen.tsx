@@ -28,6 +28,8 @@ import { T, SP, TOUCH } from '../theme/typography';
 import { ActivitySkeleton } from '../components/Skeleton';
 import NetInfo from '@react-native-community/netinfo';
 import PerpsFilterSheet, { PerpsActivityFilters, DEFAULT_PERPS_ACTIVITY_FILTERS, perpsFiltersActive } from '../components/PerpsFilterSheet';
+import { applyPerpsFilters, type PerpsActivityItem } from '../core/perps/activityFilters';
+import { loadPerpsActivity } from '../services/perpsActivity';
 
 export default function PerpsActivityScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
@@ -43,6 +45,10 @@ export default function PerpsActivityScreen({ navigation }: { navigation: any })
 
   const [filters, setFilters] = useState<PerpsActivityFilters>(DEFAULT_PERPS_ACTIVITY_FILTERS);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [items, setItems] = useState<PerpsActivityItem[]>([]);
+  // What "Show results" means: the real activity, run through the chosen filters.
+  const visibleItems = applyPerpsFilters(items, filters);
+  const filtering = perpsFiltersActive(filters);
 
   const chipBg = dark ? 'rgba(255,255,255,0.12)' : 'rgba(60,64,90,0.08)';
   const pageBg = dark ? theme.background : '#FFFFFF';
@@ -61,6 +67,9 @@ export default function PerpsActivityScreen({ navigation }: { navigation: any })
     const online = state.isConnected === true && state.isInternetReachable !== false;
     await new Promise<void>(r => setTimeout(r, 900));
     if (!online) setLoadError('offline');
+    else {
+      try { setItems(await loadPerpsActivity()); } catch { setLoadError('failed'); }
+    }
     setIsLoading(false);
   }, []);
 
@@ -182,13 +191,52 @@ export default function PerpsActivityScreen({ navigation }: { navigation: any })
             />
           }
         >
-          <Image
-            source={dark ? require('../assets/no-activity-robot-dark.png') : require('../assets/no-activity-robot.png')}
-            style={styles.art}
-            resizeMode="contain"
-          />
-          <Text style={[styles.headline, { color: theme.ink }]}>No activity yet</Text>
-          <Text style={[styles.sub, { color: theme.inkMuted }]}>Your transactions will appear here</Text>
+          {visibleItems.length > 0 ? (
+            <View style={styles.list} testID="perpsActivityList">
+              {visibleItems.map((it) => (
+                <View key={it.id} style={[styles.itemRow, { borderBottomColor: dark ? 'rgba(255,255,255,0.08)' : '#EFEFF3' }]} testID={`activity-${it.id}`}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[T.heading, { color: theme.ink }]}>
+                      {it.type.charAt(0).toUpperCase() + it.type.slice(1)} · {it.asset}
+                    </Text>
+                    <Text style={[T.subtitle, { color: theme.inkMuted }]}>
+                      {it.provider === 'aster' ? 'Aster' : 'Hyperliquid'} · {new Date(it.timestamp).toLocaleDateString()}
+                    </Text>
+                  </View>
+                  <Text style={[T.subtitle, { color: it.status === 'failed' ? '#D63232' : theme.inkMuted }]}>
+                    {it.status.charAt(0).toUpperCase() + it.status.slice(1)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <>
+              <Image
+                source={dark ? require('../assets/no-activity-robot-dark.png') : require('../assets/no-activity-robot.png')}
+                style={styles.art}
+                resizeMode="contain"
+              />
+              {/* "No activity yet" and "nothing matches" are different truths */}
+              <Text style={[styles.headline, { color: theme.ink }]} testID="activityEmptyTitle">
+                {filtering && items.length > 0 ? 'No results' : 'No activity yet'}
+              </Text>
+              <Text style={[styles.sub, { color: theme.inkMuted }]}>
+                {filtering && items.length > 0
+                  ? 'No transactions match these filters'
+                  : 'Your transactions will appear here'}
+              </Text>
+              {filtering && items.length > 0 ? (
+                <Pressable
+                  onPress={() => setFilters(DEFAULT_PERPS_ACTIVITY_FILTERS)}
+                  style={({ pressed }) => [styles.olderPill, { backgroundColor: tertiary, opacity: pressed ? 0.7 : 1, marginTop: SP.xl }]}
+                  accessibilityLabel="Clear filters"
+                  testID="clearFilters"
+                >
+                  <Text style={[T.buttonLarge, { color: theme.ink }]}>Clear filters</Text>
+                </Pressable>
+              ) : null}
+            </>
+          )}
 
           {canLoadOlder && (
             <Animated.View style={{ opacity: pillOpacity, alignSelf: 'stretch' }}>
@@ -235,6 +283,8 @@ const styles = StyleSheet.create({
   },
   title: T.heading,
 
+  list: { alignSelf: 'stretch' },
+  itemRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth * 2 },
   body: { alignItems: 'center', paddingHorizontal: SP.xxl, paddingTop: SP.lg, paddingBottom: SP.xl },
   art: { width: 128, height: 128, marginTop: 12, marginBottom: 20 },
   headline: { ...T.title2, textAlign: 'center' },

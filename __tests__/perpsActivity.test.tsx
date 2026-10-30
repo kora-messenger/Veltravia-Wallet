@@ -23,13 +23,16 @@ jest.mock('@react-native-community/netinfo', () => ({
   default: { fetch: async () => ({ isConnected: mockOnline, isInternetReachable: mockOnline }) },
 }));
 
+const mockItems: any[] = [];
+jest.mock('../src/services/perpsActivity', () => ({ loadPerpsActivity: async () => mockItems }));
+
 import PerpsActivityScreen from '../src/screens/PerpsActivityScreen';
 import PerpsScreen from '../src/screens/PerpsScreen';
 import PerpsMarketScreen from '../src/screens/PerpsMarketScreen';
 import { resetPerpsFavorites } from '../src/services/perpsFavorites';
 import { resetPerpsRecents } from '../src/services/perpsRecents';
 
-beforeEach(() => { resetPerpsFavorites(); resetPerpsRecents(); mockOnline = true; jest.useFakeTimers(); });
+beforeEach(() => { mockItems.length = 0; resetPerpsFavorites(); resetPerpsRecents(); mockOnline = true; jest.useFakeTimers(); });
 afterEach(() => { jest.useRealTimers(); });
 
 const mountScreen = async (Screen: any, name: string, params?: any) => {
@@ -144,17 +147,112 @@ describe('Perps entry points route to the PERPS activity screen', () => {
   });
 });
 
+const byId = (t: renderer.ReactTestRenderer, id: string) => t.root.findAll((n) => n.props.testID === id)[0];
+const tap = async (t: renderer.ReactTestRenderer, id: string) => {
+  await act(async () => { await byId(t, id).props.onPress(); });
+};
+const openFilter = async (t: renderer.ReactTestRenderer) => {
+  await act(async () => {
+    t.root.find((n) => typeof n.props.onPress === 'function' && Array.isArray(n.props.children) && n.props.children.some((c: any) => c?.type?.name === 'FilterLinesIcon')).props.onPress();
+  });
+};
+// the test renderer reports a composite and its host node per testID: count each id once
+const rows = (t: renderer.ReactTestRenderer) => [...new Set(
+  t.root.findAll((n) => typeof n.props.testID === 'string' && n.props.testID.startsWith('activity-')).map((n) => n.props.testID as string),
+)].filter((id) => id !== 'activityEmptyTitle');
+const dots = (t: renderer.ReactTestRenderer) => new Set(t.root.findAll((n) => n.props.testID === 'filterActiveDot')).size;
+
 describe('Perps filter button active dot (Trust 10:44 recording: 15s mark)', () => {
   it('no dot while filters are the defaults; the dot appears once a filter is applied', async () => {
     const t = await mountScreen(PerpsActivityScreen, 'PerpsActivity');
-    expect([...new Set(t.root.findAll((n) => n.props.testID === 'filterActiveDot'))].length).toBe(0);
-    // apply via the sheet: open it, select a provider, Show results
-    await act(async () => {
-      t.root.find((n) => typeof n.props.onPress === 'function' && Array.isArray(n.props.children) && n.props.children.some((c: any) => c?.type?.name === 'FilterLinesIcon')).props.onPress();
-    });    await act(async () => {
-      t.root.find((n) => n.props.accessibilityRole === 'button' && Array.isArray(n.props.children) && n.props.children.some((c: any) => c?.props?.children === 'Hyperliquid')).props.onPress();
-    });
-    const PB = require('../src/components/PrimaryButton').default;
-    await act(async () => { t.root.find((n) => n.type === PB).props.onPress(); });    const dots = t.root.findAll((n) => n.props.testID === 'filterActiveDot');    await act(async () => { t.unmount(); });
+    expect(dots(t)).toBe(0);
+    await openFilter(t);
+    await tap(t, 'chip-hyperliquid');
+    await tap(t, 'showResults');
+    await act(async () => { jest.advanceTimersByTime(400); });
+    expect(dots(t)).toBeGreaterThan(0);
+    await act(async () => { t.unmount(); });
+  });
+});
+
+describe('"Show results" really filters the Activity list', () => {
+  const NOW = Date.now();
+  const DAY = 86_400_000;
+  const seed = () => mockItems.push(
+    { id: 'btc-trade', provider: 'hyperliquid', asset: 'BTC', type: 'trade', status: 'completed', timestamp: NOW - 1 * DAY },
+    { id: 'ant-order', provider: 'aster', asset: 'ANT', type: 'order', status: 'submitted', timestamp: NOW - 20 * DAY },
+    { id: 'eth-xfer', provider: 'hyperliquid', asset: 'ETH', type: 'transfer', status: 'failed', timestamp: NOW - 60 * DAY },
+    { id: 'btc-fund', provider: 'hyperliquid', asset: 'BTC', type: 'transfer', status: 'completed', isFunding: true, timestamp: NOW - 1 * DAY },
+  );
+
+  it('no filters: everything except funding payments', async () => {
+    seed();
+    const t = await mountScreen(PerpsActivityScreen, 'PerpsActivity');
+    expect(rows(t).sort()).toEqual(['activity-ant-order', 'activity-btc-trade', 'activity-eth-xfer']);
+    await act(async () => { t.unmount(); });
+  });
+
+  it('provider + status + date each narrow the list the user sees', async () => {
+    seed();
+    const t = await mountScreen(PerpsActivityScreen, 'PerpsActivity');
+
+    await openFilter(t);
+    await tap(t, 'chip-aster');
+    await tap(t, 'showResults');
+    await act(async () => { jest.advanceTimersByTime(400); });
+    expect(rows(t)).toEqual(['activity-ant-order']);
+
+    await openFilter(t);
+    await tap(t, 'filterReset');
+    await tap(t, 'chip-failed');
+    await tap(t, 'showResults');
+    await act(async () => { jest.advanceTimersByTime(400); });
+    expect(rows(t)).toEqual(['activity-eth-xfer']);
+
+    await openFilter(t);
+    await tap(t, 'filterReset');
+    await tap(t, 'chip-7d');
+    await tap(t, 'showResults');
+    await act(async () => { jest.advanceTimersByTime(400); });
+    expect(rows(t)).toEqual(['activity-btc-trade']);
+    await act(async () => { t.unmount(); });
+  });
+
+  it('the funding switch reveals funding payments', async () => {
+    seed();
+    const t = await mountScreen(PerpsActivityScreen, 'PerpsActivity');
+    await openFilter(t);
+    await tap(t, 'fundingToggle');
+    await tap(t, 'showResults');
+    await act(async () => { jest.advanceTimersByTime(400); });
+    expect(rows(t)).toContain('activity-btc-fund');
+    await act(async () => { t.unmount(); });
+  });
+
+  it('a filter that matches nothing says "No results" and Clear filters brings everything back', async () => {
+    seed();
+    const t = await mountScreen(PerpsActivityScreen, 'PerpsActivity');
+    await openFilter(t);
+    await tap(t, 'chip-aster');
+    await tap(t, 'chip-failed');          // no Aster transaction failed
+    await tap(t, 'showResults');
+    await act(async () => { jest.advanceTimersByTime(400); });
+    expect(rows(t)).toEqual([]);
+    expect(byId(t, 'activityEmptyTitle').props.children).toBe('No results');
+
+    await tap(t, 'clearFilters');
+    expect(rows(t).length).toBe(3);
+    expect(dots(t)).toBe(0);
+    await act(async () => { t.unmount(); });
+  });
+
+  it('with no history at all it says "No activity yet", not "No results"', async () => {
+    const t = await mountScreen(PerpsActivityScreen, 'PerpsActivity');
+    await openFilter(t);
+    await tap(t, 'chip-aster');
+    await tap(t, 'showResults');
+    await act(async () => { jest.advanceTimersByTime(400); });
+    expect(byId(t, 'activityEmptyTitle').props.children).toBe('No activity yet');
+    await act(async () => { t.unmount(); });
   });
 });

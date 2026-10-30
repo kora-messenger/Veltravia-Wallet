@@ -588,6 +588,30 @@ filled grey circle when selected, unselected tabs are bare text with no pill (on
 empty watchlist shows a small flying-saucer illustration with "Your watchlist will appear here". Starred markets
 appear in a Watchlist section above Popular on the Perps home. Art: `src/components/WatchlistEmptyArt.tsx`.
 
+**Perps Filter sheet rebuilt to the 10:43/10:44 recording (Oct 30).** Measured off the video (1080px wide =
+2.625px/dp): button 157px = 60dp, 16dp side margins, chips ~34dp pills, hairline dividers between sections, "Show
+results" #392EFA, sheet 32dp top corners.
+
+- **Three areas, one scrolls.** Fixed header (X, centred "Filter", Reset), a scroll body, a fixed "Show results"
+  footer. The sheet has a fixed height, so opening Custom dates grows the body only. Slide-up with a fading scrim,
+  and the same slide-out on close.
+- **Providers are multi-select** (was single). **Type / Status** multi, **Date** single.
+- **Assets picker** (`PerpsAssetPicker`) opens inside the same sheet: search, multi-select, count, Clear, Done. It
+  lists exactly the markets in `PERP_SECTIONS` and narrows to the providers already chosen. Nothing is invented.
+- **Custom dates:** native Material date + clock picker (Android). The other side is passed as the picker's limit,
+  and if a pick would still invert the range the other side moves and a toast says so, instead of silently shifting.
+- **Funding switch** animates, and funding payments stay hidden from the list unless it is on.
+- Filtering is a pure, unit-tested module (`src/core/perps/activityFilters.ts`). Activity shows a distinct "No
+  results" + "Clear filters" when filters hide everything, versus "No activity yet" when there is no history.
+- Contrast: the reference's idle grey (#818685, 3.2:1) is darkened to #686C6F (4.58:1) so enabled text passes 4.5:1;
+  disabled Reset stays pale on purpose.
+
+**Known gap, stated plainly: there is no Perps transaction history yet.** Live trading waits on the Wallet Core
+signing work, so `src/services/perpsActivity.ts` returns an empty list and the Activity screen has nothing to show.
+The filter sheet, the filtering and the list rendering are all built and tested against `PerpsActivityItem[]`, but
+"Show results" cannot be seen filtering real transactions on a phone until that feed exists. Date pickers need a
+device to confirm; the sandbox has no Android toolchain.
+
 **Scanner rebuilt to the plain full-screen reference (Oct 30, `ScanQrScreen`).** The heavy navy chrome is gone: the
 camera fills the screen and only three translucent controls float on it. Measured off the reference shot (471px wide,
 x0.873 to dp) rather than estimated: window 317px = 67% of width with 62px arms and a 12px stroke, icon centres at
