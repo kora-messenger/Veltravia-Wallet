@@ -581,6 +581,13 @@ A paired phone used to arrive unlocked with no lock password, which meant adding
 - **Surfaces** — the success screen says the wallet came over locked when it did; the Paired devices footer states that lock state and password travel while biometrics do not.
 - **Tests** — `__tests__/pairingLockInheritance.test.ts` (6): locked wallet arrives locked and the same password opens it (wrong password rejected); the password never appears in relay traffic and the verifier is a salt:digest; an unlocked wallet does not invent a lock; a local password is never overwritten; exporting does not change the host; the inherited lock actually trips `movementBlock` and unlocking locally clears it. Full suite: 410 passing.
 
+
+**Restore screen rebuilt to the current Trust layout (Oct 30 screenshot).** "Multi-coin wallet" with a
+wallet-name field (clear button, prefilled with the next free name), a tall secret-phrase box with Paste,
+the "Typically 12 (sometimes 18, 24) words separated by single spaces" helper, Restore wallet, and a
+"What is a secret phrase?" explainer. A scanned QR fills the box for review instead of restoring blindly.
+The BIP-39 wordlist and checksum are still enforced. Restore goes straight to the home tabs with the new
+wallet name.
 ### The recovery phrase is real now, on Trust's flow (Oct 30)
 
 **Secret phrase screen, matched to the current Trust build (video, Oct 30).** The screen opens with
