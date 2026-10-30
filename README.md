@@ -582,6 +582,12 @@ A paired phone used to arrive unlocked with no lock password, which meant adding
 - **Tests** — `__tests__/pairingLockInheritance.test.ts` (6): locked wallet arrives locked and the same password opens it (wrong password rejected); the password never appears in relay traffic and the verifier is a salt:digest; an unlocked wallet does not invent a lock; a local password is never overwritten; exporting does not change the host; the inherited lock actually trips `movementBlock` and unlocking locally clears it. Full suite: 410 passing.
 
 
+**Restore screen, second pass (user spec, Oct 30).** Back chevron left, nothing in the top middle, an
+animated scanner icon right, "Restore wallet" under the back arrow. One full-height box whose centred
+placeholder is "Enter secret phrase"; words start there and wrap onto new centred lines. Paste (app colour)
+sits bottom-right until the box has text, then Clear and Hide pills take its place. Hide masks the words and
+becomes Show. Continue stays disabled until the phrase passes BIP-39 wordlist plus checksum.
+
 **Restore screen rebuilt to the current Trust layout (Oct 30 screenshot).** "Multi-coin wallet" with a
 wallet-name field (clear button, prefilled with the next free name), a tall secret-phrase box with Paste,
 the "Typically 12 (sometimes 18, 24) words separated by single spaces" helper, Restore wallet, and a

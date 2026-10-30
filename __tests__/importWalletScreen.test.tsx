@@ -1,6 +1,6 @@
 /**
- * "Multi-coin wallet" restore screen: the Trust layout, with real BIP-39 checks
- * underneath. Nothing is stored unless the phrase validates.
+ * "Restore wallet": the Trust layout the user specified, with real BIP-39 checks
+ * underneath. Continue must never enable on a phrase that does not validate.
  */
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
@@ -18,9 +18,12 @@ jest.mock('react-native-keychain', () => {
     }),
     getGenericPassword: jest.fn(async (opts: any) => {
       const v = store.get(opts?.service);
-      return v === undefined ? false : { username: 'x', password: v, service: opts?.service };
+      return v === undefined ? false : { username: 'x', password: v };
     }),
-    resetGenericPassword: jest.fn(async (opts: any) => { store.delete(opts?.service); return true; }),
+    resetGenericPassword: jest.fn(async (opts: any) => {
+      store.delete(opts?.service);
+      return true;
+    }),
     __store: store,
   };
 });
@@ -28,14 +31,24 @@ jest.mock('react-native-keychain', () => {
 jest.mock('../src/theme/ThemeProvider', () => ({
   useTheme: () => ({
     theme: {
-      mode: 'dark', ink: '#fff', inkMuted: '#999', background: '#000',
-      surface: '#111', surfaceAlt: '#1a1a2e', border: '#222', brand: '#6C63FF',
-      negative: '#D63232', positive: '#158444',
+      mode: 'dark',
+      ink: '#fff',
+      inkMuted: '#8E96AD',
+      background: '#02070E',
+      surface: '#07101E',
+      surfaceAlt: '#0D1626',
+      border: '#121C2E',
+      brand: '#6C63FF',
+      negative: '#D63232',
+      buttonGradient: ['#6C63FF', '#4A90D9'],
     },
   }),
 }));
 
-jest.mock('../src/components/Toast', () => ({ showToast: jest.fn() }));
+const mockCreateWallet = jest.fn();
+jest.mock('../src/wallets/WalletsProvider', () => ({
+  useWallets: () => ({ nextWalletName: () => 'Main Wallet 1', createWallet: mockCreateWallet }),
+}));
 
 const mockPaste = jest.fn(async () => '');
 jest.mock('../src/core/clipboard', () => ({
@@ -43,9 +56,12 @@ jest.mock('../src/core/clipboard', () => ({
   pasteFromClipboard: () => mockPaste(),
 }));
 
-const mockCreateWallet = jest.fn();
-jest.mock('../src/wallets/WalletsProvider', () => ({
-  useWallets: () => ({ nextWalletName: () => 'Wallet 2', createWallet: mockCreateWallet }),
+const scanTargets: Array<(v: string) => Promise<void>> = [];
+jest.mock('../src/services/scanTarget', () => ({
+  registerScanTarget: (fn: any) => {
+    scanTargets.push(fn);
+    return jest.fn();
+  },
 }));
 
 import ImportWalletScreen from '../src/screens/wallet/ImportWalletScreen';
@@ -80,71 +96,109 @@ const texts = (t: any): string => {
   return out.join('');
 };
 
-const byTestId = (t: any, id: string) =>
-  t.root.findAll((n: any) => n.props?.testID === id && typeof n.props?.onPress === 'function')[0];
-
-const anyByTestId = (t: any, id: string) =>
-  t.root.findAll((n: any) => n.props?.testID === id)[0];
+const byId = (t: any, id: string) => t.root.findAll((n: any) => n.props?.testID === id && typeof n.props?.onPress === 'function')[0];
+const anyById = (t: any, id: string) => t.root.findAll((n: any) => n.props?.testID === id)[0];
 
 const typePhrase = async (t: any, value: string) => {
-  const input = t.root.findAll((n: any) => n.props?.testID === 'importPhraseInput' && n.props?.onChangeText)[0];
+  const input = anyById(t, 'restorePhraseInput');
   await act(async () => input.props.onChangeText(value));
 };
 
 beforeEach(() => {
-  jest.clearAllMocks();
-  mockPaste.mockResolvedValue('');
+  mockCreateWallet.mockClear();
+  navigation.reset.mockClear();
+  mockPaste.mockClear();
 });
 
-describe('Multi-coin wallet restore', () => {
-  it('lays the screen out the way Trust does', () => {
+describe('Restore wallet', () => {
+  it('puts the title under the back arrow, nothing in the middle, scanner on the right', () => {
     const t = mount();
     const shown = texts(t);
-    expect(shown).toContain('Multi-coin wallet');
-    expect(shown).toContain('Wallet name');
-    expect(shown).toContain('Secret phrase');
-    expect(shown).toContain('Paste');
-    expect(shown).toContain('Typically 12 (sometimes 18, 24) words separated by single spaces');
     expect(shown).toContain('Restore wallet');
-    expect(shown).toContain('What is a secret phrase?');
-    // The name field starts on the next free wallet name, like Trust.
-    expect(t.root.findAll((n: any) => n.props?.testID === 'importNameInput')[0].props.value).toBe('Wallet 2');
+    expect(anyById(t, 'restoreBack')).toBeTruthy();
+    expect(anyById(t, 'restoreScan')).toBeTruthy();
+    // Placeholder lives in the middle of the box; no second title between header edges.
+    expect(anyById(t, 'restorePhraseInput').props.placeholder).toBe('Enter secret phrase');
   });
 
-  it('will not restore a phrase that fails its checksum', async () => {
+  it('shows Paste in the app colour until there is text, then Clear and Hide', async () => {
     const t = mount();
-    await typePhrase(t, VECTOR.replace('yellow', 'legal'));
-    // Words are all real this time, so only the checksum can catch it.
+    expect(anyById(t, 'restorePaste')).toBeTruthy();
+    expect(anyById(t, 'restoreHide')).toBeUndefined();
+    expect(anyById(t, 'restoreClear')).toBeUndefined();
+
+    await typePhrase(t, 'legal winner');
+
+    expect(anyById(t, 'restorePaste')).toBeUndefined();
+    expect(byId(t, 'restoreHide')).toBeTruthy();
+    expect(byId(t, 'restoreClear')).toBeTruthy();
+    expect(texts(t)).toContain('Hide');
+  });
+
+  it('Hide masks the words, turns into Show, and Show brings them back', async () => {
+    const t = mount();
+    await typePhrase(t, VECTOR);
+
+    await act(async () => byId(t, 'restoreHide').props.onPress());
+    const masked = anyById(t, 'restorePhraseInput').props.value as string;
+    expect(masked).not.toContain('legal');
+    // Masked per word, spacing and word count preserved.
+    expect(masked.split(' ').every((w) => /^•+$/.test(w))).toBe(true);
+    expect(masked.split(' ')).toHaveLength(VECTOR.split(' ').length);
+    expect(texts(t)).toContain('Show');
+
+    await act(async () => byId(t, 'restoreHide').props.onPress());
+    expect(anyById(t, 'restorePhraseInput').props.value).toBe(VECTOR);
+    expect(texts(t)).toContain('Hide');
+  });
+
+  it('Clear empties the box and brings Paste back', async () => {
+    const t = mount();
+    await typePhrase(t, VECTOR);
+    await act(async () => byId(t, 'restoreClear').props.onPress());
+
+    expect(anyById(t, 'restorePhraseInput').props.value).toBe('');
+    expect(anyById(t, 'restorePaste')).toBeTruthy();
+    expect(anyById(t, 'restoreHide')).toBeUndefined();
+  });
+
+  it('keeps Continue disabled until the phrase actually validates', async () => {
+    const t = mount();
+    expect(byId(t, 'restoreContinue').props.disabled).toBe(true);
+
+    await typePhrase(t, VECTOR.replace('yellow', 'legal')); // words real, checksum wrong
+    expect(byId(t, 'restoreContinue').props.disabled).toBe(true);
     expect(texts(t)).toContain("That phrase doesn't add up. Check the words and their order.");
-    expect(anyByTestId(t, 'importPhraseError')).toBeTruthy();
-    await act(async () => byTestId(t, 'importRestore').props.onPress());
-    expect(await readSeed()).toBeNull();
-    expect(mockCreateWallet).not.toHaveBeenCalled();
-    expect(navigation.reset).not.toHaveBeenCalled();
+
+    await typePhrase(t, VECTOR);
+    expect(byId(t, 'restoreContinue').props.disabled).toBe(false);
   });
 
-  it('restores a real phrase, names the wallet and lands on the home tabs', async () => {
+  it('restores a valid phrase: stores it, names the wallet, lands on the home tabs', async () => {
     const t = mount();
-    await typePhrase(t, `  ${VECTOR.toUpperCase()}  `);
-    expect(anyByTestId(t, 'importPhraseOk')).toBeTruthy();
+    await typePhrase(t, VECTOR);
+    await act(async () => byId(t, 'restoreContinue').props.onPress());
 
-    await act(async () => byTestId(t, 'importRestore').props.onPress());
     expect(await readSeed()).toBe(VECTOR);
-    expect(mockCreateWallet).toHaveBeenCalledWith('Wallet 2', 'default', 'violet', 'imported');
-    expect(navigation.reset).toHaveBeenCalled();
+    expect(mockCreateWallet).toHaveBeenCalledWith('Main Wallet 1', 'default', 'violet', 'imported');
+    expect(navigation.reset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'MainTabs' }] });
   });
 
-  it('pastes from the clipboard into the box', async () => {
-    mockPaste.mockResolvedValue(VECTOR);
+  it('Paste fills the box and re-enables Continue for a good phrase', async () => {
+    mockPaste.mockResolvedValueOnce(VECTOR);
     const t = mount();
-    await act(async () => byTestId(t, 'importPaste').props.onPress());
-    const input = t.root.findAll((n: any) => n.props?.testID === 'importPhraseInput' && n.props?.value !== undefined)[0];
-    expect(input.props.value).toBe(VECTOR);
+    await act(async () => byId(t, 'restorePaste').props.onPress());
+
+    expect(anyById(t, 'restorePhraseInput').props.value).toBe(VECTOR);
+    expect(byId(t, 'restoreContinue').props.disabled).toBe(false);
   });
 
-  it('says nothing while the user is still typing the first word', async () => {
+  it('a scanned phrase lands in the box for review, not straight into a restore', async () => {
     const t = mount();
-    await typePhrase(t, 'legal win');
-    expect(t.root.findAll((n: any) => n.props?.testID === 'importPhraseError')).toHaveLength(0);
+    await act(async () => byId(t, 'restoreScan').props.onPress());
+    expect(scanTargets.length).toBeGreaterThan(0);
+    expect(navigation.navigate).toHaveBeenCalledWith('ScanQr');
+    await act(async () => scanTargets[scanTargets.length - 1](VECTOR));
+    expect(mockCreateWallet).not.toHaveBeenCalled();
   });
 });
