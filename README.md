@@ -581,28 +581,33 @@ A paired phone used to arrive unlocked with no lock password, which meant adding
 - **Surfaces** — the success screen says the wallet came over locked when it did; the Paired devices footer states that lock state and password travel while biometrics do not.
 - **Tests** — `__tests__/pairingLockInheritance.test.ts` (6): locked wallet arrives locked and the same password opens it (wrong password rejected); the password never appears in relay traffic and the verifier is a salt:digest; an unlocked wallet does not invent a lock; a local password is never overwritten; exporting does not change the host; the inherited lock actually trips `movementBlock` and unlocking locally clears it. Full suite: 410 passing.
 
-### The recovery phrase is real now (Oct 30)
+### The recovery phrase is real now, on Trust's flow (Oct 30)
 
 Until today the app had no phrase at all: "Create wallet" went straight to the home
-screen, and Import accepted any twelve words you typed and stored nothing. Both are
-fixed.
+screen and Import accepted any twelve words you typed and stored nothing.
+
+**Creation creates the wallet, silently.** Create → passcode → Home, exactly like Trust.
+The twelve words are generated and written to the keystore as the passcode flow
+finishes; nothing is revealed during onboarding. If generation fails (no CSPRNG, no
+keystore) the app stays on the welcome screen instead of pretending a wallet exists.
+
+**Reveal follows Trust's path:** Wallets → wallet 3-dot → Manage → Manage account →
+Show secret phrase → the existing acknowledgement sheet (illustration, two ticks) →
+passcode → `SecretPhraseScreen`, one box with the twelve words in order, Hide and Copy.
+Leaving the screen drops the words from memory; Copy marks the clipboard entry
+sensitive so it stays out of the paste history. The "Back up" row opens the same gate.
 
 - `src/core/wallet/bip39.ts` generates and validates BIP-39 phrases with the official
   2048-word English list vendored in `bip39Wordlist.ts` (public domain, never edit or
   re-sort it: the checksum indexes into it). Entropy comes from `secureRandomBytes`,
   which throws when the platform has no CSPRNG rather than using `Math.random`.
-- `__tests__/bip39.test.ts` checks the implementation against the official BIP-39 test
-  vectors (all-zero, 7f, 80, ff entropies, 24 words) and proves a single swapped word
-  or an off-list word is rejected.
-- Create flow: passcode → `RecoveryPhraseScreen`. Two acknowledgements, an explicit
-  "Tap to reveal" (words stay blurred until asked), then a quiz on three positions.
-  Nothing is written to the keystore until the quiz is right, so backing out leaves no
-  half-made wallet. `storeSeed` runs once, with exactly the words that were displayed.
-- Import validates the checksum and wordlist live ("phrase checks out") and stores the
-  normalised phrase; the old "any 12 words will do" path is gone.
+- `__tests__/bip39.test.ts` checks it against the official BIP-39 vectors and proves a
+  single swapped word or an off-list word is rejected.
+- `__tests__/secretPhrase.test.tsx` covers creation storing a valid phrase, a bad
+  checksum storing nothing, normalisation on import, and the reveal screen (box, hide,
+  sensitive copy, honest "no phrase on this device" state).
 
 Honest gap, unchanged: a phrase made today has no addresses yet. Address derivation
 needs secp256k1/BIP-32 and this build ships neither, so `deriveAccounts()` still relies
-on the WalletCore bridge that is not bundled. The phrase is restorable and real; the
+on the WalletCore bridge that is not bundled. The phrase is real and restorable; the
 addresses that hang off it land with the WalletCore integration.
-

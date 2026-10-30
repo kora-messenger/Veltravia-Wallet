@@ -28,7 +28,8 @@ import ManageAccountScreen from '../screens/wallet/ManageAccountScreen';
 import BalanceDetailsScreen from '../screens/wallet/BalanceDetailsScreen';
 import AiChatScreen from '../screens/ai/AiChatScreen';
 import PasscodeScreen from '../screens/onboarding/PasscodeScreen';
-import RecoveryPhraseScreen from '../screens/onboarding/RecoveryPhraseScreen';
+import SecretPhraseScreen from '../screens/wallet/SecretPhraseScreen';
+import { walletManager } from '../core/wallet/walletManager';
 import SelectRecoveryMethodScreen from '../screens/SelectRecoveryMethodScreen';
 import BuyScreen from '../features/buy/BuyScreen';
 import SelectCurrencyScreen from '../features/buy/SelectCurrencyScreen';
@@ -88,7 +89,7 @@ const ActivityScreen = require('../screens/ActivityScreen').default;
 export type RootStackParamList = {
   Onboarding: { finish?: 'create' | 'import' } | undefined;
   Passcode: { flow: 'create' | 'import' };
-  RecoveryPhrase: undefined;
+  SecretPhrase: undefined;
   MainTabs: undefined;
   Wallets: undefined;
   NameWallet: { origin?: 'created' | 'imported' } | undefined;
@@ -255,11 +256,20 @@ export default function Navigation() {
               onImport={() => navigationRef.current?.navigate('Passcode', { flow: 'import' })}
               // Back from the passcode: buttons spin 2s again, then the account is created.
               autoLoadFor={route.params?.finish ?? null}
-              onAutoLoadDone={(which: 'create' | 'import') => {
+              onAutoLoadDone={async (which: 'create' | 'import') => {
                 if (which === 'create') {
-                  // No wallet exists until the phrase is shown, written down and
-                  // confirmed: the phrase IS the wallet.
-                  navigationRef.current?.navigate('RecoveryPhrase');
+                  // Trust's order, matched here: creating a wallet lands on Home.
+                  // The phrase is generated and stored now, silently, and is shown
+                  // later on demand (Wallets → manage → Show secret phrase).
+                  try {
+                    await walletManager.createWallet();
+                  } catch {
+                    // No CSPRNG / no keystore on this device: do not pretend a
+                    // wallet exists. The welcome screen stays up.
+                    return;
+                  }
+                  navigationRef.current?.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+                  setNotifPrompt(true);
                 } else {
                   navigationRef.current?.navigate('SelectRecoveryMethod');
                 }
@@ -287,15 +297,12 @@ export default function Navigation() {
             />
           )}
         </Stack.Screen>
-        <Stack.Screen name="RecoveryPhrase" options={{ animation: 'slide_from_right', gestureEnabled: false }}>
+        <Stack.Screen name="SecretPhrase" options={{ animation: 'slide_from_right', gestureEnabled: false }}>
           {() => (
-            <RecoveryPhraseScreen
-              // Backing out leaves no wallet behind: nothing is stored until the
-              // user proves they wrote the phrase down.
-              onBack={() => navigationRef.current?.navigate('Onboarding')}
-              onDone={() => {
-                navigationRef.current?.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
-                setNotifPrompt(true);
+            <SecretPhraseScreen
+              onBack={() => {
+                // Leaving drops the words from memory with the component.
+                navigationRef.current?.goBack();
               }}
             />
           )}

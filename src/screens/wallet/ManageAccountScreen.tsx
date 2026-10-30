@@ -23,6 +23,7 @@ import { WALLET_GRADIENTS, COLOR_ORDER, LogoColorGlyph, WalletColorKey } from '.
 import { showToast } from '../../components/Toast';
 import { WalletAvatar } from '../../wallets/WalletAvatar';
 import SecretPhraseGateSheet from '../../components/SecretPhraseGateSheet';
+import PasscodeConfirmSheet from '../ai/PasscodeConfirmSheet';
 import EditIconSheet from '../../components/EditIconSheet';
 import PairingCodeSheet from '../../components/PairingCodeSheet';
 import {
@@ -57,6 +58,7 @@ export default function ManageAccountScreen({
 
   const [name, setName] = useState(wallet?.name ?? '');
   const [gateOpen, setGateOpen] = useState(false);
+  const [passcodeOpen, setPasscodeOpen] = useState(false);
   const [pairingOpen, setPairingOpen] = useState(false);
   const [iconOpen, setIconOpen] = useState(false);
   const inputRef = useRef<{ focus: () => void } | null>(null);
@@ -127,8 +129,8 @@ export default function ManageAccountScreen({
     );
   };
 
-  const showBackupInfo = () =>
-    showToast('Secure backup arrives with the Wallet Core integration.', { kind: 'info', duration: 2600 });
+  // Same gate as "Show secret phrase": backing up means looking at the words.
+  const showBackupInfo = () => setGateOpen(true);
 
   return (
     <KeyboardAvoidingView
@@ -354,12 +356,24 @@ export default function ManageAccountScreen({
 
       <PairingCodeSheet visible={pairingOpen} onClose={() => setPairingOpen(false)} />
 
+      <PasscodeConfirmSheet
+        visible={passcodeOpen}
+        title="Show secret phrase"
+        message="Enter your passcode to view this wallet's secret phrase."
+        onCancel={() => setPasscodeOpen(false)}
+        onVerified={() => {
+          setPasscodeOpen(false);
+          navigation.navigate('SecretPhrase');
+        }}
+      />
+
       <SecretPhraseGateSheet
         visible={gateOpen}
         onClose={() => setGateOpen(false)}
         onContinue={() => {
+          // Acknowledgement done: the passcode is the last gate before the words.
           setGateOpen(false);
-          showToast('Phrase reveal arrives with the Wallet Core key store.', { kind: 'info', duration: 2600 });
+          setPasscodeOpen(true);
         }}
       />
     </KeyboardAvoidingView>
