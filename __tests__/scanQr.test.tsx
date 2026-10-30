@@ -5,7 +5,19 @@ jest.mock('../src/theme/ThemeProvider', () => ({
   useTheme: () => ({ theme: { mode: 'light', ink: '#000', inkMuted: '#888', brand: '#6C63FF', background: '#fff', surfaceAlt: '#fff' } }),
 }));
 jest.mock('../src/components/Toast', () => ({ showToast: jest.fn() }));
+jest.mock('react-native-vision-camera', () => {
+  const React2 = require('react');
+  return {
+    Camera: () => React2.createElement('Camera'),
+    useCameraPermission: () => ({ hasPermission: true, requestPermission: jest.fn() }),
+    useCameraDevice: () => ({ id: 'back' }),
+    useCodeScanner: (cfg: any) => cfg,
+  };
+});
 
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { NavigationContainer } from '@react-navigation/native';
+import ScanQrScreen from '../src/screens/ScanQrScreen';
 import {
   registerScanTarget,
   offerScanResult,
@@ -77,39 +89,71 @@ describe('scan target delivery', () => {
   });
 });
 
-import { NavigationContainer } from '@react-navigation/native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import ScanQrScreen from '../src/screens/ScanQrScreen';
 
 describe('ScanQrScreen', () => {
-  it('renders the header (title, close, gallery, torch) with the camera granted', () => {
+  const mount = () => renderer.create(
+    <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 411, height: 891 }, insets: { top: 24, left: 0, right: 0, bottom: 16 } }}>
+      <NavigationContainer><ScanQrScreen /></NavigationContainer>
+    </SafeAreaProvider>,
+  );
+
+  it('is the link-device scanner: gradient headline, pairing copy, live window', () => {
     let tree: renderer.ReactTestRenderer;
-    act(() => { tree = renderer.create(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 411, height: 891 }, insets: { top: 24, left: 0, right: 0, bottom: 16 } }}><NavigationContainer><ScanQrScreen /></NavigationContainer></SafeAreaProvider>); });
-    const texts = tree!.root.findAll((n) => typeof n.props.children === 'string' && n.props.children === 'Scan QR code');
-    expect(texts.length).toBeGreaterThanOrEqual(1);
-    // 4 header buttons (close, gallery, torch) render as elements with hitSlop
-    const btns = tree!.root.findAll((n) => n.props.hitSlop === 10);
-    expect(btns.length).toBeGreaterThanOrEqual(3);
+    act(() => { tree = mount(); });
+    const text = (t: renderer.ReactTestRenderer) => t.root
+      .findAll((n) => typeof n.props.children === 'string')
+      .map((n) => n.props.children as string)
+      .join('|');
+    // "QR Code" is drawn with the gradient, "Scan " is plain
+    expect(text(tree!)).toContain('Scan ');
+    expect(text(tree!)).toContain('Open your existing device and scan the QR code to pair.');
+    expect(text(tree!)).toContain('Make sure the QR code is clearly visible and within the frame.');
+    expect(text(tree!)).toContain('Cancel');
+    // no logo, no app name on this screen
+    expect(text(tree!)).not.toContain('Veltravia Wallet');
+    // four glowing corners on the window
+    const corners = new Set(tree!.root
+      .findAll((n) => typeof n.props.testID === 'string' && n.props.testID.startsWith('scanCorner'))
+      .map((n) => n.props.testID));
+    expect(corners.size).toBe(4);
     act(() => { tree!.unmount(); });
   });
 
-  it('matches Trust\'s measured geometry: 47dp buttons, 55dp arms, 10dp lines, centred title', () => {
+  it('shows the expiry pill on the link-device scan and counts it down', () => {
+    jest.useFakeTimers();
     let tree: renderer.ReactTestRenderer;
-    act(() => { tree = renderer.create(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 411, height: 891 }, insets: { top: 24, left: 0, right: 0, bottom: 16 } }}><NavigationContainer><ScanQrScreen /></NavigationContainer></SafeAreaProvider>); });
-    const flat = (st: any) => [st].flat(Infinity).filter(Boolean).reduce((a: any, b: any) => ({ ...a, ...b }), {});
-    const byLabel = (l: string) => tree!.root.findAll((n) => n.props.accessibilityLabel === l && !!n.props.style)[0];
-    const close = flat(byLabel('Close scanner').props.style);
-    expect(close.width).toBe(47);
-    expect(close.height).toBe(47);
-    expect(close.borderRadius).toBe(23.5);
-    expect(close.backgroundColor).toBe('#202020');   // solid, not translucent
-    const gallery = flat(byLabel('Pick a QR image').props.style);
-    expect(gallery.width).toBe(47);
-    // brackets: 55dp arms with a 10dp line
-    const brackets = tree!.root.findAll((n) => !!n.props.style && flat(n.props.style).width === 55 && flat(n.props.style).borderWidth === 10);
-    // test-renderer surfaces each styled node twice (component + host); dedupe by corner
-    const corners = new Set(brackets.map((n) => { const st = flat(n.props.style); return `${st.left}-${st.right}-${st.top}-${st.bottom}`; }));
-    expect(corners.size).toBe(4);
+    act(() => { tree = mount(); });
+    const pill = () => tree!.root.findAll((n) => n.props.testID === 'scanExpiry')[0];
+    expect(pill()).toBeTruthy();
+    expect(pill().props.accessibilityLabel).toBe('Expires in 60 seconds');
+    act(() => { jest.advanceTimersByTime(3000); });
+    expect(pill().props.accessibilityLabel).toBe('Expires in 57 seconds');
+    act(() => { jest.advanceTimersByTime(60000); });
+    expect(pill().props.accessibilityLabel).toBe('Code expired, tap to rescan');
+    act(() => { tree!.unmount(); });
+    jest.useRealTimers();
+  });
+
+  it('a caller with its own job hides the pairing pill and keeps its own title', () => {
+    registerScanTarget(jest.fn(), undefined, { title: 'Scan address', hint: 'Point at an address QR code' });
+    let tree: renderer.ReactTestRenderer;
+    act(() => { tree = mount(); });
+    expect(tree!.root.findAll((n) => n.props.testID === 'scanExpiry')).toHaveLength(0);
+    const text = tree!.root
+      .findAll((n) => typeof n.props.children === 'string')
+      .map((n) => n.props.children as string)
+      .join('|');
+    expect(text).toContain('Point at an address QR code');
+    act(() => { tree!.unmount(); });
+    clearScanTarget();
+  });
+
+  it('keeps the back, gallery and torch controls', () => {
+    let tree: renderer.ReactTestRenderer;
+    act(() => { tree = mount(); });
+    for (const label of ['Close scanner', 'Pick a QR image', 'Torch']) {
+      expect(tree!.root.findAll((n) => n.props.accessibilityLabel === label).length).toBeGreaterThan(0);
+    }
     act(() => { tree!.unmount(); });
   });
 });

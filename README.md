@@ -588,6 +588,21 @@ filled grey circle when selected, unselected tabs are bare text with no pill (on
 empty watchlist shows a small flying-saucer illustration with "Your watchlist will appear here". Starred markets
 appear in a Watchlist section above Popular on the Perps home. Art: `src/components/WatchlistEmptyArt.tsx`.
 
+**Link-device screens rebuilt to the dark reference (Oct 30).** Two screens now share one look, with no logo or app
+name: a deep navy ground, a back chevron, a headline whose second word carries the blue-to-purple gradient, the code
+window with glowing gradient corners, a live expiry pill, an instruction card with a phone icon, and a full-width
+Cancel.
+
+- **QR screen** (`src/components/PairingCodeSheet.tsx`): the pairing code sits inside the glowing window, so it is a
+  real screen rather than a light card. The pill counts the code's own 60 second life down in seconds ("Expires in
+  47s"), and the badge/mmm:ss sheet layout is gone. The lock gate, six-digit confirm and cancel logic are unchanged.
+- **Scanner** (`src/screens/ScanQrScreen.tsx`): the same frame, but the window is a live camera feed. The old
+  bracket-chase animation went with it, since the window now stays put. Gallery pick and torch stay as small header
+  buttons for low light. With no caller registered it is the link-device scanner (pairing copy plus the pill); a
+  screen with its own purpose keeps its title and hint and hides the pill.
+
+Corners live in `src/components/GlowCorners.tsx`. Tests: `scanQr`, `scanQrSnap`, `pairingFlow`, `pairingAuthGate`.
+
 **Restore Wallet rebuilt to the new reference (Oct 30).** The screen now opens on the 3D wallet art, a "Restore
 Wallet" headline with the second word in the blue-to-purple gradient, a one-line subtitle, a bordered "Secret phrase"
 card holding the input and its eye toggle, a "Keep your phrase safe" card, a full-width Paste row, and the gradient

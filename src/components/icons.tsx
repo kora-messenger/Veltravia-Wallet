@@ -910,6 +910,14 @@ export const ExternalLinkIcon = ({ size = 24, color = '#000', strokeWidth = 1.9 
 );
 
 /** Order chip glyph — a document sheet (Trust's perps filter "Order" icon). */
+export const PhoneIcon = ({ size = 24, color = '#FFFFFF', strokeWidth = 1.9 }: { size?: number; color?: string; strokeWidth?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect x={6} y={2.5} width={12} height={19} rx={3.2} stroke={color} strokeWidth={strokeWidth} />
+    <Path d="M10.6 5.4h2.8" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    <Circle cx={12} cy={18.2} r={1.1} fill={color} />
+  </Svg>
+);
+
 export const DocIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path d="M6 3.5h9.2L19.5 8v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" stroke={color} strokeWidth={strokeWidth} strokeLinejoin="round" />

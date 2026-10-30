@@ -13,7 +13,11 @@
  * key. Closing the sheet cancels the session.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, StatusBar } from 'react-native';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
+import Svg, { Defs, LinearGradient as SvgGradient, Stop, Text as SvgText } from 'react-native-svg';
+import GlowCorners, { GLOW_FROM, GLOW_TO } from './GlowCorners';
+import { ChevronLeftIcon, PhoneIcon, ClockIcon } from './icons';
 import { useTheme } from '../theme/ThemeProvider';
 import QrCode from './QrCode';
 import PairDeviceIntro from './PairDeviceIntro';
@@ -30,12 +34,6 @@ import {
   type HostSession,
 } from '../core/security/pairingSession';
 
-function mmss(ms: number): string {
-  const total = Math.max(0, Math.ceil(ms / 1000));
-  const minutes = Math.floor(total / 60);
-  const seconds = total % 60;
-  return `${minutes}:${String(seconds).padStart(2, '0')}`;
-}
 
 /**
  * 'locked' is the first state and there is no way around it: a pairing code can
@@ -55,6 +53,8 @@ export default function PairingCodeSheet({
   onPaired?: () => void;
 }) {
   const { theme } = useTheme();
+  // Safe when the host has no provider (modals, tests): fall back to a phone-ish inset.
+  const insets = React.useContext(SafeAreaInsetsContext) ?? { top: 24, bottom: 16, left: 0, right: 0 };
   const [session, setSession] = useState<HostSession | null>(null);
   const [now, setNow] = useState(Date.now());
   const [phase, setPhase] = useState<Phase>('locked');
@@ -174,147 +174,196 @@ export default function PairingCodeSheet({
   const accent = theme.mode === 'light' ? '#F0F0FF' : 'rgba(108,99,255,0.14)';
   const accentText = theme.mode === 'light' ? '#4B3FD7' : '#A9A3FF';
 
+  const QRF = 236;          // the code window, corners included
+  const QR_RADIUS = 26;
+  const dark = '#0B0E1A';
+  const panel = '#131A31';
+
   return (
     <AppModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <View style={[styles.sheet, { backgroundColor: theme.surface }]} testID="pairingCodeSheet">
-          {locked ? (
-            // Phases before a code exists: explain, then gate on proof of presence.
-            // Nothing is minted yet: explain what pairing does, then ask for proof
-            // of presence. "Show QR Code" goes through the same gate as before.
-            <>
-              <View testID="pairingLocked" style={{ flexShrink: 1 }}>
-                {/* The card is tall on small phones: the explanation scrolls, the
-                    two buttons stay put. */}
-                <ScrollView
-                  showsVerticalScrollIndicator={false}
-                  bounces={false}
-                  contentContainerStyle={{ gap: 10 }}
-                >
-                  <PairDeviceIntro
-                    accent={accent}
-                    accentText={accentText}
-                    titleColor={theme.ink}
-                    bodyColor={theme.inkMuted}
-                  />
-                </ScrollView>
-              </View>
-              {authNote ? (
-                <Text style={[styles.fine, { color: '#E5484D' }]} testID="pairingAuthNote">
-                  {authNote}
-                </Text>
-              ) : null}
-              <View style={styles.actions}>
-                <Pressable
-                  onPress={onClose}
-                  style={({ pressed }) => [styles.btn, { backgroundColor: theme.surfaceAlt, opacity: pressed ? 0.8 : 1 }]}
-                  accessibilityLabel="Cancel"
-                >
-                  <Text style={[styles.btnText, { color: theme.ink }]}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  onPress={unlockAndMint}
-                  disabled={!canBiometric && !canPasscode}
-                  style={({ pressed }) => [
-                    styles.btn,
-                    { backgroundColor: theme.brand, opacity: !canBiometric && !canPasscode ? 0.4 : pressed ? 0.85 : 1 },
-                  ]}
-                  accessibilityLabel={canBiometric ? 'Show QR Code' : 'Enter passcode'}
-                >
-                  <Text style={[styles.btnText, { color: '#FFFFFF' }]}>
-                    {canBiometric ? 'Show QR Code' : 'Enter passcode'}
-                  </Text>
-                </Pressable>
-              </View>
-            </>
-          ) : (
-            <>
-          <Text style={[styles.title, { color: theme.ink }]}>Pair a device</Text>
-          <Text style={[styles.sub, { color: theme.inkMuted }]}>
-            On the other device open Veltravia Wallet → Import an existing wallet → Pair device, then scan this code.
-          </Text>
-
-          <View style={styles.qrWrap}>
-            {phase === 'confirm' && joiner ? (
-              <View style={styles.confirmBox} testID="pairingConfirm">
-                <Text style={[styles.sub, { color: theme.inkMuted }]}>
-                  Check that the other device shows the same six digits. If it does not, tap Cancel — someone may be
-                  intercepting the pairing.
-                </Text>
-                <Text style={[styles.safety, { color: theme.ink }]} testID="safetyNumber">
-                  {joiner.code.slice(0, 3)} {joiner.code.slice(3)}
-                </Text>
-              </View>
-            ) : session && phase !== 'expired' && phase !== 'done' ? (
-              <>
-                <QrCode value={session.uri} size={210} />
-                <Text style={[styles.timer, { color: theme.inkMuted }]} testID="pairingTimer">
-                  Expires in {mmss(remaining)}
-                </Text>
-              </>
-            ) : (
-              <Text style={[styles.sub, { color: theme.inkMuted }]} testID="pairingExpired">
-                {phase === 'done' ? 'Device paired' : 'That code has expired.'}
+      {locked ? (
+        <View style={styles.backdrop}>
+          <View style={[styles.sheet, { backgroundColor: theme.surface }]} testID="pairingCodeSheet">
+            {/* Phases before a code exists: explain, then gate on proof of presence.
+                Nothing is minted yet: explain what pairing does, then ask for proof
+                of presence. "Show QR Code" goes through the same gate as before. */}
+            <View testID="pairingLocked" style={{ flexShrink: 1 }}>
+              {/* The card is tall on small phones: the explanation scrolls, the
+                  two buttons stay put. */}
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                bounces={false}
+                contentContainerStyle={{ gap: 10 }}
+              >
+                <PairDeviceIntro
+                  accent={accent}
+                  accentText={accentText}
+                  titleColor={theme.ink}
+                  bodyColor={theme.inkMuted}
+                />
+              </ScrollView>
+            </View>
+            {authNote ? (
+              <Text style={[styles.fine, { color: '#E5484D' }]} testID="pairingAuthNote">
+                {authNote}
               </Text>
-            )}
+            ) : null}
+            <View style={styles.actions}>
+              <Pressable
+                onPress={onClose}
+                style={({ pressed }) => [styles.btn, { backgroundColor: theme.surfaceAlt, opacity: pressed ? 0.8 : 1 }]}
+                accessibilityLabel="Cancel"
+              >
+                <Text style={[styles.btnText, { color: theme.ink }]}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={unlockAndMint}
+                disabled={!canBiometric && !canPasscode}
+                style={({ pressed }) => [
+                  styles.btn,
+                  { backgroundColor: theme.brand, opacity: !canBiometric && !canPasscode ? 0.4 : pressed ? 0.85 : 1 },
+                ]}
+                accessibilityLabel={canBiometric ? 'Show QR Code' : 'Enter passcode'}
+              >
+                <Text style={[styles.btnText, { color: '#FFFFFF' }]}>
+                  {canBiometric ? 'Show QR Code' : 'Enter passcode'}
+                </Text>
+              </Pressable>
+            </View>
           </View>
-
-          <Text style={[styles.fine, { color: theme.inkMuted }]}>
-            {phase === 'confirm'
-              ? 'Nothing has been shared yet. Confirming sends this wallet’s recovery phrase and lock key, sealed for that device only.'
-              : 'This code contains no keys at all. It works once, expires on its own, and the wallet only moves after you approve these digits.'}
-          </Text>
-
-          <View style={styles.actions}>
-            {phase === 'confirm' ? (
-              <>
-                <Pressable
-                  onPress={decline}
-                  style={({ pressed }) => [styles.btn, { backgroundColor: theme.surfaceAlt, opacity: pressed ? 0.8 : 1 }]}
-                  accessibilityLabel="Cancel pairing"
-                >
-                  <Text style={[styles.btnText, { color: theme.ink }]}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  onPress={confirm}
-                  style={({ pressed }) => [styles.btn, { backgroundColor: theme.brand, opacity: pressed ? 0.85 : 1 }]}
-                  accessibilityLabel="Confirm the digits match"
-                >
-                  <Text style={[styles.btnText, { color: '#FFFFFF' }]}>They match</Text>
-                </Pressable>
-              </>
-            ) : (
-              <>
-                <Pressable
-                  onPress={() => {
-                    cancelPairingSession();
-                    onClose();
-                  }}
-                  style={({ pressed }) => [styles.btn, { backgroundColor: theme.surfaceAlt, opacity: pressed ? 0.8 : 1 }]}
-                  accessibilityLabel="Cancel pairing"
-                >
-                  <Text style={[styles.btnText, { color: theme.ink }]}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => {
-                    // A new code is a new invitation: prove presence again.
-                    cancelPairingSession();
-                    setSession(null);
-                    setJoiner(null);
-                    setPhase('locked');
-                  }}
-                  style={({ pressed }) => [styles.btn, { backgroundColor: theme.brand, opacity: pressed ? 0.85 : 1 }]}
-                  accessibilityLabel="Show a new code"
-                >
-                  <Text style={[styles.btnText, { color: '#FFFFFF' }]}>New code</Text>
-                </Pressable>
-              </>
-            )}
-          </View>
-            </>
-          )}
         </View>
-      </View>
+      ) : (
+        /* The QR screen itself: navy ground, gradient headline, the code in a
+           glowing window, the expiry pill, then the instruction card and Cancel. */
+        <View style={styles.darkScreen} testID="pairingCodeSheet">
+          <StatusBar barStyle="light-content" />
+
+          <View style={[styles.darkHeader, { paddingTop: insets.top + 8 }]}>
+            <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Close" style={styles.iconBtn}>
+              <ChevronLeftIcon size={22} color="#FFFFFF" />
+            </Pressable>
+          </View>
+
+          <View style={styles.darkHeadline} pointerEvents="none">
+            <View style={styles.titleRow}>
+              <Text style={styles.darkTitle}>Link </Text>
+              <Svg width={92} height={36}>
+                <Defs>
+                  <SvgGradient id="linkWord" x1="0" y1="0" x2="1" y2="0">
+                    <Stop offset="0" stopColor={GLOW_FROM} />
+                    <Stop offset="1" stopColor={GLOW_TO} />
+                  </SvgGradient>
+                </Defs>
+                <SvgText x={0} y={27} fontSize={27} fontFamily="Inter-700" fontWeight="700" fill="url(#linkWord)">
+                  Device
+                </SvgText>
+              </Svg>
+            </View>
+            <Text style={styles.darkSub}>
+              On the other device open Veltravia Wallet → Import an existing wallet → Pair device, then scan this code.
+            </Text>
+          </View>
+
+          <View style={styles.frameWrap}>
+            <View style={{ width: QRF, height: QRF }}>
+              <View style={styles.qrCard}>
+                {phase === 'confirm' && joiner ? (
+                  <View style={styles.confirmBox} testID="pairingConfirm">
+                    <Text style={styles.confirmHint}>Check that the other device shows the same six digits</Text>
+                    <Text style={styles.safety} testID="safetyNumber">
+                      {joiner.code.slice(0, 3)} {joiner.code.slice(3)}
+                    </Text>
+                  </View>
+                ) : session && phase !== 'expired' && phase !== 'done' ? (
+                  <QrCode value={session.uri} size={QRF - 40} />
+                ) : (
+                  <Text style={[styles.darkSub, { color: '#6B6F7D' }]} testID="pairingExpired">
+                    {phase === 'done' ? 'Device paired' : 'That code has expired.'}
+                  </Text>
+                )}
+              </View>
+              <Svg style={StyleSheet.absoluteFill} width={QRF} height={QRF} pointerEvents="none">
+                <Defs>
+                  <SvgGradient id="qrCorner" x1="0" y1="0" x2="1" y2="1">
+                    <Stop offset="0" stopColor={GLOW_FROM} />
+                    <Stop offset="1" stopColor={GLOW_TO} />
+                  </SvgGradient>
+                </Defs>
+                <GlowCorners x={0} y={0} size={QRF} radius={QR_RADIUS} arm={44} stroke="url(#qrCorner)" />
+              </Svg>
+            </View>
+
+            {phase === 'confirm' || phase === 'expired' || phase === 'done' ? null : (
+              <View style={styles.pill} testID="pairingTimer">
+                <ClockIcon size={16} color="#FFFFFF" />
+                <Text style={styles.pillText}>Expires in {Math.max(0, Math.ceil(remaining / 1000))}s</Text>
+              </View>
+            )}
+
+            <Text style={styles.fineDark}>
+              {phase === 'confirm'
+                ? 'Nothing has been shared yet. Confirming sends this wallet’s recovery phrase and lock key, sealed for that device only.'
+                : 'This code contains no keys at all. It works once, expires on its own, and the wallet only moves after you approve these digits.'}
+            </Text>
+          </View>
+
+          <View style={[styles.darkFooter, { paddingBottom: Math.max(insets.bottom, 14) }]}>
+            <View style={styles.infoBox}>
+              <View style={styles.infoIcon}>
+                <PhoneIcon size={20} color="#7FC4FF" />
+              </View>
+              <Text style={styles.infoText}>Make sure the QR code is clearly visible and within the frame.</Text>
+            </View>
+
+            <View style={styles.darkActions}>
+              {phase === 'confirm' ? (
+                <>
+                  <Pressable
+                    onPress={decline}
+                    style={({ pressed }) => [styles.darkBtn, { opacity: pressed ? 0.8 : 1 }]}
+                    accessibilityLabel="Cancel pairing"
+                  >
+                    <Text style={styles.darkBtnText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={confirm}
+                    style={({ pressed }) => [styles.darkBtn, styles.darkBtnPrimary, { opacity: pressed ? 0.85 : 1 }]}
+                    accessibilityLabel="Confirm the digits match"
+                  >
+                    <Text style={[styles.darkBtnText, { color: '#FFFFFF' }]}>They match</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <>
+                  <Pressable
+                    onPress={() => {
+                      cancelPairingSession();
+                      onClose();
+                    }}
+                    style={({ pressed }) => [styles.darkBtn, { opacity: pressed ? 0.8 : 1 }]}
+                    accessibilityLabel="Cancel pairing"
+                  >
+                    <Text style={styles.darkBtnText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      // A new code is a new invitation: prove presence again.
+                      cancelPairingSession();
+                      setSession(null);
+                      setJoiner(null);
+                      setPhase('locked');
+                    }}
+                    style={({ pressed }) => [styles.darkBtn, styles.darkBtnPrimary, { opacity: pressed ? 0.85 : 1 }]}
+                    accessibilityLabel="Show a new code"
+                  >
+                    <Text style={[styles.darkBtnText, { color: '#FFFFFF' }]}>New code</Text>
+                  </Pressable>
+                </>
+              )}
+            </View>
+          </View>
+        </View>
+      )}
 
       <PasscodeConfirmSheet
         visible={visible && keypad}
@@ -331,17 +380,67 @@ export default function PairingCodeSheet({
 }
 
 const styles = StyleSheet.create({
+  // locked gate (unchanged)
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 24 },
   sheet: { borderRadius: 24, padding: 20, gap: 12, maxHeight: '92%' },
-  title: { fontSize: 17, fontWeight: '700', textAlign: 'center' },
-  sub: { fontSize: 13, lineHeight: 19, textAlign: 'center' },
-  qrWrap: { alignItems: 'center', gap: 8, paddingVertical: 6, minHeight: 240, justifyContent: 'center' },
-  confirmBox: { gap: 12, alignItems: 'center', paddingVertical: 8 },
-  lockBox: { gap: 10, alignItems: 'center', paddingVertical: 8 },
-  safety: { fontSize: 34, fontWeight: '800', letterSpacing: 6 },
-  timer: { fontSize: 12.5 },
   fine: { fontSize: 11.5, lineHeight: 16, textAlign: 'center' },
   actions: { flexDirection: 'row', gap: 10, marginTop: 2 },
   btn: { flex: 1, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   btnText: { fontSize: 15, fontWeight: '600' },
+
+  // the QR screen
+  darkScreen: { flex: 1, backgroundColor: '#0B0E1A' },
+  darkHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingBottom: 4 },
+  iconBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  darkHeadline: { alignItems: 'center', paddingHorizontal: 18, paddingTop: 6 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  darkTitle: {
+    fontSize: 27, lineHeight: 36, color: '#FFFFFF',
+    fontFamily: 'Inter-700', fontWeight: '700', letterSpacing: -0.4,
+  },
+  darkSub: {
+    marginTop: 8, paddingHorizontal: 14, textAlign: 'center',
+    fontSize: 14, lineHeight: 20, color: '#A0A3B1', fontFamily: 'Inter-400',
+  },
+  frameWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, gap: 14 },
+  qrCard: {
+    position: 'absolute', left: 14, top: 14, right: 14, bottom: 14,
+    borderRadius: 18, backgroundColor: '#FFFFFF',
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+  },
+  confirmBox: { alignItems: 'center', gap: 10, paddingHorizontal: 12 },
+  confirmHint: { fontSize: 12, lineHeight: 16, textAlign: 'center', color: '#6B6F7D', fontFamily: 'Inter-400' },
+  safety: { fontSize: 32, fontWeight: '800', letterSpacing: 5, color: '#0B0B12' },
+  pill: {
+    height: 38, borderRadius: 19, paddingHorizontal: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#161C31', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+  },
+  pillText: { color: '#FFFFFF', fontSize: 14, fontFamily: 'Inter-500' },
+  fineDark: {
+    fontSize: 12, lineHeight: 17, textAlign: 'center',
+    color: '#8B90A0', fontFamily: 'Inter-400', paddingHorizontal: 20,
+  },
+  darkFooter: { paddingHorizontal: 16, paddingTop: 6 },
+  infoBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#131A31', borderRadius: 16, padding: 14, marginBottom: 12,
+  },
+  infoIcon: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(46,162,248,0.14)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  infoText: { flex: 1, color: '#C9CCD6', fontSize: 13, lineHeight: 18, fontFamily: 'Inter-400' },
+  darkActions: { flexDirection: 'row', gap: 10 },
+  darkBtn: {
+    flex: 1, height: 52, borderRadius: 26,
+    backgroundColor: '#131A31', alignItems: 'center', justifyContent: 'center',
+  },
+  darkBtnPrimary: { backgroundColor: '#6C63FF' },
+  darkBtnText: { fontSize: 15, fontFamily: 'Inter-600', fontWeight: '600', color: '#FFFFFF' },
 });

@@ -137,8 +137,14 @@ describe('the code sheet an existing device shows', () => {
       for (let i = 0; i < 20; i++) await Promise.resolve();
     });
     expect(tree.root.findAll((n) => n.props.testID === 'pairingCodeSheet').length).toBeGreaterThan(0);
+    // the pill counts the code's own 60 second life down, in seconds
     const timer = tree.root.findAll((n) => n.props.testID === 'pairingTimer')[0];
-    expect([timer.props.children].flat().join('')).toMatch(/Expires in \d+:\d\d/);
+    const flat = (c: any): string =>
+      Array.isArray(c) ? c.map(flat).join('')
+        : c && typeof c === 'object' ? flat(c.props?.children)
+          : String(c ?? '');
+    expect(timer).toBeTruthy();
+    expect(flat(timer.props.children)).toMatch(/^Expires in \d+s$/);
 
     // the QrCode receives a pairing URI: session id + one-time public key only
     const qr = tree.root.findAll((n) => typeof n.props.value === 'string' && n.props.value.startsWith('veltravia-pair://'));

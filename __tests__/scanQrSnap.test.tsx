@@ -29,10 +29,10 @@ const mount = () => renderer.create(
   </SafeAreaProvider>,
 );
 
-describe('scanner brackets chase the code before reading it', () => {
+describe('the scanner reads a code as soon as it is inside the frame', () => {
   afterEach(() => { clearScanTarget(); jest.useRealTimers(); jest.clearAllMocks(); });
 
-  it('does not report the code the instant it appears; it frames it first', async () => {
+  it('reports the code at once; the frame is fixed, so there is nothing to travel to', async () => {
     jest.useFakeTimers();
     const got: string[] = [];
     registerScanTarget((v) => got.push(v));
@@ -42,14 +42,11 @@ describe('scanner brackets chase the code before reading it', () => {
     await act(async () => {
       captured.onCodeScanned([{ type: 'qr', value: '0xdeadbeef', frame: { x: 150, y: 400, width: 90, height: 90 } }]);
     });
-    expect(got).toEqual([]);                       // nothing yet: the box is still travelling
-
-    await act(async () => { jest.advanceTimersByTime(600); });
-    expect(got).toEqual(['0xdeadbeef']);           // arrives once it has settled on the code
+    expect(got).toEqual(['0xdeadbeef']);
     await act(async () => { t.unmount(); });
   });
 
-  it('locks on: once chasing, a second code cannot hijack the read', async () => {
+  it('takes one code only: a second in the same breath cannot hijack the read', async () => {
     jest.useFakeTimers();
     const got: string[] = [];
     registerScanTarget((v) => got.push(v));
@@ -83,9 +80,7 @@ describe('scanner brackets chase the code before reading it', () => {
     await act(async () => {
       captured.onCodeScanned([{ type: 'qr', value: '0xabc', frame: { x: 150, y: 400, width: 90, height: 90 } }]);
     });
-    expect(mockFeedback.capture).not.toHaveBeenCalled();     // still framing
-    await act(async () => { jest.advanceTimersByTime(600); });
-    expect(mockFeedback.capture).toHaveBeenCalledTimes(1);   // bell + tick as it is read
+    expect(mockFeedback.capture).toHaveBeenCalledTimes(1);   // bell + tick the moment it is read
     await act(async () => { t.unmount(); });
   });
 
