@@ -170,7 +170,7 @@ describe('Search market screen', () => {
     const t = await mount();
     await press(t, 'Favorites');
     await act(async () => { jest.advanceTimersByTime(TAB_LOAD_MS + 50); });
-    expect(texts(t).some((x) => x.includes('No favorites yet'))).toBe(true);
+    expect(texts(t).some((x) => x.includes('Your watchlist will appear here'))).toBe(true);
     await act(async () => { toggleFavorite('hyperliquid:BTC'); });
     expect(texts(t)).toContain('BTC');
     await act(async () => { t.unmount(); });

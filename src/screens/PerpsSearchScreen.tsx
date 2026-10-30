@@ -23,6 +23,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import Sparkline from '../components/Sparkline';
 import AppModal from '../components/AppModal';
 import SwipeDeleteRow from '../components/SwipeDeleteRow';
+import WatchlistEmptyArt from '../components/WatchlistEmptyArt';
 import { HyperliquidTile, AsterTile } from '../components/PerpsVenueMarks';
 import {
   SearchIcon, CloseIcon, StarIcon, ChevronDownIcon, SortArrowIcon, CheckIcon, COIN_ICONS,
@@ -162,7 +163,7 @@ export default function PerpsSearchScreen() {
   const providerLabel = provider === 'all' ? 'All providers' : provider === 'hyperliquid' ? 'Hyperliquid' : 'Aster';
 
   const emptyText = tab === FAVORITES_TAB && !query
-    ? 'No favorites yet. Tap the star on a market to add it.'
+    ? 'Your watchlist will appear here'
     : 'No markets found';
 
   return (
@@ -208,7 +209,7 @@ export default function PerpsSearchScreen() {
         <Pressable
           accessibilityLabel="Favorites"
           onPress={() => selectTab(FAVORITES_TAB)}
-          style={[styles.tab, tab === FAVORITES_TAB && { backgroundColor: dark ? '#252A3D' : '#E7E7EC' }]}
+          style={[styles.tab, styles.starTab, tab === FAVORITES_TAB && { backgroundColor: dark ? '#252A3D' : '#E7E7EC' }]}
         >
           <StarIcon size={22} color={tab === FAVORITES_TAB ? theme.ink : muted} filled={tab === FAVORITES_TAB} />
         </Pressable>
@@ -220,7 +221,7 @@ export default function PerpsSearchScreen() {
               accessibilityLabel={`Tab ${t.title}`}
               onLayout={(e) => { tabX.current[t.key] = e.nativeEvent.layout.x; tabW.current[t.key] = e.nativeEvent.layout.width; }}
               onPress={() => selectTab(t.key)}
-              style={[styles.tab, active && { backgroundColor: dark ? '#252A3D' : '#E7E7EC' }]}
+              style={[styles.tab, { backgroundColor: active ? (dark ? '#252A3D' : '#E7E7EC') : 'transparent' }]}
             >
               <Text style={[styles.tabText, { color: active ? theme.ink : muted }]}>{t.title}</Text>
             </Pressable>
@@ -272,8 +273,9 @@ export default function PerpsSearchScreen() {
               >
                 {rows.length === 0 ? (
                   <View style={styles.center}>
-                    <Text style={[styles.empty, { color: muted }]}>
-                      {t === FAVORITES_TAB && !query ? 'No favorites yet. Tap the star on a market to add it.' : 'No markets found'}
+                    {t === FAVORITES_TAB && !query ? <WatchlistEmptyArt /> : null}
+                    <Text style={[styles.empty, { color: muted }, t === FAVORITES_TAB && !query && { marginTop: 14 }]}>
+                      {t === FAVORITES_TAB && !query ? 'Your watchlist will appear here' : 'No markets found'}
                     </Text>
                   </View>
                 ) : rows.map((item) => {
@@ -411,6 +413,7 @@ const styles = StyleSheet.create({
   recentSub: { fontSize: 13, fontFamily: 'Inter-500', fontWeight: '500', marginTop: 1 },
   stripFixed: { flexGrow: 0, flexShrink: 0 },
   tabs: { paddingHorizontal: 16, alignItems: 'center', gap: 6, paddingBottom: 10 },
+  starTab: { width: 44, paddingHorizontal: 0, marginRight: 2 },
   tab: { height: 40, minWidth: 44, paddingHorizontal: 16, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   tabText: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
   filters: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 6 },
@@ -418,7 +421,7 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 14, fontFamily: 'Inter-600', fontWeight: '600' },
   marks: { flexDirection: 'row', alignItems: 'center' },
   marksBig: { flexDirection: 'row', alignItems: 'center', width: 30 },
-  center: { flex: 1, alignItems: 'center', paddingTop: 140 },
+  center: { flex: 1, alignItems: 'center', paddingTop: 90 },
   loadingBox: { flex: 1, alignItems: 'center', paddingTop: 140 },
   empty: { fontSize: 15, fontFamily: 'Inter-500', fontWeight: '500', textAlign: 'center', paddingHorizontal: 40 },
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, height: 76 },
