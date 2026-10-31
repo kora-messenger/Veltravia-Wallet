@@ -125,6 +125,17 @@ export const EyeOffIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: Ico
   </Svg>
 );
 
+/** No connection: used where price data cannot be trusted without it. */
+export const WifiOffIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M3 9.5a13 13 0 0 1 18 0" {...stroke(color, strokeWidth)} />
+    <Path d="M6.5 13a8.5 8.5 0 0 1 11 0" {...stroke(color, strokeWidth)} />
+    <Path d="M10 16.5a4 4 0 0 1 4 0" {...stroke(color, strokeWidth)} />
+    <Circle cx="12" cy="19.5" r="0.9" fill={color} />
+    <Path d="M4 4l16 16" {...stroke(color, strokeWidth)} />
+  </Svg>
+);
+
 export const ChevronRight = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
   <Svg {...base(size)}>
     <Path d="M9 6l6 6-6 6" {...stroke(color, strokeWidth)} />

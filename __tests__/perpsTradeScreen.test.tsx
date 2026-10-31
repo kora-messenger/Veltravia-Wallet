@@ -17,9 +17,15 @@ jest.mock('../src/wallets/WalletsProvider', () => ({
   useWallets: () => ({ wallets: [], activeWallet: { id: 'w1' }, setActiveWallet: jest.fn() }),
   WalletsProvider: ({ children }: any) => children,
 }));
+const mockOnline = { state: 'online' as 'checking' | 'online' | 'offline' };
+
 jest.mock('@react-native-community/netinfo', () => ({
   __esModule: true,
   default: { fetch: async () => ({ isConnected: true, isInternetReachable: true }) },
+}));
+
+jest.mock('../src/hooks/useOnlineGate', () => ({
+  useOnlineGate: () => ({ state: mockOnline.state, recheck: jest.fn() }),
 }));
 
 import PerpsTradeScreen, { findTradeMarket } from '../src/screens/PerpsTradeScreen';
@@ -352,3 +358,21 @@ describe('Order book (Trust recording, list icon)', () => {
 });
 
 
+
+describe('candle chart needs the network (Ijezie, 31 Oct 2026)', () => {
+  it('offline: the chart is replaced by a notice', async () => {
+    mockOnline.state = 'offline';
+    const t = await mount(PerpsTradeScreen, 'PerpsTrade', { venue: 'hyperliquid', symbol: 'BTC', side: 'long' });
+    expect(t.root.findAll((n) => n.props.testID === 'chartNeedsNetwork').length).toBeGreaterThan(0);
+    expect(t.root.findAll((n) => n.props.testID === 'candleChart').length).toBe(0);
+    await act(async () => { t.unmount(); });
+  });
+
+  it('online: the candle chart is back', async () => {
+    mockOnline.state = 'online';
+    const t = await mount(PerpsTradeScreen, 'PerpsTrade', { venue: 'hyperliquid', symbol: 'BTC', side: 'long' });
+    expect(t.root.findAll((n) => n.props.testID === 'chartNeedsNetwork').length).toBe(0);
+    expect(t.root.findAll((n) => n.props.testID === 'candleChart').length).toBeGreaterThan(0);
+    await act(async () => { t.unmount(); });
+  });
+});

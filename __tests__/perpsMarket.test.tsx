@@ -12,6 +12,10 @@ jest.mock('../src/core/storage/secureStorage', () => ({
   writeSettings: jest.fn(async () => ({})),
 }));
 jest.mock('../src/components/Toast', () => ({ showToast: jest.fn() }));
+const mockOnline = { state: 'online' as 'checking' | 'online' | 'offline' };
+jest.mock('../src/hooks/useOnlineGate', () => ({
+  useOnlineGate: () => ({ state: mockOnline.state, recheck: jest.fn() }),
+}));
 
 import PerpsMarketScreen, { findMarket } from '../src/screens/PerpsMarketScreen';
 import { getPerpsRecents, resetPerpsRecents } from '../src/services/perpsRecents';
@@ -333,6 +337,26 @@ describe('Advanced chart mode (Trust recording 2026-10-28 09:33)', () => {
     expect(t.root.find((x) => x.props.accessibilityLabel === 'Trend chart').props.onStartShouldSetResponder()).toBe(true);
     await toCandles(t);
     expect(t.root.find((x) => x.props.accessibilityLabel === 'Candle chart').props.onStartShouldSetResponder()).toBe(false);
+    await act(async () => { t.unmount(); });
+  });
+});
+
+describe('candles need the network (Ijezie, 31 Oct 2026)', () => {
+  it('offline: the chart is replaced by a notice, not drawn from stale data', async () => {
+    mockOnline.state = 'offline';
+    const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    expect(t.root.findAll((n) => n.props.testID === 'chartNeedsNetwork').length).toBeGreaterThan(0);
+    expect(t.root.findAll((n) => n.props.testID === 'candleChart').length).toBe(0);
+    await act(async () => { t.unmount(); });
+    mockOnline.state = 'online';
+  });
+
+  it('online: the chart draws again', async () => {
+    mockOnline.state = 'online';
+    const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    expect(t.root.findAll((n) => n.props.testID === 'chartNeedsNetwork').length).toBe(0);
+    // the live chart area is back: its Advanced control is part of it
+    expect(t.root.findAll((n) => n.props.accessibilityLabel === 'Advanced chart').length).toBeGreaterThan(0);
     await act(async () => { t.unmount(); });
   });
 });

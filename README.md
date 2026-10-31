@@ -588,6 +588,14 @@ filled grey circle when selected, unselected tabs are bare text with no pill (on
 empty watchlist shows a small flying-saucer illustration with "Your watchlist will appear here". Starred markets
 appear in a Watchlist section above Popular on the Perps home. Art: `src/components/WatchlistEmptyArt.tsx`.
 
+**The candle chart needs the network (Oct 31).** A price chart drawn with no connection is a chart the user cannot
+trust, and the series behind it is generated locally until real OHLC ships. `hooks/useOnlineGate` answers
+checking / online / offline from `services/connectivity`, re-checking whenever the app returns to the foreground.
+Offline, `ChartNeedsNetwork` replaces the chart area (the market page's candles, trend and advanced views, and the
+trade ticket's candles) with "You're offline / Charts need a connection" and a Retry; nothing stale is drawn.
+Tests: `chartNeedsNetwork`, plus an offline/online pair in the market and trade suites (the trade test was checked
+against an intentionally broken build to confirm it fails).
+
 **Sign-up can no longer register a passcode without an account (Oct 31).** The passcode screen used to write to the
 keychain immediately, which is why an abandoned sign-up behaved like an abandoned login. It now stages the code in
 memory (`core/security/pendingPasscode`) and `WalletManager` flushes it in the same step as `storeSeed`, so the

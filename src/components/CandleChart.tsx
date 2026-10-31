@@ -163,6 +163,7 @@ export default function CandleChart({
 
   return (
     <View
+      testID="candleChart"
       style={{ width: '100%', height }}
       onLayout={(e) => { const nw = e.nativeEvent.layout.width; if (nw > 0 && Math.abs(nw - w) > 0.5) setW(nw); }}
       onStartShouldSetResponder={() => interactive}

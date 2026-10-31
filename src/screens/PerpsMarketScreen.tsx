@@ -20,6 +20,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeProvider';
 import CandleChart from '../components/CandleChart';
+import ChartNeedsNetwork from '../components/ChartNeedsNetwork';
+import { useOnlineGate } from '../hooks/useOnlineGate';
 import { showToast } from '../components/Toast';
 import {
   BackIcon, StarIcon, BellIcon, HistoryIcon, ChevronRight, ChevronDownIcon,
@@ -63,6 +65,8 @@ function MarketTile({ m, size = 28 }: { m: PerpMarket; size?: number }) {
 export default function PerpsMarketScreen() {
   const { theme } = useTheme();
   const dark = theme.mode === 'dark';
+  // Candles are price data: no connection, no chart.
+  const online = useOnlineGate();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -194,7 +198,11 @@ export default function PerpsMarketScreen() {
 
         {/* chart (+ Advanced button in the normal view) */}
         <View style={styles.chartWrap}>
-          {advanced ? (
+          {online.state === 'offline' ? (
+            <ChartNeedsNetwork height={240} onRetry={online.recheck} retrying={false} />
+          ) : online.state === 'checking' ? (
+            <View style={{ height: 240 }} testID="chartChecking" />
+          ) : advanced ? (
             <View style={{ height: Math.round((W || 390) * 1.05) }}>
               <TradingViewChart
                 symbol={`VELTRAVIA:${symbol}`}

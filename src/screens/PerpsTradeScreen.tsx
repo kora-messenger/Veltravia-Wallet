@@ -34,6 +34,8 @@ import {
 import { SwapIcon } from '../components/icons';
 import { HyperliquidTile, AsterTile } from '../components/PerpsVenueMarks';
 import CandleChart from '../components/CandleChart';
+import ChartNeedsNetwork from '../components/ChartNeedsNetwork';
+import { useOnlineGate } from '../hooks/useOnlineGate';
 import OrderBookView from '../components/OrderBookView';
 import OrderBookSettingsSheet from '../components/OrderBookSettingsSheet';
 import { showToast } from '../components/Toast';
@@ -139,6 +141,8 @@ function FormRow({ label, value, onPress, dark, theme, chevron = true, border = 
 export default function PerpsTradeScreen() {
   const { theme } = useTheme();
   const dark = theme.mode === 'dark';
+  // A price chart with no connection is a lie: gate the candle area.
+  const online = useOnlineGate();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -326,7 +330,9 @@ export default function PerpsTradeScreen() {
       {/* ---------- chart ---------- */}
       {!showBook ? (
       <View style={[styles.chartWrap, { height: chartH }]}>
-        {chartReady ? (
+        {online.state === 'offline' ? (
+          <ChartNeedsNetwork height={chartH} onRetry={online.recheck} />
+        ) : chartReady && online.state === 'online' ? (
           <CandleChart
             seedKey={`${venue}:${symbol}`}
             last={price}
