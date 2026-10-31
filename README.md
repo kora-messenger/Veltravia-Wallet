@@ -588,6 +588,18 @@ filled grey circle when selected, unselected tabs are bare text with no pill (on
 empty watchlist shows a small flying-saucer illustration with "Your watchlist will appear here". Starred markets
 appear in a Watchlist section above Popular on the Perps home. Art: `src/components/WatchlistEmptyArt.tsx`.
 
+**Sign-up can no longer register a passcode without an account (Oct 31).** The passcode screen used to write to the
+keychain immediately, which is why an abandoned sign-up behaved like an abandoned login. It now stages the code in
+memory (`core/security/pendingPasscode`) and `WalletManager` flushes it in the same step as `storeSeed`, so the
+passcode and the account land together or not at all. Kill the app mid-onboarding and nothing was written.
+
+**Both onboarding buttons require the network.** `services/connectivity.checkOnline()` reads the OS state
+(`@react-native-community/netinfo`) with a 4s timeout; the two CTAs check it before spinning and, when offline, do
+not start the flow and show "You are offline. Connect to the internet to create or restore a wallet." under the
+buttons. Unknown/timeout is treated as online, so a flaky native call never blocks a user with working internet.
+Note this checks the device network, not our backend: a reachable network with a down backend still starts the flow
+and fails later.
+
 **Abandoned login no longer becomes a locked app (Oct 31).** The boot gate used to treat "a passcode exists" as
 "an account exists". Onboarding saves the passcode BEFORE the wallet is created or restored, so tapping
 "I already have an account", setting a passcode and walking away left a passcode with no wallet behind: the next

@@ -24,6 +24,7 @@ import { openInBrowser } from '../../services/browserState';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import { takeRemovalNotice } from '../../core/security/deviceRemoval';
+import { checkOnline, offlineMessage } from '../../services/connectivity';
 import PrimaryButton from '../../components/PrimaryButton';
 import SecondaryButton from '../../components/SecondaryButton';
 
@@ -93,6 +94,8 @@ export default function WelcomeScreen({
   const [loading, setLoading] = useState<'create' | 'import' | null>(autoLoadFor ?? null);
   // Set when this device was unlinked: say why the wallet is gone.
   const [removed] = useState(() => takeRemovalNotice());
+  // Both CTAs need the network: say so here instead of half-starting a flow.
+  const [netNote, setNetNote] = useState<string | null>(null);
   const LOAD_MS = 2000;
 
   // Return from passcode: keep spinning for 2s, then finish account creation.
@@ -106,12 +109,24 @@ export default function WelcomeScreen({
   const start = useCallback(
     (which: 'create' | 'import') => {
       if (loading) return;
+      setNetNote(null);
       setLoading(which);
-      setTimeout(() => {
-        (which === 'create' ? onCreate : onImport)();
-        // release after the next screen has covered us
-        setTimeout(() => setLoading(null), 400);
-      }, LOAD_MS);
+      (async () => {
+        // Network first: creating or restoring an account cannot work offline,
+        // and a flow that dies halfway leaves the user with a passcode and no
+        // account. Refuse to start instead.
+        const net = await checkOnline();
+        if (!net.online) {
+          setLoading(null);
+          setNetNote(offlineMessage(net.reason));
+          return;
+        }
+        setTimeout(() => {
+          (which === 'create' ? onCreate : onImport)();
+          // release after the next screen has covered us
+          setTimeout(() => setLoading(null), 400);
+        }, LOAD_MS);
+      })();
     },
     [loading, onCreate, onImport],
   );
@@ -216,6 +231,18 @@ export default function WelcomeScreen({
         {/* I already have a wallet: plain text, no border or fill */}
         <SecondaryButton label="I already have a wallet" onPress={() => start('import')} loading={!!loading} height={52} />
 
+        {/* Offline: the two buttons above did not start a flow, and this says why. */}
+        {netNote ? (
+          <Text
+            accessibilityRole="alert"
+            accessibilityLiveRegion="polite"
+            testID="welcomeNetNote"
+            style={[styles.netNote, { color: '#E5484D' }]}
+          >
+            {netNote}
+          </Text>
+        ) : null}
+
         {/* Legal line */}
         <Text style={[styles.legal, { color: theme.inkMuted }]}>
           By using this app, you accept our{' '}
@@ -262,6 +289,12 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
   secondaryBtn: { height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center' },
   secondaryBtnText: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
+  netNote: {
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'center',
+    marginTop: 12,
+  },
   legal: { fontSize: 12, lineHeight: 18, textAlign: 'center', fontFamily: 'Inter-500', paddingHorizontal: 8, marginTop: 16 },
   legalLink: { fontFamily: 'Inter-700', fontWeight: '700' },
 });

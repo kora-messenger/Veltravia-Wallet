@@ -17,6 +17,7 @@
  */
 
 import * as SecureStorage from '../storage/secureStorage';
+import { flushPendingPasscode } from '../security/pendingPasscode';
 import { CHAINS } from '../../config/chains';
 import { generateMnemonic, normalizeMnemonic, validateMnemonic, type MnemonicStrength } from './bip39';
 
@@ -88,6 +89,8 @@ export class WalletManager {
     const check = validateMnemonic(phrase);
     if (!check.ok) return false;
     await SecureStorage.storeSeed(normalizeMnemonic(phrase));
+    // The account exists now, so the passcode chosen during onboarding is real.
+    await flushPendingPasscode();
     return true;
   }
 
@@ -98,6 +101,7 @@ export class WalletManager {
    */
   async createWallet(): Promise<void> {
     await SecureStorage.storeSeed(this.generatePhrase(128));
+    await flushPendingPasscode();
   }
 
   /**
@@ -115,6 +119,7 @@ export class WalletManager {
       /* no native bridge in this build: the local BIP-39 check stands */
     }
     await SecureStorage.storeSeed(normalizeMnemonic(phrase));
+    await flushPendingPasscode();
     return true;
   }
 

@@ -59,7 +59,8 @@ import LockScreen from '../screens/LockScreen';
 import { setAppLocked } from '../core/security/appLockState';
 import { registerBrowserNavigator } from '../services/browserState';
 import BrowserScreen from '../screens/BrowserScreen';
-import { setPasscode, hasPasscode, clearPasscode } from '../core/storage/passcode';
+import { hasPasscode, clearPasscode } from '../core/storage/passcode';
+import { stagePasscode } from '../core/security/pendingPasscode';
 import { resolveAccountGate } from '../core/security/accountGate';
 import { setBiometricUnlockEnabled } from '../core/security/biometrics';
 import { AppState, StyleSheet } from 'react-native';
@@ -283,17 +284,14 @@ export default function Navigation() {
           {({ route }) => (
             <PasscodeScreen
               onBack={() => navigationRef.current?.goBack()}
-              onDone={async (code, biometric) => {
-                setBiometricUnlockEnabled(biometric === 'allowed');
-                try {
-                  // yield one frame so the blue boxes paint before hashing
-                  await new Promise<void>((r) => requestAnimationFrame(() => r()));
-                  await setPasscode(code);
-                } catch {
-                  // Keychain unavailable (e.g. emulator without lock screen): continue; app still opens.
-                }
+              onDone={(code, biometric) => {
+                // HELD IN MEMORY, not written: onboarding runs the passcode
+                // BEFORE a wallet exists, so persisting here is exactly what
+                // left a passcode with no account behind an abandoned sign-up.
+                // WalletManager flushes it the moment the seed is stored.
+                stagePasscode(code, biometric === 'allowed');
                 navigationRef.current?.navigate('Onboarding', { finish: route.params.flow });
-                // 'biometric' outcome is consumed later by settings;
+                // 'biometric' outcome travels with the staged passcode;
                 // both allowed and denied continue to the same next step.
               }}
             />
