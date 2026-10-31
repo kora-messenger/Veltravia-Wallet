@@ -544,6 +544,22 @@ A locked wallet is never "active": value movement is refused on every surface, a
 - While the keychain read is in flight the card shows "Checking this wallet…" instead of guessing which form to show.
 - Approve / Set password & Approve now carry accessibility labels.
 
+### Wallet Lock sheet — rebuilt to the fintech reference (Oct 31)
+
+`src/screens/wallet/WalletLockSheet.tsx` was rebuilt against Ijezie's reference mock. The gate itself is untouched; only the presentation changed.
+
+- **Structure** — drag handle, then a header with the 3D shield asset, "Wallet Lock" / "Veltravia Wallet" and a circular close; a light-blue status card with a shield watermark; a peach warning card; a separate, lighter recovery-note card; a violet-headed password section; two icon-led fields; one sticky gradient action button.
+- **Measured, not eyeballed** — the mock is 683 px wide. At a 360 dp phone that is 1 px ≈ 0.527 dp, so: side margins 33 px → 16 dp, card radius 33 px → 18 dp, sheet radius 28 dp, field and button 54 dp, button radius 16 dp, hero shield 74 dp. Type sizes were normalised up (the mock is drawn at ~0.53 of a device; its 36 dp button would be unusable). Numbers live in `LOCK_PALETTE` and the `styles` block with this note at the top of the file.
+- **Colours sampled from the mock** — sheet `#F3F2F6`, status gradient `#EDF3FE → #E2EAFD`, peach `#FCE9D6`, recovery `#FDE6D1`, warning ink `#7A3E12`, link `#B4440A`, status green `#05784B`, badge green `#15B579`, violet `#5B4CFB`.
+- **Two honest deviations, both accessibility** — the action gradient is `#0A7A55 → #0C855D` instead of the sampled `#2AB17C/#31B47F` because white 15 sp on those reaches only 3.3:1 and 2.6:1; the new stops keep the same green→lighter-green ramp at 5.35:1 and 4.64:1. The placeholder grey is `#6F7492` (4.58:1) instead of `#8A8FAB` (3.18:1). Every other pair in the sheet is 4.7:1 or better.
+- **Asset** — `assets/brand/wallet-lock-shield.png`, 320×254 RGBA, 79 KB, converted from the supplied 1024×888 render with the white backdrop knocked out so it sits on any surface. Bundled, no network fetch.
+- **Behaviour preserved** — 6-character minimum, confirm-match, show/hide per field (labelled "Show password" / "Hide password"), save-once guard while the write is in flight, error text per case, close from the X or the scrim, lock/unlock via password → biometrics → passcode fallback, `publishLockState` after every change, the real lock state read on open.
+- **Keyboard and insets** — content scrolls, the action is a sticky footer outside the scroll view, the sheet lifts by the tracked keyboard height (edge-to-edge Android ignores `adjustResize`), and bottom padding is `max(inset, 12)`.
+- **Dark mode** — same structure on `#0F1330` with the accents re-tinted; the mock is light-only, so the dark palette is a deliberate translation rather than a copy.
+- **Warning copy is single-sourced** — `src/components/LockWarning.tsx` now exports `LOCK_WARNING_TEXT`, `RECOVERY_NOTE_TEXT`, `useLearnMore()` and `LearnMoreLink`, plus `LockWarningCard` / `RecoveryNoteCard`. The AI first-use card still renders the original inline `LockWarning`, so the sentence and the Learn more handler cannot drift between the two surfaces.
+- Tests: `__tests__/walletLockSheet.test.tsx` (21) — presentation, both warning cards, field affordances, disabled/enabled action, min length, mismatch, save, double-tap guard, close, locked/unlocked copy, biometrics success, biometrics decline → passcode sheet, wrong password, dark mode, keyboard lift, safe-area padding, palette and asset integrity.
+- Still open: the layout has not been compared on a physical screen yet. If the 74 dp hero shield crowds a narrow device, drop it to 64 dp — nothing else depends on that number.
+
 ### A paired device is a whole wallet, not a lock subscriber (Oct 29)
 
 Pairing used to hand over only the group key, so a "paired" phone could never receive, send or recover: it was a spectator. It now provisions the wallet itself.

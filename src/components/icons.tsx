@@ -975,3 +975,40 @@ export const OrderBookIcon = ({ size = 22, color = '#000', strokeWidth = 2 }: Ic
     <Path d="M4 6h16M4 10h10M4 14h16M4 18h8" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
   </Svg>
 );
+
+/** Lightbulb: the "still restorable" note on the Wallet Lock sheet. */
+export const LightbulbIcon = ({ size = 18, color = '#000', strokeWidth = 1.8 }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M9 17.2a6.2 6.2 0 115.9 0v1.5a1.3 1.3 0 01-1.3 1.3h-3.3a1.3 1.3 0 01-1.3-1.3v-1.5z"
+      stroke={color}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Path d="M9.4 21h5.2" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    <Path d="M12 4.2V2.6M5.6 6.8L4.4 5.6M18.4 6.8l1.2-1.2" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+  </Svg>
+);
+
+/** Filled success circle with a white tick — status badges, confirm fields. */
+export const CheckCircleIcon = ({ size = 22, color = '#15B579' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="12" cy="12" r="10" fill={color} />
+    <Path
+      d="M7.6 12.4l2.9 2.9 5.9-5.9"
+      stroke="#FFFFFF"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+/** Outline tick in a ring — the empty "confirm password" affordance. */
+export const CheckRingIcon = ({ size = 20, color = '#9A9AB4', strokeWidth = 1.6 }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={strokeWidth} />
+    <Path d="M8.2 12.3l2.7 2.7 5-5" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
