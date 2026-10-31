@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 jest.mock('../src/theme/ThemeProvider', () => ({
   useTheme: () => ({ theme: require('../src/theme/tokens').themes.light }),
 }));
+const mockWalletReload = jest.fn(async () => {});
 jest.mock('../src/core/storage/secureStorage', () => ({ readSettings: jest.fn(async () => ({})), writeSettings: jest.fn(async () => ({})) }));
 jest.mock('../src/components/Toast', () => ({ showToast: jest.fn() }));
 jest.mock('../src/wallets/WalletsProvider', () => ({
@@ -15,11 +16,14 @@ jest.mock('../src/wallets/WalletsProvider', () => ({
     wallets: [],
     activeWallet: { id: 'w1', name: 'Veltravia Wallet', icon: 'shield', color: '#6C63FF', backedUp: false },
     setActiveWallet: jest.fn(),
+    reload: (...a: any[]) => (mockWalletReload as jest.Mock)(...a),
   }),
   WalletsProvider: ({ children }: any) => children,
 }));
 
 import HomeScreen from '../src/screens/HomeScreen';
+import * as walletLockModule from '../src/core/security/walletLock';
+import * as lockRegistryModule from '../src/core/security/lockRegistry';
 import { totalValue } from '../src/services/portfolio';
 import { headerAmount, SWAP_START, SWAP_SPAN } from '../src/services/headerCollapse';
 
@@ -133,5 +137,27 @@ describe('Home header: wallet name swaps for the balance past the balance card',
     expect(styleOf(t, 'headerName').opacity).toBe(0);
     expect(t.root.findAll((n) => n.props.testID === 'headerStrip').length).toBe(0);
     await act(async () => { t.unmount(); });
+  });
+});
+
+describe('pull to refresh on Home', () => {
+  it('re-reads the wallet list and the lock flags from storage', async () => {
+    const locks = jest.spyOn(walletLockModule, 'refreshWalletLocks').mockResolvedValue({});
+    const registry = jest.spyOn(lockRegistryModule, 'refreshRegistryLock').mockResolvedValue(null);
+    mockWalletReload.mockClear();
+
+    const tree = await mount();
+    const pull = tree.root.findAll((n) => n.props.refreshControl && n.props.refreshControl.props.onRefresh)[0];
+    // fake timers in this file: start the pull, let the work resolve, then run out the minimum spinner
+    let done!: Promise<void>;
+    await act(async () => { done = pull.props.refreshControl.props.onRefresh(); });
+    await act(async () => { jest.advanceTimersByTime(700); await done; });
+
+    expect(mockWalletReload).toHaveBeenCalledTimes(1);
+    expect(locks).toHaveBeenCalled();
+    expect(registry).toHaveBeenCalled();
+    await act(async () => { tree.unmount(); });
+    locks.mockRestore();
+    registry.mockRestore();
   });
 });

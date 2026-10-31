@@ -6,8 +6,8 @@
  * favorite stars. Data comes from marketData (Phase 2 swaps in the
  * backend prices feed). The floating bottom bar is untouched.
  */
-import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
@@ -16,6 +16,9 @@ import CoinLogo from '../components/CoinLogo';
 import { CloseIcon, SearchIcon } from '../components/icons';
 import { useTheme } from '../theme/ThemeProvider';
 import { MARKET_COINS } from '../services/marketData';
+import { refreshPrices, refreshFailureMessage } from '../services/livePrices';
+import { useRefresh } from '../hooks/useRefresh';
+import { showToast } from '../components/Toast';
 
 const MOVER_W = 132;
 
@@ -41,21 +44,42 @@ export default function MarketsScreen() {
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set(['bitcoin', 'ethereum']));
+  // Pull to refresh asks our backend for prices; until it answers the bundled
+  // snapshot is what you see, and a failure says so instead of pretending.
+  const [live, setLive] = useState<Record<string, { priceUsd: number; change24h: number }>>({});
+  const coins = useMemo(
+    () => MARKET_COINS.map((c) => {
+      const q = live[c.symbol.toUpperCase()];
+      return q ? { ...c, priceUsd: q.priceUsd, change24h: q.change24h } : c;
+    }),
+    [live],
+  );
+  const onRefreshWork = useCallback(async () => {
+    const res = await refreshPrices();
+    if (res.ok) {
+      const next: Record<string, { priceUsd: number; change24h: number }> = {};
+      for (const q of res.quotes) next[q.symbol] = { priceUsd: q.priceUsd, change24h: q.change24h };
+      setLive(next);
+    } else {
+      showToast(refreshFailureMessage(res.reason));
+    }
+  }, []);
+  const { refreshing, onRefresh } = useRefresh(onRefreshWork);
 
   const movers = useMemo(
-    () => [...MARKET_COINS].sort((a, b) => Math.abs(b.change24h) - Math.abs(a.change24h)).slice(0, 5),
-    []
+    () => [...coins].sort((a, b) => Math.abs(b.change24h) - Math.abs(a.change24h)).slice(0, 5),
+    [coins]
   );
 
   const list = useMemo(() => {
-    let out = MARKET_COINS;
+    let out = coins;
     if (chip === 'gainers') out = out.filter((c) => c.change24h > 0).sort((a, b) => b.change24h - a.change24h);
     else if (chip === 'losers') out = out.filter((c) => c.change24h < 0).sort((a, b) => a.change24h - b.change24h);
     else if (chip === 'favorites') out = out.filter((c) => favorites.has(c.id));
     const q = query.trim().toLowerCase();
     if (q) out = out.filter((c) => c.name.toLowerCase().includes(q) || c.symbol.toLowerCase().includes(q));
     return out;
-  }, [chip, query, favorites]);
+  }, [chip, query, favorites, coins]);
 
   const toggleFav = (id: string) =>
     setFavorites((prev) => {
@@ -125,7 +149,20 @@ export default function MarketsScreen() {
         )}
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.ink}
+            colors={[theme.brandGradient?.[0] ?? theme.brand]}
+            progressBackgroundColor={dark ? theme.surface : '#FFFFFF'}
+          />
+        }
+      >
         {/* top movers carousel */}
         <Text style={[styles.section, { color: theme.ink }]}>Top Movers</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.moversRow}>

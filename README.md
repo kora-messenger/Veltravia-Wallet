@@ -588,6 +588,19 @@ filled grey circle when selected, unselected tabs are bare text with no pill (on
 empty watchlist shows a small flying-saucer illustration with "Your watchlist will appear here". Starred markets
 appear in a Watchlist section above Popular on the Perps home. Art: `src/components/WatchlistEmptyArt.tsx`.
 
+**Pull to refresh on Home, Markets and Perps (Oct 31).** Each screen reloads real state; none of them show a
+decorative spinner.
+
+- **Home** re-reads the wallet list from the keystore (new `reload()` on the wallet provider) plus every wallet-lock
+  and the registry lock.
+- **Markets** asks the backend for fresh prices (`services/livePrices`), merges them over the bundled snapshot by
+  symbol, and keeps the old numbers if the feed times out or is unreachable, with a toast that says so.
+- **Perps** reloads the funded account, starred markets and venue preferences.
+
+Shared `hooks/useRefresh` enforces one pull at a time and a 550ms minimum so the spinner is readable; failures go
+through `onError` instead of vanishing. Tests: `useRefresh`, `livePrices`, `marketsRefresh`, plus a pull test in the
+Perps and Home suites.
+
 **Perps market search screen deleted (Oct 31).** `PerpsSearchScreen` is gone on instruction, along with its
 `PerpsSearch` route and the magnifier button on the Perps home header (no dead control left behind). What did NOT
 go: the query layer (`services/perpsSearch`) is still used by the Perps home and the market page, and its unit tests

@@ -21,14 +21,7 @@
 import PrimaryButton from '../components/PrimaryButton';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  StatusBar,
-  Animated,
-  useWindowDimensions,
+  Animated, Pressable, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View, useWindowDimensions ,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { SWAP_START, SWAP_SPAN, headerAmount } from '../services/headerCollapse';
@@ -37,6 +30,8 @@ import { useTheme } from '../theme/ThemeProvider';
 import { useWallets } from '../wallets/WalletsProvider';
 import { movementBlock } from '../core/security/valueGuard';
 import { refreshWalletLocks } from '../core/security/walletLock';
+import { loadPerpsAccounts } from '../services/perpsAccount';
+import { useRefresh } from '../hooks/useRefresh';
 import { refreshRegistryLock } from '../core/security/lockRegistry';
 import { WalletAvatar } from '../wallets/WalletAvatar';
 import AnimatedBellIcon from '../components/AnimatedBellIcon';
@@ -140,7 +135,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [hidden, setHidden] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
-  const { activeWallet } = useWallets();
+  const { activeWallet, reload } = useWallets();
 
   // Lock gate: value actions stay inert while the wallet is locked, and the
   // reason is shown instead of a dead tap. Both stores are refreshed on mount
@@ -178,6 +173,15 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const total = totalValue();
   const c24 = change24hAll();
   const series7d = React.useMemo(() => portfolioSeries('7D'), []);
+
+  // Pull to refresh re-reads the wallet list and the lock flags from storage, so
+  // a change made on another screen (a renamed wallet, a locked one) shows here.
+  const refreshWork = React.useCallback(async () => {
+    await Promise.all([reload(), refreshWalletLocks(), refreshRegistryLock(), loadPerpsAccounts()]);
+  }, [reload]);
+  const { refreshing, onRefresh } = useRefresh(refreshWork, {
+    onError: () => showToast('Couldn\'t refresh just now. Your balance is unchanged.'),
+  });
   const sparkData = series7d.points.map((p: PortfolioPoint) => p.value);
 
   const topInset = 0; // status bar offset is applied natively in MainActivity
@@ -193,6 +197,15 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       <Animated.ScrollView
         contentContainerStyle={[styles.content, { paddingHorizontal: H_PAD, paddingTop: topInset + 68 }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.ink}
+            colors={[theme.brandGradient?.[0] ?? theme.brand]}
+            progressBackgroundColor={theme.mode === 'dark' ? theme.surface : '#FFFFFF'}
+          />
+        }
         scrollEventThrottle={16}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
       >

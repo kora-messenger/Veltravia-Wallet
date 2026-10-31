@@ -40,6 +40,8 @@ interface WalletsContextValue {
   updateWallet: (id: string, patch: Partial<Pick<WalletAccount, 'name' | 'icon' | 'color'>>) => void;
   /** Remove any wallet. If the active one goes the first remaining becomes active; removing the last one leaves a fresh default. */
   removeWallet: (id: string) => void;
+  /** Re-read the persisted list (pull to refresh). Resolves when state is set. */
+  reload: () => Promise<void>;
 }
 
 const WalletsContext = createContext<WalletsContextValue | null>(null);
@@ -150,11 +152,26 @@ export function WalletsProvider({ children }: { children: React.ReactNode }) {
     [wallets, persist],
   );
 
+  const reload = useCallback(async () => {
+    try {
+      const creds = await Keychain.getGenericPassword({ service: STORAGE_SERVICE });
+      if (!creds || typeof creds.password !== 'string') return;
+      const parsed = JSON.parse(creds.password) as WalletAccount[];
+      if (!Array.isArray(parsed) || parsed.length === 0) return;
+      const withActive = parsed.some((w) => w.active)
+        ? parsed.map((w) => ({ ...w, active: !!w.active }))
+        : parsed.map((w, i) => ({ ...w, active: i === 0 }));
+      setWallets(withActive);
+    } catch {
+      // Keychain unavailable: keep what is on screen rather than blanking it.
+    }
+  }, []);
+
   const activeWallet = wallets.find((w) => w.active) ?? wallets[0];
 
   return (
     <WalletsContext.Provider
-      value={{ wallets, activeWallet, ready, nextWalletName, createWallet, switchWallet, updateWallet, removeWallet }}
+      value={{ wallets, activeWallet, ready, nextWalletName, createWallet, switchWallet, updateWallet, removeWallet, reload }}
     >
       {children}
     </WalletsContext.Provider>

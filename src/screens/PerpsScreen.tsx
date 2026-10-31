@@ -8,8 +8,8 @@
  * Below it: Popular / New / Stocks / Crypto / Pre-IPO / Commodities / FX / Meme market lists with a
  * sparkline per row, and the floating Long / Short pills above the tab bar.
  */
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Image } from 'react-native';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, Image, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeProvider';
@@ -26,6 +26,10 @@ import {
 } from '../services/perpsAccount';
 import { useVenuePrefs } from '../services/perpsVenues';
 import { usePerpsFavorites, loadPerpsFavorites } from '../services/perpsFavorites';
+import { loadVenuePrefs } from '../services/perpsVenues';
+import { loadPerpsAccounts } from '../services/perpsAccount';
+import { useRefresh } from '../hooks/useRefresh';
+import { showToast } from '../components/Toast';
 import { favKey } from '../services/perpsSearch';
 import {
   PERP_SECTIONS, formatPerpPrice, formatChange, perpSpark, type PerpMarket,
@@ -69,6 +73,15 @@ export default function PerpsScreen() {
   const asterPrefs = useVenuePrefs('aster');
   const favorites = usePerpsFavorites();
   useEffect(() => { loadPerpsFavorites(); }, []);
+
+  // Pull to refresh re-reads what this screen is built from: the funded account,
+  // the starred markets and the venue preferences changed on other screens.
+  const refreshWork = useCallback(async () => {
+    await Promise.all([loadPerpsAccounts(), loadPerpsFavorites(), loadVenuePrefs()]);
+  }, []);
+  const { refreshing, onRefresh } = useRefresh(refreshWork, {
+    onError: () => showToast('Couldn\'t refresh just now. Your last numbers are still here.'),
+  });
 
   // Balance fetch runs once per fresh app open; later visits render instantly.
   const [loading, setLoading] = useState(!perpsSessionLoaded());
@@ -147,7 +160,19 @@ export default function PerpsScreen() {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: FOOTER_CLEAR + insets.bottom }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: FOOTER_CLEAR + insets.bottom }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.ink}
+            colors={[theme.brandGradient?.[0] ?? theme.brand]}
+            progressBackgroundColor={dark ? theme.surface : '#FFFFFF'}
+          />
+        }
+      >
         {loading ? (
           // ---- LOADING: balance fetch on fresh app open (Trust skeleton) ---
           <View style={styles.balanceBlock}>

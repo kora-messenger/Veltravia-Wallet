@@ -19,14 +19,22 @@ jest.mock('../src/components/Toast', () => ({ showToast: jest.fn() }));
 // the loading test flips it to false to exercise the fresh-open skeleton.
 let mockSessionLoaded = true;
 let resolveLoad: () => void = () => {};
-jest.mock('../src/services/perpsAccount', () => ({
-  ...jest.requireActual('../src/services/perpsAccount'),
-  perpsSessionLoaded: () => mockSessionLoaded,
-  ensurePerpsSessionLoad: () =>
-    new Promise<void>((res) => { resolveLoad = () => { mockSessionLoaded = true; res(); }; }),
-}));
+jest.mock('../src/services/perpsAccount', () => {
+  const actual = jest.requireActual('../src/services/perpsAccount');
+  return {
+    ...actual,
+    // wrapped so a pull-to-refresh can be proven to re-read the account
+    loadPerpsAccounts: jest.fn((...a: any[]) => actual.loadPerpsAccounts(...a)),
+    perpsSessionLoaded: () => mockSessionLoaded,
+    ensurePerpsSessionLoad: () =>
+      new Promise<void>((res) => { resolveLoad = () => { mockSessionLoaded = true; res(); }; }),
+  };
+});
 
 import PerpsScreen from '../src/screens/PerpsScreen';
+import * as perpsAccountModule from '../src/services/perpsAccount';
+import * as perpsFavModule from '../src/services/perpsFavorites';
+import * as venuesModule from '../src/services/perpsVenues';
 import {
   depositToPerps, withdrawFromPerps, getPerpsAccount, isFunded, accountValue, resetPerpsAccounts,
 } from '../src/services/perpsAccount';
@@ -49,6 +57,25 @@ const mount = async () => {
     ); });
   return tree;
 };
+
+describe('pull to refresh on the Perps home', () => {
+  it('re-reads the account, the starred markets and the venue prefs', async () => {
+    const accounts = perpsAccountModule.loadPerpsAccounts as unknown as jest.Mock;
+    accounts.mockClear();
+    const favs = jest.spyOn(perpsFavModule, 'loadPerpsFavorites').mockResolvedValue();
+    const venues = jest.spyOn(venuesModule, 'loadVenuePrefs').mockResolvedValue();
+
+    const tree = await mount();
+    const pull = tree.root.findAll((n) => n.props.refreshControl && n.props.refreshControl.props.onRefresh)[0];
+    await act(async () => { await pull.props.refreshControl.props.onRefresh(); });
+
+    expect(accounts).toHaveBeenCalled();
+    expect(favs).toHaveBeenCalled();
+    expect(venues).toHaveBeenCalled();
+    await act(async () => { tree.unmount(); });
+    [favs, venues].forEach((sp) => sp.mockRestore());
+  });
+});
 
 describe('perps account', () => {
   beforeEach(() => resetPerpsAccounts());
