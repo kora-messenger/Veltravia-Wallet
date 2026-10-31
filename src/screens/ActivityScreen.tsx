@@ -22,7 +22,7 @@
  * empty after a refresh.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -32,15 +32,13 @@ import {
   Image,
   Animated,
   StatusBar,
-  RefreshControl,
-  Easing,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
 import { BackIcon, FilterLinesIcon } from '../components/icons';
 import { T, SP, RADIUS, TOUCH } from '../theme/typography';
 import { ActivitySkeleton } from '../components/Skeleton';
+import { usePullToReload } from '../hooks/usePullToReload';
 import NetInfo from '@react-native-community/netinfo';
 import FilterSheet, { ActivityFilters, DEFAULT_ACTIVITY_FILTERS } from '../components/FilterSheet';
 
@@ -58,12 +56,10 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
 
   // Load failure (Trust shows "Something went wrong" + Reload + the error text).
   const [loadError, setLoadError] = useState<string | null>(null);
-  // True while a Reload/pull retry runs from the error screen: the error
-  // screen stays put and a brand-gradient bar sweeps along the top instead of
-  // swapping to the skeleton (Trust keeps the failure view and loads over it).
+  // True while a Reload/pull retry runs from the error screen. The screen
+  // swaps to the same shimmer skeleton as the first load (Ijezie, 31 Oct 2026:
+  // no sweeping line, no spinner: the skeleton is the loading state).
   const [retrying, setRetrying] = useState(false);
-  const barX = useRef(new Animated.Value(0)).current;
-  const [barW, setBarW] = useState(0);
 
   const [filters, setFilters] = useState<ActivityFilters>(DEFAULT_ACTIVITY_FILTERS);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -71,16 +67,6 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
   const chipBg = dark ? 'rgba(255,255,255,0.12)' : 'rgba(60,64,90,0.08)';
   const pageBg = dark ? theme.background : '#FFFFFF';
   const tertiary = theme.surfaceAlt;
-
-  useEffect(() => {
-    if (!retrying || barW === 0) return;
-    barX.setValue(0);
-    const loop = Animated.loop(
-      Animated.timing(barX, { toValue: 1, duration: 1100, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [retrying, barW, barX]);
 
   const hidePill = useCallback(() => {
     Animated.timing(pillOpacity, { toValue: 0, duration: 220, useNativeDriver: true }).start();
@@ -121,9 +107,9 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
     return () => clearTimeout(t);
   }, [isLoading, loadError, hidePill]);
 
-  // Retry from the error screen (Reload button or drag down). The failure view
-  // stays on screen with a gradient bar loading along the top; if the phone is
-  // still offline the attempt times out and the text reads "Request timed out".
+  // Retry from the error screen (Reload button or drag down). The screen shows
+  // the shimmer skeleton while the attempt runs; if the phone is still offline
+  // the attempt times out and the failure view returns with "Request timed out".
   const retry = useCallback(async () => {
     if (retrying) return;
     setRetrying(true);
@@ -147,6 +133,10 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
     setLoadError(online ? null : 'Request timed out');
   }, []);
 
+  // Pull-down on either list reloads through the skeleton; no native spinner.
+  const pullList = usePullToReload(onRefresh, !refreshing && !retrying && !isLoading);
+  const pullError = usePullToReload(retry, !refreshing && !retrying && !isLoading);
+
   // Trust's formula: canLoadOlder = hasNextPage && !isFetchingNextPage && !isRefetching
   const canLoadOlder = hasNextPage && !isFetchingOlder && !refreshing && !isLoading && !loadError;
 
@@ -160,7 +150,7 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
     }, 1200);
   }, [canLoadOlder, hidePill]);
 
-  const showSkeleton = isLoading || refreshing;
+  const showSkeleton = isLoading || refreshing || retrying;
 
   return (
     <View style={[styles.root, { backgroundColor: pageBg }]}>
@@ -179,26 +169,6 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
         </Pressable>
       </View>
 
-      {/* Gradient loading bar, drawn directly under the header while retrying */}
-      {retrying && (
-        <View style={[styles.barTrack, { top: insets.top + 8 + TOUCH.headerCircle + SP.xs }]} onLayout={e => setBarW(e.nativeEvent.layout.width)}>
-          <Animated.View
-            style={{
-              width: barW * 0.4,
-              height: 3,
-              transform: [{ translateX: barX.interpolate({ inputRange: [0, 1], outputRange: [-barW * 0.4, barW] }) }],
-            }}
-          >
-            <LinearGradient
-              colors={[...theme.brandGradient]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={{ flex: 1, borderRadius: 2 }}
-            />
-          </Animated.View>
-        </View>
-      )}
-
       {showSkeleton ? (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: SP.xl }}>
           <ActivitySkeleton />
@@ -207,16 +177,7 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
         <ScrollView
           contentContainerStyle={styles.errorBody}
           showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={retrying}
-              onRefresh={retry}
-              tintColor={theme.ink}
-              colors={[theme.brandGradient[0]]}
-              progressBackgroundColor={dark ? theme.surface : '#FFFFFF'}
-              progressViewOffset={insets.top + 56}
-            />
-          }
+          {...pullError.bind}
         >
           <Image
             source={dark ? require('../assets/activity-error-dark.png') : require('../assets/activity-error.png')}
@@ -238,16 +199,7 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
         <ScrollView
           contentContainerStyle={styles.body}
           showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={theme.ink}
-              colors={[theme.brandGradient[0]]}
-              progressBackgroundColor={dark ? theme.surface : '#FFFFFF'}
-              progressViewOffset={insets.top + 56}
-            />
-          }
+          {...pullList.bind}
         >
           <Image
             source={dark ? require('../assets/no-activity-robot-dark.png') : require('../assets/no-activity-robot.png')}
@@ -315,7 +267,6 @@ const styles = StyleSheet.create({
   // art + gap) held at 149dp so the headline stays at Trust's offset; the
   // Veltravia satellite is a detailed picture so it gets a 112x100dp box, headline wraps to two lines (24 Bold, centred),
   // description 16 Medium, Reload = same 288x59 grey pill, 12dp caption below.
-  barTrack: { position: 'absolute', left: 0, right: 0, height: 3, overflow: 'hidden', zIndex: 5 },
   errorBody: { alignItems: 'center', paddingHorizontal: SP.xxl, paddingTop: SP.sm },
   errorArt: { width: 112, height: 100, marginTop: 25, marginBottom: 24 },
   reloadBtn: {
