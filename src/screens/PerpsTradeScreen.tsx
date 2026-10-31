@@ -35,6 +35,7 @@ import { SwapIcon } from '../components/icons';
 import { HyperliquidTile, AsterTile } from '../components/PerpsVenueMarks';
 import CandleChart from '../components/CandleChart';
 import ChartNeedsNetwork from '../components/ChartNeedsNetwork';
+import { ChartSkeleton } from '../components/Skeleton';
 import { useOnlineGate } from '../hooks/useOnlineGate';
 import OrderBookView from '../components/OrderBookView';
 import OrderBookSettingsSheet from '../components/OrderBookSettingsSheet';
@@ -332,6 +333,8 @@ export default function PerpsTradeScreen() {
       <View style={[styles.chartWrap, { height: chartH }]}>
         {online.state === 'offline' ? (
           <ChartNeedsNetwork height={chartH} onRetry={online.recheck} />
+        ) : online.state === 'checking' ? (
+          <ChartSkeleton height={chartH} />
         ) : chartReady && online.state === 'online' ? (
           <CandleChart
             seedKey={`${venue}:${symbol}`}
@@ -347,7 +350,7 @@ export default function PerpsTradeScreen() {
             onScrubChange={setScrub}
           />
         ) : (
-          <View style={styles.spinnerBox} testID="chartSpinner"><Text style={{ color: theme.brand, fontFamily: FONT.medium }}>···</Text></View>
+          <ChartSkeleton height={chartH} />
         )}
         <Pressable
           accessibilityLabel={expanded ? 'Collapse chart' : 'Expand chart'}

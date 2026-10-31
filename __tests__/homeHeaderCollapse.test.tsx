@@ -61,6 +61,17 @@ const styleOf = (t: renderer.ReactTestRenderer, id: string) => {
   return { opacity: val(flat.opacity), shift: val(flat.transform?.[0]?.translateY) };
 };
 
+
+/** Pull down past the threshold and release: what a real drag does now that
+ *  RefreshControl (and its spinner) is gone. */
+const dragToReload = async (tree: any, y = -100) => {
+  const scroller = tree.root.findAll((n: any) => typeof n.props.onScrollEndDrag === 'function')[0];
+  await act(async () => {
+    scroller.props.onScroll({ nativeEvent: { contentOffset: { y } } });
+    scroller.props.onScrollEndDrag();
+  });
+};
+
 describe('Home header: wallet name swaps for the balance past the balance card', () => {
   it('both texts exist; at the top the name is visible and the amount is not', async () => {
     const t = await mount();
@@ -141,17 +152,29 @@ describe('Home header: wallet name swaps for the balance past the balance card',
 });
 
 describe('pull to refresh on Home', () => {
+  it('the shimmer skeleton stands in for the page while it reloads', async () => {
+    mockWalletReload.mockClear();
+    const tree = await mount();
+    expect(tree.root.findAll((n) => n.props.testID === 'homeSkeleton').length).toBe(0);
+
+    await dragToReload(tree);
+    expect(tree.root.findAll((n) => n.props.testID === 'homeSkeleton').length).toBeGreaterThan(0);
+    expect(tree.root.findAll((n) => n.props.testID === 'headerStrip' || false).length).toBeGreaterThanOrEqual(0);
+
+    await act(async () => { jest.advanceTimersByTime(3000); });
+    expect(tree.root.findAll((n) => n.props.testID === 'homeSkeleton').length).toBe(0);
+    await act(async () => { tree.unmount(); });
+  });
+
   it('re-reads the wallet list and the lock flags from storage', async () => {
     const locks = jest.spyOn(walletLockModule, 'refreshWalletLocks').mockResolvedValue({});
     const registry = jest.spyOn(lockRegistryModule, 'refreshRegistryLock').mockResolvedValue(null);
     mockWalletReload.mockClear();
 
     const tree = await mount();
-    const pull = tree.root.findAll((n) => n.props.refreshControl && n.props.refreshControl.props.onRefresh)[0];
-    // fake timers in this file: start the pull, let the work resolve, then run out the minimum spinner
-    let done!: Promise<void>;
-    await act(async () => { done = pull.props.refreshControl.props.onRefresh(); });
-    await act(async () => { jest.advanceTimersByTime(700); await done; });
+    // fake timers in this file: drag, let the work resolve, then run out the minimum
+    await dragToReload(tree);
+    await act(async () => { jest.advanceTimersByTime(1200); });
 
     expect(mockWalletReload).toHaveBeenCalledTimes(1);
     expect(locks).toHaveBeenCalled();

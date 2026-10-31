@@ -368,6 +368,15 @@ describe('candle chart needs the network (Ijezie, 31 Oct 2026)', () => {
     await act(async () => { t.unmount(); });
   });
 
+  it('checking: the box shows the candle skeleton, not a blank box or a "···" spinner', async () => {
+    mockOnline.state = 'checking';
+    const t = await mount(PerpsTradeScreen, 'PerpsTrade', { venue: 'hyperliquid', symbol: 'BTC', side: 'long' });
+    expect(t.root.findAll((n) => n.props.testID === 'chartSkeleton').length).toBeGreaterThan(0);
+    expect(t.root.findAll((n) => n.props.testID === 'chartSpinner').length).toBe(0);
+    await act(async () => { t.unmount(); });
+    mockOnline.state = 'online';
+  });
+
   it('online: the candle chart is back', async () => {
     mockOnline.state = 'online';
     const t = await mount(PerpsTradeScreen, 'PerpsTrade', { venue: 'hyperliquid', symbol: 'BTC', side: 'long' });

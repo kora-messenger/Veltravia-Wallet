@@ -19,13 +19,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, Pressable, ScrollView, Image, Animated,
-  StatusBar, RefreshControl,
+  StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
 import { BackIcon, FilterLinesIcon } from '../components/icons';
 import { T, SP, TOUCH } from '../theme/typography';
 import { ActivitySkeleton } from '../components/Skeleton';
+import { usePullToReload } from '../hooks/usePullToReload';
 import NetInfo from '@react-native-community/netinfo';
 import PerpsFilterSheet, { PerpsActivityFilters, DEFAULT_PERPS_ACTIVITY_FILTERS, perpsFiltersActive } from '../components/PerpsFilterSheet';
 import { applyPerpsFilters, type PerpsActivityItem } from '../core/perps/activityFilters';
@@ -100,6 +101,11 @@ export default function PerpsActivityScreen({ navigation }: { navigation: any })
     setLoadError(online ? null : 'offline');
   }, [refreshing, isLoading]);
 
+  // Pull-down reloads through the skeleton; no native spinner on any of the
+  // three scroll views (list, failure, loading).
+  const pull = usePullToReload(onRefresh, !refreshing && !isLoading);
+  const pullError = usePullToReload(retry, !refreshing && !isLoading);
+
   const canLoadOlder = hasNextPage && !isFetchingOlder && !refreshing && !isLoading && !loadError;
 
   const onShowOlder = useCallback(() => {
@@ -135,16 +141,6 @@ export default function PerpsActivityScreen({ navigation }: { navigation: any })
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: SP.xl }}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={theme.ink}
-              colors={[theme.brandGradient[0]]}
-              progressBackgroundColor={dark ? theme.surface : '#FFFFFF'}
-              progressViewOffset={insets.top + 56}
-            />
-          }
         >
           <ActivitySkeleton />
         </ScrollView>
@@ -152,16 +148,8 @@ export default function PerpsActivityScreen({ navigation }: { navigation: any })
         <ScrollView
           contentContainerStyle={styles.errorBody}
           showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={theme.ink}
-              colors={[theme.brandGradient[0]]}
-              progressBackgroundColor={dark ? theme.surface : '#FFFFFF'}
-              progressViewOffset={insets.top + 56}
-            />
-          }
+          {...pullError.bind}
+          onScroll={pullError.onScroll}
         >
           <Image
             source={require('../assets/activity-error-robot.png')}
@@ -180,16 +168,8 @@ export default function PerpsActivityScreen({ navigation }: { navigation: any })
         <ScrollView
           contentContainerStyle={styles.body}
           showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={theme.ink}
-              colors={[theme.brandGradient[0]]}
-              progressBackgroundColor={dark ? theme.surface : '#FFFFFF'}
-              progressViewOffset={insets.top + 56}
-            />
-          }
+          {...pull.bind}
+          onScroll={pull.onScroll}
         >
           {visibleItems.length > 0 ? (
             <View style={styles.list} testID="perpsActivityList">

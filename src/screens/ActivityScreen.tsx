@@ -178,6 +178,7 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
           contentContainerStyle={styles.errorBody}
           showsVerticalScrollIndicator={false}
           {...pullError.bind}
+          onScroll={pullError.onScroll}
         >
           <Image
             source={dark ? require('../assets/activity-error-dark.png') : require('../assets/activity-error.png')}
@@ -200,6 +201,7 @@ export default function ActivityScreen({ navigation }: { navigation: any }) {
           contentContainerStyle={styles.body}
           showsVerticalScrollIndicator={false}
           {...pullList.bind}
+          onScroll={pullList.onScroll}
         >
           <Image
             source={dark ? require('../assets/no-activity-robot-dark.png') : require('../assets/no-activity-robot.png')}

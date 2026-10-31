@@ -21,7 +21,7 @@
 import PrimaryButton from '../components/PrimaryButton';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Animated, Pressable, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View, useWindowDimensions ,
+  Animated, Pressable, ScrollView, StatusBar, StyleSheet, Text, View, useWindowDimensions ,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { SWAP_START, SWAP_SPAN, headerAmount } from '../services/headerCollapse';
@@ -32,6 +32,8 @@ import { movementBlock } from '../core/security/valueGuard';
 import { refreshWalletLocks } from '../core/security/walletLock';
 import { loadPerpsAccounts } from '../services/perpsAccount';
 import { useRefresh } from '../hooks/useRefresh';
+import { usePullToReload } from '../hooks/usePullToReload';
+import { HomeSkeleton } from '../components/Skeleton';
 import { refreshRegistryLock } from '../core/security/lockRegistry';
 import { WalletAvatar } from '../wallets/WalletAvatar';
 import AnimatedBellIcon from '../components/AnimatedBellIcon';
@@ -183,6 +185,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     onError: () => showToast('Couldn\'t refresh just now. Your balance is unchanged.'),
   });
   const sparkData = series7d.points.map((p: PortfolioPoint) => p.value);
+  // Pull-down reloads through the shimmer skeleton; no native spinner.
+  const pull = usePullToReload(onRefresh, !refreshing);
 
   const topInset = 0; // status bar offset is applied natively in MainActivity
   const chipBg = theme.mode === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(60,64,90,0.10)';
@@ -197,18 +201,17 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       <Animated.ScrollView
         contentContainerStyle={[styles.content, { paddingHorizontal: H_PAD, paddingTop: topInset + 68 }]}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={theme.ink}
-            colors={[theme.brandGradient?.[0] ?? theme.brand]}
-            progressBackgroundColor={theme.mode === 'dark' ? theme.surface : '#FFFFFF'}
-          />
-        }
+        {...pull.bind}
         scrollEventThrottle={16}
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+          useNativeDriver: true,
+          listener: pull.onScroll,
+        })}
       >
+        {refreshing ? (
+          <HomeSkeleton />
+        ) : (
+        <>
         {/* ---------- Balance card (opens Balance Details) ---------- */}
         <Pressable onPress={() => navigation.navigate('BalanceDetails')} style={{ marginBottom: 20 }}>
         <LinearGradient
@@ -584,6 +587,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             </View>
           </Pressable>
         </View>
+        </>
+        )}
       </Animated.ScrollView>
         {/* ---------- Header (pill = active wallet, opens Wallets) ---------- */}
         <View style={[styles.headerFloat, { top: topInset + 4 }]}>

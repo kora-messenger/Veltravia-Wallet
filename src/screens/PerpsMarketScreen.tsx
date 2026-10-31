@@ -21,6 +21,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeProvider';
 import CandleChart from '../components/CandleChart';
 import ChartNeedsNetwork from '../components/ChartNeedsNetwork';
+import { ChartSkeleton } from '../components/Skeleton';
 import { useOnlineGate } from '../hooks/useOnlineGate';
 import { showToast } from '../components/Toast';
 import {
@@ -201,7 +202,7 @@ export default function PerpsMarketScreen() {
           {online.state === 'offline' ? (
             <ChartNeedsNetwork height={240} onRetry={online.recheck} retrying={false} />
           ) : online.state === 'checking' ? (
-            <View style={{ height: 240 }} testID="chartChecking" />
+            <ChartSkeleton height={240} />
           ) : advanced ? (
             <View style={{ height: Math.round((W || 390) * 1.05) }}>
               <TradingViewChart

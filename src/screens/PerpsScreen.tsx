@@ -9,7 +9,7 @@
  * sparkline per row, and the floating Long / Short pills above the tab bar.
  */
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Image, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeProvider';
@@ -29,6 +29,7 @@ import { usePerpsFavorites, loadPerpsFavorites } from '../services/perpsFavorite
 import { loadVenuePrefs } from '../services/perpsVenues';
 import { loadPerpsAccounts } from '../services/perpsAccount';
 import { useRefresh } from '../hooks/useRefresh';
+import { usePullToReload } from '../hooks/usePullToReload';
 import { showToast } from '../components/Toast';
 import { favKey } from '../services/perpsSearch';
 import {
@@ -82,6 +83,8 @@ export default function PerpsScreen() {
   const { refreshing, onRefresh } = useRefresh(refreshWork, {
     onError: () => showToast('Couldn\'t refresh just now. Your last numbers are still here.'),
   });
+  // Pull-down reloads through the skeleton below; no native spinner.
+  const pull = usePullToReload(onRefresh, !refreshing);
 
   // Balance fetch runs once per fresh app open; later visits render instantly.
   const [loading, setLoading] = useState(!perpsSessionLoaded());
@@ -163,19 +166,12 @@ export default function PerpsScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: FOOTER_CLEAR + insets.bottom }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={theme.ink}
-            colors={[theme.brandGradient?.[0] ?? theme.brand]}
-            progressBackgroundColor={dark ? theme.surface : '#FFFFFF'}
-          />
-        }
+        {...pull.bind}
+        onScroll={pull.onScroll}
       >
-        {loading ? (
-          // ---- LOADING: balance fetch on fresh app open (Trust skeleton) ---
-          <View style={styles.balanceBlock}>
+        {loading || refreshing ? (
+          // ---- LOADING: balance fetch on fresh app open / on refresh (Trust skeleton) ---
+          <View style={styles.balanceBlock} testID="perpsBalanceSkeleton">
             <SkeletonBlock style={styles.skBig} />
             <SkeletonBlock style={styles.skSmall} />
             <View style={[styles.availPill, { backgroundColor: pillBg }]}>

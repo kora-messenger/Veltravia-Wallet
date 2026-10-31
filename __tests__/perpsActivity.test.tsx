@@ -93,17 +93,19 @@ describe('Perps Activity screen (Trust 10:21 screenshot)', () => {
     await act(async () => { t.unmount(); });
   });
 
-  it('drag-down refresh: the spinner drives a skeleton search, then the list returns', async () => {
+  it('drag-down refresh: the pull drives a skeleton search, then the list returns', async () => {
     const { ActivitySkeleton } = require('../src/components/Skeleton');
     const t = await mountScreen(PerpsActivityScreen, 'PerpsActivity');
-    const ctl = t.root.findAll((n) => typeof n.props.onRefresh === 'function');
-    expect(ctl.length).toBe(1); // the empty list's RefreshControl
-    const p = ctl[0].props.onRefresh();
+    const scroller = t.root.findAll((n) => typeof n.props.onScrollEndDrag === 'function')[0];
+    let done: Promise<void>;
+    await act(async () => {
+      scroller.props.onScroll({ nativeEvent: { contentOffset: { y: -100 } } });
+      scroller.props.onScrollEndDrag();
+    });
     await act(async () => {});  // flush NetInfo -> refreshing=true, skeleton up
     expect(t.root.findAll((n) => n.type === ActivitySkeleton).length).toBeGreaterThanOrEqual(1);
     expect(texts(t)).not.toContain('No activity yet'); // list swapped out for the search
     await act(async () => { jest.advanceTimersByTime(1300); });
-    await p;
     await act(async () => {});
     expect(texts(t)).toContain('No activity yet');
     await act(async () => { t.unmount(); });

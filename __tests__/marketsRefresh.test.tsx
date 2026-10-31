@@ -31,6 +31,48 @@ const mount = async () => {
   return tree;
 };
 
+
+/** Pull down past the threshold and release: what a real drag does now that
+ *  RefreshControl (and its spinner) is gone. */
+const dragToReload = async (tree: any, y = -100) => {
+  const scroller = tree.root.findAll((n: any) => typeof n.props.onScrollEndDrag === 'function')[0];
+  await act(async () => {
+    scroller.props.onScroll({ nativeEvent: { contentOffset: { y } } });
+    scroller.props.onScrollEndDrag();
+  });
+};
+
+describe('refresh is the skeleton, not a spinner (all screens)', () => {
+  beforeEach(() => { jest.useFakeTimers(); });
+  afterEach(() => { jest.useRealTimers(); });
+
+  it('Markets: the shimmer skeleton replaces the list while it reloads', async () => {
+    (refreshPrices as jest.Mock).mockResolvedValue({ ok: true, quotes: [] });
+    const tree = await mount();
+    expect(tree.root.findAll((n) => n.props.testID === 'marketsSkeleton').length).toBe(0);
+
+    const scroller = tree.root.findAll((n) => typeof n.props.onScrollEndDrag === 'function')[0];
+    await act(async () => {
+      scroller.props.onScroll({ nativeEvent: { contentOffset: { y: -100 } } });
+      scroller.props.onScrollEndDrag();
+    });
+    expect(tree.root.findAll((n) => n.props.testID === 'marketsSkeleton').length).toBeGreaterThan(0);
+
+    await act(async () => {});                                  // let the work resolve
+    await act(async () => { jest.advanceTimersByTime(700); });   // minimum hold
+    await act(async () => { jest.advanceTimersByTime(700); });   // settle
+    expect(tree.root.findAll((n) => n.props.testID === 'marketsSkeleton').length).toBe(0);
+    await act(async () => { tree.unmount(); });
+  });
+
+  it('Markets: no native RefreshControl is mounted', async () => {
+    (refreshPrices as jest.Mock).mockResolvedValue({ ok: true, quotes: [] });
+    const tree = await mount();
+    expect(tree.root.findAll((n) => n.props.refreshControl).length).toBe(0);
+    await act(async () => { tree.unmount(); });
+  });
+});
+
 describe('pull to refresh on Markets', () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -41,10 +83,8 @@ describe('pull to refresh on Markets', () => {
   it('asks for live prices and stays quiet when the feed answers', async () => {
     (refreshPrices as jest.Mock).mockResolvedValue({ ok: true, quotes: [{ symbol: 'BTC', priceUsd: 1, change24h: 0 }] });
     const tree = await mount();
-    const pull = tree.root.findAll((n) => n.props.refreshControl && n.props.refreshControl.props.onRefresh)[0];
-    let done!: Promise<void>;
-    await act(async () => { done = pull.props.refreshControl.props.onRefresh(); });
-    await act(async () => { jest.advanceTimersByTime(700); await done; });
+    await dragToReload(tree);
+    await act(async () => { jest.advanceTimersByTime(1200); });
 
     expect(refreshPrices).toHaveBeenCalledTimes(1);
     expect(showToast).not.toHaveBeenCalled();
@@ -54,10 +94,8 @@ describe('pull to refresh on Markets', () => {
   it('says so plainly when the feed is unreachable, and keeps the prices on screen', async () => {
     (refreshPrices as jest.Mock).mockResolvedValue({ ok: false, quotes: [], reason: 'offline' });
     const tree = await mount();
-    const pull = tree.root.findAll((n) => n.props.refreshControl && n.props.refreshControl.props.onRefresh)[0];
-    let done!: Promise<void>;
-    await act(async () => { done = pull.props.refreshControl.props.onRefresh(); });
-    await act(async () => { jest.advanceTimersByTime(700); await done; });
+    await dragToReload(tree);
+    await act(async () => { jest.advanceTimersByTime(1200); });
 
     expect(showToast).toHaveBeenCalledTimes(1);
     expect(String((showToast as jest.Mock).mock.calls[0][0])).toMatch(/price feed|connection|offline/i);

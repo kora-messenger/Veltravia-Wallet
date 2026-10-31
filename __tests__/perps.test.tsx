@@ -58,7 +58,30 @@ const mount = async () => {
   return tree;
 };
 
+
+/** Pull down past the threshold and release: what a real drag does now that
+ *  RefreshControl (and its spinner) is gone. */
+const dragToReload = async (tree: any, y = -100) => {
+  const scroller = tree.root.findAll((n: any) => typeof n.props.onScrollEndDrag === 'function')[0];
+  await act(async () => {
+    scroller.props.onScroll({ nativeEvent: { contentOffset: { y } } });
+    scroller.props.onScrollEndDrag();
+  });
+};
+
 describe('pull to refresh on the Perps home', () => {
+  it('the balance skeleton takes over while the reload runs', async () => {
+    jest.useFakeTimers();
+    const tree = await mount();
+    await dragToReload(tree);
+    const sk = tree.root.findAll((n) => n.props.testID === 'perpsBalanceSkeleton');
+    expect(sk.length).toBeGreaterThan(0);
+    await act(async () => { jest.advanceTimersByTime(3000); });
+    expect(tree.root.findAll((n) => n.props.testID === 'perpsBalanceSkeleton').length).toBe(0);
+    await act(async () => { tree.unmount(); });
+    jest.useRealTimers();
+  });
+
   it('re-reads the account, the starred markets and the venue prefs', async () => {
     const accounts = perpsAccountModule.loadPerpsAccounts as unknown as jest.Mock;
     accounts.mockClear();
@@ -66,8 +89,7 @@ describe('pull to refresh on the Perps home', () => {
     const venues = jest.spyOn(venuesModule, 'loadVenuePrefs').mockResolvedValue();
 
     const tree = await mount();
-    const pull = tree.root.findAll((n) => n.props.refreshControl && n.props.refreshControl.props.onRefresh)[0];
-    await act(async () => { await pull.props.refreshControl.props.onRefresh(); });
+    await dragToReload(tree);
 
     expect(accounts).toHaveBeenCalled();
     expect(favs).toHaveBeenCalled();

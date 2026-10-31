@@ -588,15 +588,27 @@ filled grey circle when selected, unselected tabs are bare text with no pill (on
 empty watchlist shows a small flying-saucer illustration with "Your watchlist will appear here". Starred markets
 appear in a Watchlist section above Popular on the Perps home. Art: `src/components/WatchlistEmptyArt.tsx`.
 
-**Activity reload is the skeleton, nothing else (Oct 31).** The sweeping gradient line under the header and the
-native pull spinner are gone. Tapping Reload, or pulling down on either the empty list or the failure view, swaps
-the screen to the same shimmer `ActivitySkeleton` the first load uses, then returns to the result (still offline
-lands back on "Something went wrong / Request timed out"). `RefreshControl` is not used on this screen because it
-always paints a native indicator, even with `refreshing={false}`; `hooks/usePullToReload` reads the overscroll
-itself (threshold 64dp, fires on release) so no indicator exists. Known gap: the other screens (Home, Markets,
-Perps) still use the native control.
-Tests: `activityReload` (skeleton during Reload and during a pull, no gradient, no RefreshControl, a short tug does
-nothing; confirmed to fail against the old behaviour).
+**Reload is the skeleton on every screen (Oct 31).** One rule now: a refresh shows the shimmer skeleton, never a
+spinner or a line. `RefreshControl` is gone from Home, Markets, Perps, Perps Activity and Activity, because it
+always paints a native indicator even at `refreshing={false}`. `hooks/usePullToReload` reads the overscroll itself
+(threshold 64dp, fires on release, `overScrollMode: 'always'` so Android reports it) and the screen swaps its content
+for the matching placeholder:
+
+- Home -> `HomeSkeleton` (balance card, quick actions, token rows)
+- Markets -> `MarketsSkeleton` (movers carousel, coin rows)
+- Perps -> the balance skeleton block, also used for the first load
+- Perps Activity / Activity -> `ActivitySkeleton` (section + rows), on the list and on the failure view
+
+The candle box is never blank: `ChartSkeleton` draws wick-and-body shimmer bars in a plot area with a time-axis
+stub, sized to the box, while the network is being checked and while candles load (Perps market and trade screens).
+The old empty `chartChecking` view and the `···` text spinner are gone.
+
+Known gaps: the pull distance (64dp) has not been tuned on a real device; iOS rubber-band overscroll is read the same
+way and should behave, but that is unverified on hardware. Home and Markets replace the whole page with the skeleton
+during a refresh, so the numbers disappear for the minimum 550ms hold.
+Tests: `activityReload`, `chartSkeleton`, plus skeleton assertions in `marketsRefresh`, `homeHeaderCollapse`,
+`perps` and `perpsMarket`/`perpsTradeScreen` (chart skeleton while checking). 557 pass; the chart and Activity tests
+were confirmed to fail against the old behaviour.
 
 **The candle chart needs the network (Oct 31).** A price chart drawn with no connection is a chart the user cannot
 trust, and the series behind it is generated locally until real OHLC ships. `hooks/useOnlineGate` answers

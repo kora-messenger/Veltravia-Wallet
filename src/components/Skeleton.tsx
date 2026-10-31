@@ -158,3 +158,118 @@ const listStyles = StyleSheet.create({
     paddingTop: SP.sm,
   },
 });
+
+/* ------------------------------------------------------------------ */
+/*  Screen-level placeholders (Ijezie, 31 Oct 2026: every refresh and  */
+/*  every loading state is a shimmer skeleton, never a spinner/line).  */
+/* ------------------------------------------------------------------ */
+
+/** Home: balance card, the quick-action row, a section bar and token rows. */
+export function HomeSkeleton() {
+  return (
+    <View style={homeStyles.root} testID="homeSkeleton">
+      <SkeletonBlock style={homeStyles.card} />
+      <View style={homeStyles.actions}>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <View key={i} style={homeStyles.action}>
+            <SkeletonBlock style={homeStyles.actionCircle} />
+            <SkeletonBlock style={homeStyles.actionLabel} />
+          </View>
+        ))}
+      </View>
+      <SkeletonBlock style={homeStyles.section} />
+      {Array.from({ length: 5 }).map((_, i) => (
+        <View key={i} style={homeStyles.row}>
+          <SkeletonBlock style={homeStyles.rowIcon} />
+          <View style={{ flex: 1 }}>
+            <SkeletonBlock style={homeStyles.rowTitle} />
+            <SkeletonBlock style={homeStyles.rowSub} />
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <SkeletonBlock style={homeStyles.rowValue} />
+            <SkeletonBlock style={homeStyles.rowSub} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const homeStyles = StyleSheet.create({
+  root: { paddingHorizontal: SP.mdsm, paddingTop: SP.sm },
+  card: { height: 172, borderRadius: RADIUS.lg, marginBottom: SP.lg },
+  actions: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: SP.xl },
+  action: { alignItems: 'center', gap: SP.xs, flex: 1 },
+  actionCircle: { width: 48, height: 48, borderRadius: 24 },
+  actionLabel: { width: 34, height: 10, borderRadius: RADIUS.xs },
+  section: { width: 64, height: 16, borderRadius: RADIUS.xs, marginBottom: SP.mdsm },
+  row: { flexDirection: 'row', alignItems: 'center', gap: SP.mdsm, paddingVertical: SP.sm },
+  rowIcon: { width: 40, height: 40, borderRadius: 20 },
+  rowTitle: { width: '55%', height: 14, borderRadius: RADIUS.xs, marginBottom: 6 },
+  rowSub: { width: '35%', height: 11, borderRadius: RADIUS.xs },
+  rowValue: { width: 60, height: 14, borderRadius: RADIUS.xs, marginBottom: 6 },
+});
+
+/** Markets: the movers carousel, then rows of coins. */
+export function MarketsSkeleton() {
+  return (
+    <View style={mkStyles.root} testID="marketsSkeleton">
+      <SkeletonBlock style={mkStyles.section} />
+      <View style={mkStyles.movers}>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <SkeletonBlock key={i} style={mkStyles.moverCard} />
+        ))}
+      </View>
+      <SkeletonBlock style={mkStyles.section} />
+      {Array.from({ length: 6 }).map((_, i) => (
+        <View key={i} style={mkStyles.row}>
+          <SkeletonBlock style={mkStyles.rowIcon} />
+          <View style={{ flex: 1 }}>
+            <SkeletonBlock style={mkStyles.rowTitle} />
+            <SkeletonBlock style={mkStyles.rowSub} />
+          </View>
+          <SkeletonBlock style={mkStyles.spark} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const mkStyles = StyleSheet.create({
+  root: { paddingHorizontal: SP.mdsm, paddingTop: SP.sm },
+  section: { width: 84, height: 16, borderRadius: RADIUS.xs, marginBottom: SP.mdsm },
+  movers: { flexDirection: 'row', gap: SP.mdsm, marginBottom: SP.xl },
+  moverCard: { width: 140, height: 92, borderRadius: RADIUS.md },
+  row: { flexDirection: 'row', alignItems: 'center', gap: SP.mdsm, paddingVertical: SP.sm },
+  rowIcon: { width: 36, height: 36, borderRadius: 18 },
+  rowTitle: { width: '45%', height: 14, borderRadius: RADIUS.xs, marginBottom: 6 },
+  rowSub: { width: '28%', height: 11, borderRadius: RADIUS.xs },
+  spark: { width: 56, height: 24, borderRadius: RADIUS.xs },
+});
+
+/**
+ * The chart box while candles are loading: a plot area of bars standing in for
+ * candles, plus a value-axis stub, in the same rhythm as the real chart.
+ */
+export function ChartSkeleton({ height = 240 }: { height?: number }) {
+  const bars = [0.42, 0.66, 0.34, 0.72, 0.55, 0.86, 0.48, 0.62, 0.38, 0.74, 0.5, 0.68];
+  const plotH = height - 34;
+  return (
+    <View style={{ height, paddingHorizontal: SP.mdsm, paddingTop: SP.sm }} testID="chartSkeleton">
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', flex: 1, gap: 5 }}>
+        {bars.map((b, i) => (
+          <View key={i} style={{ flex: 1, alignItems: 'center' }}>
+            <SkeletonBlock style={{ width: 2, height: plotH * (b + 0.14), borderRadius: 1, marginBottom: 2 }} />
+            <SkeletonBlock style={{ width: '70%', height: plotH * b * 0.82, borderRadius: 2 }} />
+          </View>
+        ))}
+      </View>
+      {/* time axis stub */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: SP.sm }}>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <SkeletonBlock key={i} style={{ width: 28, height: 9, borderRadius: RADIUS.xs }} />
+        ))}
+      </View>
+    </View>
+  );
+}

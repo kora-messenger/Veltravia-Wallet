@@ -351,6 +351,15 @@ describe('candles need the network (Ijezie, 31 Oct 2026)', () => {
     mockOnline.state = 'online';
   });
 
+  it('while the network is checked the box shows the candle skeleton, never a blank box', async () => {
+    mockOnline.state = 'checking';
+    const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });
+    expect(t.root.findAll((n) => n.props.testID === 'chartSkeleton').length).toBeGreaterThan(0);
+    expect(t.root.findAll((n) => n.props.testID === 'chartNeedsNetwork').length).toBe(0);
+    await act(async () => { t.unmount(); });
+    mockOnline.state = 'online';
+  });
+
   it('online: the chart draws again', async () => {
     mockOnline.state = 'online';
     const t = await mount({ venue: 'hyperliquid', symbol: 'BTC' });

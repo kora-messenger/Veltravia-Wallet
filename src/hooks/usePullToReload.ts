@@ -7,7 +7,8 @@
  * overscroll itself and fires `onReload` once when the user drags past the
  * threshold and lets go. Nothing is drawn by the gesture.
  *
- * Spread `bind` onto a ScrollView.
+ * Spread `bind` onto a ScrollView and pass `onScroll` yourself (screens that
+ * already animate on scroll merge it into their own handler).
  */
 import { useCallback, useRef } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
@@ -31,8 +32,8 @@ export function usePullToReload(onReload: () => void, enabled: boolean = true) {
   }, [enabled, onReload]);
 
   return {
+    onScroll,
     bind: {
-      onScroll,
       scrollEventThrottle: 16,
       onScrollEndDrag: release,
       bounces: true,

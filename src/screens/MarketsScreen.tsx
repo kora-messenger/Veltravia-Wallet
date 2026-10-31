@@ -7,7 +7,7 @@
  * backend prices feed). The floating bottom bar is untouched.
  */
 import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
@@ -18,6 +18,8 @@ import { useTheme } from '../theme/ThemeProvider';
 import { MARKET_COINS } from '../services/marketData';
 import { refreshPrices, refreshFailureMessage } from '../services/livePrices';
 import { useRefresh } from '../hooks/useRefresh';
+import { usePullToReload } from '../hooks/usePullToReload';
+import { MarketsSkeleton } from '../components/Skeleton';
 import { showToast } from '../components/Toast';
 
 const MOVER_W = 132;
@@ -65,6 +67,8 @@ export default function MarketsScreen() {
     }
   }, []);
   const { refreshing, onRefresh } = useRefresh(onRefreshWork);
+  // Pull-down reloads through the shimmer skeleton; no native spinner.
+  const pull = usePullToReload(onRefresh, !refreshing);
 
   const movers = useMemo(
     () => [...coins].sort((a, b) => Math.abs(b.change24h) - Math.abs(a.change24h)).slice(0, 5),
@@ -153,16 +157,11 @@ export default function MarketsScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={theme.ink}
-            colors={[theme.brandGradient?.[0] ?? theme.brand]}
-            progressBackgroundColor={dark ? theme.surface : '#FFFFFF'}
-          />
-        }
+        {...pull.bind}
+        onScroll={pull.onScroll}
       >
+        {refreshing ? <MarketsSkeleton /> : (
+        <>
         {/* top movers carousel */}
         <Text style={[styles.section, { color: theme.ink }]}>Top Movers</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.moversRow}>
@@ -261,6 +260,8 @@ export default function MarketsScreen() {
           <Text style={[styles.empty, { color: theme.inkMuted }]}>
             {chip === 'favorites' ? 'Star coins to build your favorites.' : 'No coins match your search.'}
           </Text>
+        )}
+        </>
         )}
       </ScrollView>
     </View>
