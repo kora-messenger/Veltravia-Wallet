@@ -30,6 +30,10 @@ export async function storeSeed(seedPhrase: string): Promise<void> {
     accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_CURRENT_SET,
     accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
   });
+  // The seed is the account. Record that here, once, so the boot path can tell
+  // a real account from a passcode left behind by an abandoned login without
+  // reading this biometric-protected item (which would prompt).
+  await writeSettings({ accountState: 'yes' });
 }
 
 /* ---- app preferences (currency, notifications) ------------------------- */
@@ -80,4 +84,6 @@ export async function wipeWallet(): Promise<void> {
   for (const key of [KEY_SEED, KEY_PIN_HASH, KEY_SETTINGS]) {
     await Keychain.resetGenericPassword({ service: `${SERVICE}.${key}` });
   }
+  // No seed, no account: onboarding must run again from the welcome screen.
+  await writeSettings({ accountState: 'no' });
 }

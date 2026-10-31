@@ -114,3 +114,12 @@ export async function verifyPasscode(passcode: string): Promise<boolean> {
   for (let i = 0; i < given.length; i++) diff |= given.charCodeAt(i) ^ stored.charCodeAt(i);
   return diff === 0;
 }
+
+/** Delete the stored passcode (used when a login never produced an account). */
+export async function clearPasscode(): Promise<void> {
+  try {
+    await Keychain.resetGenericPassword({ service: SERVICE });
+  } catch {
+    /* absent already */
+  }
+}

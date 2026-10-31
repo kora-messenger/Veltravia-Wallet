@@ -588,6 +588,23 @@ filled grey circle when selected, unselected tabs are bare text with no pill (on
 empty watchlist shows a small flying-saucer illustration with "Your watchlist will appear here". Starred markets
 appear in a Watchlist section above Popular on the Perps home. Art: `src/components/WatchlistEmptyArt.tsx`.
 
+**Abandoned login no longer becomes a locked app (Oct 31).** The boot gate used to treat "a passcode exists" as
+"an account exists". Onboarding saves the passcode BEFORE the wallet is created or restored, so tapping
+"I already have an account", setting a passcode and walking away left a passcode with no wallet behind: the next
+launch locked the app and unlocking dropped the user on Home as if an account existed.
+
+- The truth is now the seed. `secureStorage.storeSeed` records `accountState: 'yes'` — the single point where an
+  account is created — and `wipeWallet` records `'no'`. `core/storage/accountState` resolves it as
+  yes / no / unknown without reading the biometric-protected seed item (that read pops the OS prompt).
+- `core/security/accountGate` is the only thing `Navigation` boots with and re-checks on every return from
+  background: `lock = hasAccount && hasPasscode`, and `hasAccount = false` always means the welcome screen.
+- A passcode with no account is deleted at that point (and the biometric flag with it), so nothing the user set
+  during an unfinished login is kept or asked for again.
+- Installs that predate the marker migrate on first boot: no passcode means "no account"; passcode + seed means
+  "account"; a cancelled keychain prompt means "unknown", which locks as before and deletes nothing.
+- Tests: `accountState.test.ts` (resolver + gate, including the exact abandoned-login case) and
+  `accountMarker.test.ts` (seed stored / wiped).
+
 **Pull to refresh on Home, Markets and Perps (Oct 31).** Each screen reloads real state; none of them show a
 decorative spinner.
 

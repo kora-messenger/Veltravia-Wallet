@@ -59,7 +59,8 @@ import LockScreen from '../screens/LockScreen';
 import { setAppLocked } from '../core/security/appLockState';
 import { registerBrowserNavigator } from '../services/browserState';
 import BrowserScreen from '../screens/BrowserScreen';
-import { setPasscode, hasPasscode } from '../core/storage/passcode';
+import { setPasscode, hasPasscode, clearPasscode } from '../core/storage/passcode';
+import { resolveAccountGate } from '../core/security/accountGate';
 import { setBiometricUnlockEnabled } from '../core/security/biometrics';
 import { AppState, StyleSheet } from 'react-native';
 
@@ -176,14 +177,16 @@ export default function Navigation() {
   React.useEffect(() => {
     let alive = true;
     (async () => {
-      // A passcode is only ever set at the end of onboarding, so it is the
-      // reliable "this device has a wallet" signal. (hasWallet() reads a
-      // biometric-protected item and would pop a prompt just to check.)
-      const has = await hasPasscode();
+      // The account, not the passcode, decides what this device is. Onboarding
+      // saves the passcode BEFORE a wallet exists (passcode -> create/import),
+      // so an abandoned login used to leave a passcode behind and the next cold
+      // start booted into a locked Home with no account. Now: no account means
+      // no lock, the welcome screen, and any orphan passcode is dropped.
+      const gate = await resolveAccountGate();
       if (alive) {
-        hasPassRef.current = has;
-        setWalletExists(has);
-        setLocked(has);
+        hasPassRef.current = gate.lock;
+        setWalletExists(gate.hasAccount);
+        setLocked(gate.lock);
         setBooted(true);
       }
     })().catch(() => {
@@ -204,11 +207,11 @@ export default function Navigation() {
         // frame the system shows on resume; the async re-read only reconciles
         // the stack (a wallet created this session).
         setLocked(hasPassRef.current);
-        hasPasscode()
-          .then((has) => {
-            hasPassRef.current = has;
-            setWalletExists(has);
-            setLocked(has);
+        resolveAccountGate()
+          .then((gate) => {
+            hasPassRef.current = gate.lock;
+            setWalletExists(gate.hasAccount);
+            setLocked(gate.lock);
           })
           .catch(() => {});
       }
