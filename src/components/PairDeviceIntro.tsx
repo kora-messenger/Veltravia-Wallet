@@ -73,17 +73,17 @@ export function PairIntroArt({ width = 300 }: { width?: number }) {
       <Svg width={width} height={h} viewBox="0 0 300 186">
         <Defs>
           <LinearGradient id="shield" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor={TEAL} />
-            <stop offset="0.5" stopColor={VIOLET} />
-            <stop offset="1" stopColor={DEEP} />
+            <Stop offset="0" stopColor={TEAL} />
+            <Stop offset="0.5" stopColor={VIOLET} />
+            <Stop offset="1" stopColor={DEEP} />
           </LinearGradient>
           <LinearGradient id="glow" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stopColor={TEAL} stopOpacity="0.9" />
-            <stop offset="1" stopColor={VIOLET} stopOpacity="0.9" />
+            <Stop offset="0" stopColor={TEAL} stopOpacity="0.9" />
+            <Stop offset="1" stopColor={VIOLET} stopOpacity="0.9" />
           </LinearGradient>
           <LinearGradient id="halo" x1="0.5" y1="0" x2="0.5" y2="1">
-            <stop offset="0" stopColor={VIOLET} stopOpacity="0.16" />
-            <stop offset="1" stopColor={TEAL} stopOpacity="0.04" />
+            <Stop offset="0" stopColor={VIOLET} stopOpacity="0.16" />
+            <Stop offset="1" stopColor={TEAL} stopOpacity="0.04" />
           </LinearGradient>
         </Defs>
 
