@@ -24,7 +24,6 @@ jest.mock('@react-native-community/netinfo', () => ({
 
 import PerpsTradeScreen, { findTradeMarket } from '../src/screens/PerpsTradeScreen';
 import PerpsPayWithScreen from '../src/screens/PerpsPayWithScreen';
-import PerpsSearchScreen from '../src/screens/PerpsSearchScreen';
 import { resetPerpsRecents } from '../src/services/perpsRecents';
 import { resetPerpsFavorites } from '../src/services/perpsFavorites';
 
@@ -154,36 +153,6 @@ describe('Pay with screen', () => {
   });
 });
 
-describe('Search screen: browse vs trade mode (the two connected screens)', () => {
-  it('browse mode: tapping a market goes to the Market Detail', async () => {
-    const nav: string[] = [];
-    const Probe = ({ route }: any) => { nav.push(route.name + ':' + (route.params?.side ?? '')); return null; };
-    const t = await mount(PerpsSearchScreen, 'PerpsSearch', undefined, { PerpsMarket: Probe, PerpsTrade: Probe });
-    await act(async () => { jest.advanceTimersByTime(900); });
-    const row = t.root.findAll((n) => n.props.accessibilityLabel === 'Market BTC' && typeof n.props.onPress === 'function')[0];
-    await act(async () => { row.props.onPress(); });
-    await act(async () => { jest.advanceTimersByTime(600); });
-    expect(nav.some((x) => x.startsWith('PerpsMarket'))).toBe(true);
-    expect(nav.some((x) => x.startsWith('PerpsTrade'))).toBe(false);
-    await act(async () => { t.unmount(); });
-  });
-
-  it('a tap opens the market page in every mode (long/short no longer reroute it)', async () => {
-    for (const mode of [undefined, 'long', 'short'] as const) {
-      const nav: string[] = [];
-      const Probe = ({ route }: any) => { nav.push(route.name); return null; };
-      const t = await mount(PerpsSearchScreen, 'PerpsSearch', mode ? { mode } : undefined, { PerpsMarket: Probe, PerpsTrade: Probe });
-      await act(async () => { jest.advanceTimersByTime(900); });
-      const row = t.root.findAll((n) => n.props.accessibilityLabel === 'Market ETH' && typeof n.props.onPress === 'function')[0];
-      await act(async () => { row.props.onPress(); });
-      await act(async () => { jest.advanceTimersByTime(600); });
-      expect(nav).toContain('PerpsMarket');
-      expect(nav).not.toContain('PerpsTrade');
-      await act(async () => { t.unmount(); });
-    }
-  });
-});
-
 describe('Long / Short entry points', () => {
   const probeNav = () => {
     const seen: { name: string; params: any }[] = [];
@@ -194,7 +163,7 @@ describe('Long / Short entry points', () => {
   it('the Perps home has no Long / Short pills to route through', async () => {
     const PerpsScreen = require('../src/screens/PerpsScreen').default;
     const { seen, Probe } = probeNav();
-    const t = await mount(PerpsScreen, 'Perps', undefined, { PerpsSearch: Probe });
+    const t = await mount(PerpsScreen, 'Perps', undefined, {});
     expect(t.root.findAll((n) => (n.props.accessibilityLabel === 'Long' || n.props.accessibilityLabel === 'Short') && typeof n.props.onPress === 'function').length).toBe(0);
     expect(seen.length).toBe(0);
     await act(async () => { t.unmount(); });
@@ -383,25 +352,3 @@ describe('Order book (Trust recording, list icon)', () => {
 });
 
 
-describe('Search screen layout does not jump while a tab is loading (video, Oct 29)', () => {
-  const flat = (st: any) => Object.assign({}, ...[].concat(st ?? []).flat(5).filter(Boolean));
-  it.each([['browse', undefined], ['long', 'long'], ['short', 'short']])('%s mode: tab strip + recents are fixed-size, the spinner owns the leftover space', async (_n, mode) => {
-    const Probe = () => null;
-    const t = await mount(PerpsSearchScreen, 'PerpsSearch', mode ? { mode } : undefined, { PerpsMarket: Probe, PerpsTrade: Probe });
-    // tap a tab so the spinner mounts
-    const tab = t.root.findAll((n) => n.props.accessibilityLabel === 'Tab New' && typeof n.props.onPress === 'function')[0];
-    await act(async () => { tab.props.onPress(); });
-    expect(t.root.findAll((n) => n.props.accessibilityLabel === 'Loading markets').length).toBeGreaterThan(0);
-    // every horizontal strip above the list must refuse to grow (else it is stretched down the screen)
-    const strips = t.root.findAll((n) => n.props.horizontal === true && n.props.accessibilityLabel !== 'Market pages');
-    expect(strips.length).toBeGreaterThan(0);
-    for (const s of strips) {
-      const st = flat(s.props.style);
-      expect(st.flexGrow).toBe(0);
-      expect(st.flexShrink).toBe(0);
-    }
-    await act(async () => { jest.advanceTimersByTime(900); });
-    expect(t.root.findAll((n) => n.props.accessibilityLabel === 'Loading markets').length).toBe(0);
-    await act(async () => { t.unmount(); });
-  });
-});

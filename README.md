@@ -588,6 +588,12 @@ filled grey circle when selected, unselected tabs are bare text with no pill (on
 empty watchlist shows a small flying-saucer illustration with "Your watchlist will appear here". Starred markets
 appear in a Watchlist section above Popular on the Perps home. Art: `src/components/WatchlistEmptyArt.tsx`.
 
+**Perps market search screen deleted (Oct 31).** `PerpsSearchScreen` is gone on instruction, along with its
+`PerpsSearch` route and the magnifier button on the Perps home header (no dead control left behind). What did NOT
+go: the query layer (`services/perpsSearch`) is still used by the Perps home and the market page, and its unit tests
+survive as `__tests__/perpsQuery.test.ts`. The screen's own UI tests went with it. If search is wanted again, the
+honest shape is an inline search on the Perps home rather than a separate screen.
+
 **Bottom navigation active state redesigned (Oct 30, `FloatingTabBar`).** The selected tab no longer shows a
 rounded rectangle behind the icon. Each tab now has a true circle behind its icon: 40x40 with `borderRadius: 20`
 (50%), a subtle `#EFEFF2` tint in light mode and `rgba(255,255,255,0.10)` in dark. It grows in from 0.7 scale and

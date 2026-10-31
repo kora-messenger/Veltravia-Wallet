@@ -104,34 +104,6 @@ describe('Perps market page', () => {
   });
 });
 
-describe('Swipe-to-delete on the star tab (Trust recording 35s)', () => {
-  it('the Delete action removes the market from favorites', async () => {
-    const PerpsSearchScreen = require('../src/screens/PerpsSearchScreen').default;
-    const { toggleFavorite, resetPerpsFavorites: rf } = require('../src/services/perpsFavorites');
-    rf();
-    const Stack = createNativeStackNavigator<Record<string, object | undefined>>();
-    let tree!: renderer.ReactTestRenderer;
-    await act(async () => {
-      tree = renderer.create(
-        <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
-          <Spy />
-          <NavigationContainer>
-            <Stack.Navigator initialRouteName="PerpsSearch">
-              <Stack.Screen name="PerpsSearch" component={PerpsSearchScreen} />
-            </Stack.Navigator>
-          </NavigationContainer>
-        </SafeAreaProvider>,
-      );
-    });
-    await act(async () => { toggleFavorite('hyperliquid:BTC'); });
-    expect(currentFavs.has('hyperliquid:BTC')).toBe(true);
-    const del = tree.root.find((n) => n.props.accessibilityLabel === 'Delete BTC' && typeof n.props.onPress === 'function');
-    await act(async () => { del.props.onPress(); });
-    expect(currentFavs.has('hyperliquid:BTC')).toBe(false);
-    await act(async () => { tree.unmount(); });
-  });
-});
-
 describe('market page: About, timeframes, related (screenshot parity)', () => {
   beforeEach(() => { resetPerpsFavorites(); resetPerpsRecents(); });
 

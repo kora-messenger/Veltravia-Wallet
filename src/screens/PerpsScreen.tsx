@@ -143,13 +143,7 @@ export default function PerpsScreen() {
         </View>
         <Text style={[styles.title, { color: theme.ink }]}>Perps</Text>
         <View style={[styles.headerSide, { justifyContent: 'flex-end' }]}>
-          <Pressable
-            accessibilityLabel="Search perps"
-            style={[styles.circle, { backgroundColor: headerChipBg }]}
-            onPress={() => navigation.navigate('PerpsSearch')}
-          >
-            <SearchIcon size={22} color={headerIconColor} />
-          </Pressable>
+          
         </View>
       </View>
 

@@ -1,8 +1,8 @@
 /**
  * Perps trade ticket (Trust recording, Oct 28 2026).
  *
- * Reached from Long / Short: the market list (PerpsSearchScreen in long/short
- * mode) or the Market Detail bottom bar. Layout:
+ * Reached from the Market Detail bottom bar's Long / Short buttons (the market
+ * search screen that used to feed it was removed on 31 Oct 2026). Layout:
  *
  *   - top: market header (logo + venue badge, "40x", price, day change). While
  *     a candle is held on the chart this swaps for Open / High / Low / Close,
