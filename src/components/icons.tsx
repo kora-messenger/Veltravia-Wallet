@@ -21,6 +21,7 @@ import Svg, {
 /** Supplied artwork: 384 px, white on alpha, recoloured with `tintColor`. */
 const FP_ASSET = require('../../assets/brand/fingerprint.png');
 const SEND_ASSET = require('../../assets/brand/send.png');
+const RECEIVE_ASSET = require('../../assets/brand/receive.png');
 
 interface IconProps {
   size?: number;
@@ -60,12 +61,18 @@ export const SendIcon = ({ size = 24, color = '#000' }: IconProps) => (
   />
 );
 
-export const ReceiveIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
-  <Svg {...base(size)}>
-    <Path d="M12 4v11" {...stroke(color, strokeWidth)} />
-    <Path d="M7 11l5 5 5-5" {...stroke(color, strokeWidth)} />
-    <Path d="M5 20h14" {...stroke(color, strokeWidth)} />
-  </Svg>
+/**
+ * Receive (Ijezie, 2026-11-06): the supplied linear arrow-over-line mark, used
+ * on the Home quick actions beside Send. Same white-on-alpha bitmap contract as
+ * the rest of the supplied art, so `tintColor` follows the chip's foreground.
+ */
+export const ReceiveIcon = ({ size = 24, color = '#000' }: IconProps) => (
+  <Image
+    source={RECEIVE_ASSET}
+    accessibilityIgnoresInvertColors
+    resizeMode="contain"
+    style={{ width: size, height: size, tintColor: color }}
+  />
 );
 
 export const SwapIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (

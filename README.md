@@ -544,11 +544,11 @@ A locked wallet is never "active": value movement is refused on every surface, a
 - While the keychain read is in flight the card shows "Checking this wallet…" instead of guessing which form to show.
 - Approve / Set password & Approve now carry accessibility labels.
 
-### The Home Send tile uses the supplied paper plane (Nov 6)
+### The Home quick actions use the supplied marks (Nov 6)
 
-- **Asset** — `assets/brand/send.png`, from the supplied 512×512 render (black glyph on alpha) normalised to white-on-alpha at 88% of a 384 px square: 18 KB, tintable, bundled.
-- **Swap** — `SendIcon` in `src/components/icons.tsx` now draws that bitmap, so `HomeScreen`'s quick-action list picks it up with no call-site change (`{ key: 'send', Icon: SendIcon }`, drawn at 26 dp in the chip's foreground colour). No other screen imports `SendIcon`.
-- Tests: `__tests__/sendMark.test.tsx` (5) — the mark's size/tint, no SVG left in `SendIcon`, the Home tile actually containing the bitmap (confirmed to fail against the old arrow), and the asset's type/dimensions/bundle size.
+- **Assets** — `assets/brand/send.png` (paper plane) and `assets/brand/receive.png` (arrow over a line). Both are supplied 512×512 renders (black glyph on alpha) normalised to white-on-alpha at 88% of a 384 px square: 18 KB and 11 KB, tintable, bundled.
+- **Swap** — `SendIcon` and `ReceiveIcon` in `src/components/icons.tsx` draw those bitmaps, so `HomeScreen`'s quick-action list picks them up with no call-site change (`{ key, Icon }`, drawn at 26 dp in the chip's foreground colour). Neither icon is imported anywhere else; Swap and Buy are still vectors.
+- Tests: `__tests__/homeActionMarks.test.tsx` (8) — both marks' size/tint, no SVG left in either icon, both Home tiles containing a bitmap while Swap stays vector (confirmed to fail against the old arrows), and both assets' type/dimensions/bundle size.
 
 ### The fingerprint is Ijezie's artwork everywhere (Nov 6)
 
