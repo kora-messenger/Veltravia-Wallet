@@ -8,6 +8,7 @@ import { refreshWalletLocks } from './src/core/security/walletLock';
 import { registerRemovalHandler, refreshRegistryLock } from './src/core/security/lockRegistry';
 import { handleDeviceRemoved } from './src/core/security/deviceRemoval';
 import { resetToWelcome } from './src/navigation/Navigation';
+import { checkForUpdate, confirmBoot } from './src/core/ota';
 
 /**
  * Boot: load the local lock flags and re-read the cross-device lock registry.
@@ -35,7 +36,26 @@ function useLockSyncOnLaunch(): void {
   }, []);
 }
 
+/**
+ * Over-the-air JavaScript updates (see src/core/ota).
+ *
+ * `confirmBoot` runs first and unconditionally: the app rendered, so the bundle
+ * the native side loaded is good and its boot counter can be reset. Without it,
+ * a perfectly healthy update would be rolled back after three launches.
+ *
+ * The check itself is silent and never blocks: it installs the next signed
+ * bundle in the background and the following cold start picks it up.
+ */
+function useOta(): void {
+  useEffect(() => {
+    confirmBoot();
+    const t = setTimeout(() => { checkForUpdate().catch(() => {}); }, 4000);
+    return () => clearTimeout(t);
+  }, []);
+}
+
 function App(): React.JSX.Element {
+  useOta();
   useLockSyncOnLaunch();
   return (
     <SafeAreaProvider>

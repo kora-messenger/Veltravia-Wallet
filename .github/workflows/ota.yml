@@ -1,0 +1,51 @@
+name: OTA Bundle
+
+# Publishes a signed JavaScript bundle the installed app can pick up without a
+# new APK. JS and assets only: native changes still need the Android workflow.
+#
+# The manifest is signed with OTA_SIGNING_KEY (Ed25519 secret, base64). The
+# matching public key is pinned in src/core/ota/key.ts, so a bundle signed with
+# any other key is rejected by every installed copy of the app.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Bundle version, e.g. 1.0.1 (must be higher than the installed one)'
+        required: true
+      min_app_version:
+        description: 'Oldest APK that may install it'
+        required: false
+        default: '1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and sign the bundle
+        env:
+          OTA_SIGNING_KEY: ${{ secrets.OTA_SIGNING_KEY }}
+          OTA_TAG: ota-latest
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/ota/publish.mjs --version "${{ inputs.version }}" --min-app "${{ inputs.min_app_version }}"
+
+      - name: Publish the bundle and manifest to the ota-latest release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view ota-latest >/dev/null 2>&1 || \
+            gh release create ota-latest --title "OTA bundles" --notes "Signed JavaScript bundles. The app verifies the manifest signature." 
+          gh release upload ota-latest dist/ota/bundle.js dist/ota/manifest.json --clobber

@@ -544,6 +544,19 @@ A locked wallet is never "active": value movement is refused on every surface, a
 - While the keychain read is in flight the card shows "Checking this wallet…" instead of guessing which form to show.
 - Approve / Set password & Approve now carry accessibility labels.
 
+### Over-the-air JavaScript updates (Nov 6)
+
+Fixes no longer need a fresh APK. Native code does; everything that is JS, styles, copy or layout does not.
+
+- **Trust model** — the manifest is Ed25519-signed and the app verifies it against a key pinned in `src/core/ota/key.ts`. The signature covers the bundle's URL, byte size and SHA-256, so the host, the network and GitHub itself cannot substitute different JavaScript. Unsigned, edited or `http://` manifests are refused; nothing is installed unless the downloaded bytes hash to the signed value.
+- **Native half** (`android/.../ota/OtaStore.kt`, `OtaModule.kt`) — downloads over HTTPS, verifies the hash, swaps the file atomically inside `filesDir`, and serves it from `MainApplication` via `jsBundleFilePath`. Every cold start counts a boot attempt; three unconfirmed starts delete the bundle and fall back to the copy inside the APK. JS calls back the moment the app renders (`confirmBoot` in `App.tsx`), which is what makes a healthy bundle stick.
+- **JS half** (`src/core/ota`) — one check per launch, four seconds after start, silent and non-blocking. Newer version only (numeric compare, no downgrades), `minAppVersion` guard so a bundle cannot expect native code the installed APK lacks, and a missing module is a no-op so dev builds and older APKs are unaffected.
+- **Publishing** — `node scripts/ota/publish.mjs --version 1.0.1 --min-app 1.0.0` bundles release JS, hashes it, signs the manifest and writes `dist/ota/{bundle.js,manifest.json}`. It refuses to run without `OTA_SIGNING_KEY`. `.github/workflows/ota.yml` runs the same thing on demand and uploads both files to the `ota-latest` release, which is where the app looks by default (override with `OTA_MANIFEST_URL` in `.env`).
+- **Key handling** — the public key is committed; the private key exists only as `OTA_SIGNING_KEY` (this sandbox's `.agents/.env`, and to be added to the repo's Actions secrets before CI publishing). Losing it means shipping one more APK with a new pinned key; leaking it means anyone can sign code for this wallet.
+- **What still needs an APK** — new native modules or permissions, and new image assets: this channel ships `bundle.js` only, so a bundle that references an asset the APK does not contain would render a blank mark.
+- Tests: `__tests__/ota.test.ts` (20) — canonical payload, signature accept/reject (edited, wrong key, http URL, malformed, bad hash), semver ordering, install only when newer, `minAppVersion` refusal, install failure, dead channel, and `confirmBoot`. The publisher was run for real and its output verified against the pinned key: `signature verifies against the pinned key: true`, `bundle hash matches manifest: true`.
+- **Bootstrap** — the loader lives in native code, so the next APK is the one that turns this on; after that, JS updates arrive without installing anything.
+
 ### Onboarding no longer dead-ends after the passcode (Nov 6)
 
 Ijezie hit this on a real device: passcode typed, back on the welcome screen, both buttons spinning with no message and no way forward.
