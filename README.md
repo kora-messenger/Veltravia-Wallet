@@ -552,6 +552,17 @@ A locked wallet is never "active": value movement is refused on every surface, a
 - Tests: `__tests__/tabBarMarks.test.tsx` (7) now covers both tab marks — bitmap not vector, size/tint, and the PNG alpha decode asserting 0.84 for the Perps mark and 0.75 for Markets. Both were confirmed to fail against the old vectors.
 - **Needs an APK** — this adds an image file, and the OTA channel ships `bundle.js` only.
 
+### Our own biometric screen (Nov 6)
+
+Ijezie: build the fingerprint interface the way Trust did, connected to the device biometric.
+
+- **What is ours** — `src/components/BiometricVerify.tsx`: the layout, the pulsing fingerprint (or face) mark, "Verify it's you", the state line, "Try again" and "Use passcode instead". Background matches the native splash so cold start → biometric has no colour change.
+- **What is not ours, and cannot be** — the scan. Android gives an app no way to read the sensor or draw the sensor UI; the device's own biometric dialog authenticates against secure hardware and the app receives only yes/no. So our screen opens the instant the fingerprint key is tapped, the system dialog rises over it bound to the real sensor, and our screen carries the result. That is Trust's arrangement too.
+- **States** — `checking` (halo pulsing, "Touch the sensor to confirm it is you"), `failed` ("Fingerprint not recognised. Try again." plus retry and passcode routes), and a lockout variant that shows the countdown and offers only the passcode. Face sensors get the face mark and face wording.
+- **Opting out** — "Use passcode instead" sets an opt-out so neither the 400 ms auto-present nor a foreground return re-opens the dialog over the keypad; tapping the fingerprint key again clears it.
+- Tests: `__tests__/biometricVerify.test.tsx` (5) and `__tests__/lockScreenBiometric.test.tsx` (2, end-to-end wiring on the lock screen). Both fail against the old splash-only code.
+- **Not yet unified** — Wallet Lock sheet, the AI transfer confirmation and the onboarding passcode still call the system dialog directly. Same component can wrap them next.
+
 ### Creating a wallet on a phone without biometrics (Nov 6, fixes "Couldn't finish setting up")
 
 Ijezie hit this on his test phone: tapping Create ran through the passcode, then came back to the welcome screen with "Couldn't finish setting up your wallet. Try again." and a red `failed` underneath.

@@ -18,7 +18,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Animated, Easing, StatusBar, Vibration, AppState } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
-import BiometricSplash from '../components/BiometricSplash';
+import BiometricVerify, { type BiometricVerifyState } from '../components/BiometricVerify';
 import { FingerprintIcon, BackspaceIcon, ScanFaceIcon, ScanIcon } from '../components/icons';
 import { verifyPasscode } from '../core/storage/passcode';
 import { isBiometricsSupported, isBiometricUnlockEnabled, promptBiometrics, getBiometryType, type BiometryType } from '../core/security/biometrics';
@@ -45,7 +45,13 @@ export default function LockScreen({ onUnlock, onScan }: { onUnlock: () => void;
   const [busy, setBusy] = useState(false);
   const [bioOk, setBioOk] = useState(false);
   const [bioType, setBioType] = useState<BiometryType>('none');
-  const [splash, setSplash] = useState(false); // gradient + V while the OS prompt is up
+  // Our own biometric screen: 'idle' hides it, 'checking' while the device
+  // dialog is up, 'failed' once it came back without an authentication.
+  const [bioState, setBioState] = useState<BiometricVerifyState | 'idle'>('idle');
+  const [bioReason, setBioReason] = useState<string | null>(null);
+  // True once the user backs out of biometrics: no automatic re-present
+  // (400ms timer, foreground return) may override that choice.
+  const bioOffRef = useRef(false);
   const cancelledRef = useRef(false);
   const [attempts, setAttempts] = useState(0);
   const [lockLeft, setLockLeft] = useState(0);
@@ -140,35 +146,49 @@ export default function LockScreen({ onUnlock, onScan }: { onUnlock: () => void;
    */
   const presentBio = useCallback(() => {
     if (!bioOk || busyRef.current || unlockedRef.current) return;
+    if (bioOffRef.current) return;
     if (lockLeft > 0) return;
     if (AppState.currentState !== 'active') return;
     busyRef.current = true;
     cancelledRef.current = false;
     setBusy(true);
-    setSplash(true); // Trust opens its biometric screen: gradient + brand V
+    setBioReason(null);
+    setBioState('checking'); // our screen first; the device dialog rises over it
     promptBiometrics('Veltravia Wallet', 'Unlock your wallet')
       .then((ok) => {
         if (ok && !cancelledRef.current) {
-          unlock(); // splash stays up through the unlock beat
-        } else {
-          setSplash(false);
-          busyRef.current = false;
-          setBusy(false);
+          unlock(); // our screen stays up through the unlock beat
+          return;
         }
-      })
-      .catch(() => {
-        setSplash(false);
+        // Cancelled or refused: stay on our screen with a way forward, rather
+        // than dropping the user on the keypad wondering what happened.
         busyRef.current = false;
         setBusy(false);
+        setBioReason(null);
+        setBioState('failed');
+      })
+      .catch(() => {
+        busyRef.current = false;
+        setBusy(false);
+        setBioState('failed');
       });
   }, [bioOk, lockLeft, unlock]);
+
+  /** Leaving biometrics: back to the passcode keypad, keys usable again. */
+  const dropBio = useCallback(() => {
+    bioOffRef.current = true;
+    setBioState('idle');
+    setBioReason(null);
+    busyRef.current = false;
+    setBusy(false);
+  }, []);
 
 
   // Auto-present once per mount when biometric unlock is on. The biometric
   // splash shows the instant bioOk is known — Trust opens straight into it.
   useEffect(() => {
-    if (!bioOk) return;
-    setSplash(true);
+    if (!bioOk || bioOffRef.current) return;
+    setBioState('checking');
     const t = setTimeout(() => presentBio(), 400);
     return () => clearTimeout(t);
   }, [bioOk]);
@@ -179,7 +199,7 @@ export default function LockScreen({ onUnlock, onScan }: { onUnlock: () => void;
   useEffect(() => {
     const sub = AppState.addEventListener('change', (st) => {
       if (st !== 'active') return;
-      if (bioOk && !busyRef.current) setSplash(true);
+      if (bioOk && !busyRef.current && !bioOffRef.current) setBioState('checking');
       setTimeout(() => presentBio(), 150);
     });
     return () => sub.remove();
@@ -194,6 +214,7 @@ export default function LockScreen({ onUnlock, onScan }: { onUnlock: () => void;
         return;
       }
       if (k === 'finger') {
+        bioOffRef.current = false;
         presentBio();
         return;
       }
@@ -268,7 +289,22 @@ export default function LockScreen({ onUnlock, onScan }: { onUnlock: () => void;
       >
         <ScanIcon size={24} color={theme.ink} />
       </Pressable>
-      {splash && <BiometricSplash />}
+      {bioState !== 'idle' && (
+        <BiometricVerify
+          state={bioState}
+          biometry={bioType}
+          reason={lockLeft > 0 ? `Too many attempts. Try again in ${Math.ceil(lockLeft / 1000)}s.` : bioReason}
+          onUsePasscode={dropBio}
+          onRetry={
+            lockLeft > 0
+              ? undefined
+              : () => {
+                  bioOffRef.current = false;
+                  presentBio();
+                }
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
