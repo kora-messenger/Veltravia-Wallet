@@ -211,7 +211,8 @@ describe('the assets themselves', () => {
     // measured off the paths they replaced, stroke included, against a 24 box
     // the longest side of the ink is what reads as "the size of the icon"
     const longest = (name: string) => { const i = inkOf(name); return Math.max(i.w, i.h); };
-    expect(longest('send.png')).toBeCloseTo(0.50, 1);
+    // send was the odd one out at 0.50; Ijezie asked for it to match the rest
+    expect(longest('send.png')).toBeCloseTo(0.75, 1);
     expect(longest('receive.png')).toBeCloseTo(0.75, 1);
     expect(longest('swap.png')).toBeCloseTo(0.75, 1);
     expect(longest('buy.png')).toBeCloseTo(0.83, 1);

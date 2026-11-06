@@ -547,9 +547,9 @@ A locked wallet is never "active": value movement is refused on every surface, a
 ### The Home quick actions use the supplied marks (Nov 6)
 
 - **Assets** — `assets/brand/send.png` (paper plane), `receive.png` (arrow over a line), `swap.png` and `buy.png` (wallet). All four are supplied 512×512 renders (black glyph on alpha) normalised to white-on-alpha on a 384 px square: 8–12 KB each, tintable, bundled.
-- **Sizes are matched to the icons they replaced, not guessed.** Each asset is padded so its longest ink edge covers the same fraction of the 26 dp box the old vector did, measured from the paths including stroke: send 0.50 (its old diagonal arrow was the smallest of the four), receive 0.75, swap 0.75, buy 0.83. The row keeps the size it had before the artwork changed.
+- **Sizes are matched to the icons they replaced, not guessed.** Each asset is padded so its longest ink edge covers the same fraction of the 26 dp box the old vector did, measured from the paths including stroke: send 0.75, receive 0.75, swap 0.75, buy 0.83. Send was 0.50 to match its old (smaller) arrow; Ijezie asked for it to sit with the others on 6 Nov, so all three line marks now share 0.75.
 - **Swap** — `SendIcon`, `ReceiveIcon`, `SwapIcon` and `BuyIcon` in `src/components/icons.tsx` draw those bitmaps, so `HomeScreen`'s quick-action list needs no change (`{ key, Icon }`, 26 dp, tinted to the chip's foreground colour). None of them is imported anywhere else.
-- Tests: `__tests__/homeActionMarks.test.tsx` (9) — all four marks' size and tint, no SVG left in any of them, all four Home tiles containing a bitmap, asset type/dimensions/bundle size, and a real PNG alpha decode asserting the ink fractions above (0.50 / 0.75 / 0.75 / 0.83, ±0.05), so a later re-export cannot silently change the size.
+- Tests: `__tests__/homeActionMarks.test.tsx` (9) — all four marks' size and tint, no SVG left in any of them, all four Home tiles containing a bitmap, asset type/dimensions/bundle size, and a real PNG alpha decode asserting the ink fractions above (0.75 / 0.75 / 0.75 / 0.83, ±0.05), so a later re-export cannot silently change the size.
 
 ### The fingerprint is Ijezie's artwork everywhere (Nov 6)
 

@@ -80,8 +80,9 @@ export const ReceiveIcon = ({ size = 24, color = '#000' }: IconProps) => (
 /**
  * Swap (Ijezie, 2026-11-06): the supplied mark. Each of these four assets is
  * padded so its ink covers the SAME fraction of the box the old vector did
- * (swap 0.75, buy 0.83, receive 0.75, send 0.50), so the quick-action row keeps
- * exactly the size it had before the artwork changed.
+ * (send 0.75, receive 0.75, swap 0.75, buy 0.83), so the quick-action row keeps
+ * exactly the size it had before the artwork changed. Send was 0.50 to match its
+ * old arrow until Ijezie asked for it to sit with the others (Nov 6).
  */
 export const SwapIcon = ({ size = 24, color = '#000' }: IconProps) => (
   <Image
