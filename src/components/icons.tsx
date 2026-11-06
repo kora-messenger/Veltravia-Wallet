@@ -22,6 +22,8 @@ import Svg, {
 const FP_ASSET = require('../../assets/brand/fingerprint.png');
 const SEND_ASSET = require('../../assets/brand/send.png');
 const RECEIVE_ASSET = require('../../assets/brand/receive.png');
+const BUY_ASSET = require('../../assets/brand/buy.png');
+const SWAP_ASSET = require('../../assets/brand/swap.png');
 
 interface IconProps {
   size?: number;
@@ -75,21 +77,29 @@ export const ReceiveIcon = ({ size = 24, color = '#000' }: IconProps) => (
   />
 );
 
-export const SwapIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
-  <Svg {...base(size)}>
-    <Path d="M5 8h14" {...stroke(color, strokeWidth)} />
-    <Path d="M15 4l4 4-4 4" {...stroke(color, strokeWidth)} />
-    <Path d="M19 16H5" {...stroke(color, strokeWidth)} />
-    <Path d="M9 12l-4 4 4 4" {...stroke(color, strokeWidth)} />
-  </Svg>
+/**
+ * Swap (Ijezie, 2026-11-06): the supplied mark. Each of these four assets is
+ * padded so its ink covers the SAME fraction of the box the old vector did
+ * (swap 0.75, buy 0.83, receive 0.75, send 0.50), so the quick-action row keeps
+ * exactly the size it had before the artwork changed.
+ */
+export const SwapIcon = ({ size = 24, color = '#000' }: IconProps) => (
+  <Image
+    source={SWAP_ASSET}
+    accessibilityIgnoresInvertColors
+    resizeMode="contain"
+    style={{ width: size, height: size, tintColor: color }}
+  />
 );
 
-export const BuyIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
-  <Svg {...base(size)}>
-    <Rect x="3" y="5.5" width="18" height="13" rx="2.5" {...stroke(color, strokeWidth)} />
-    <Path d="M3 10h18" {...stroke(color, strokeWidth)} />
-    <Path d="M7 15h3" {...stroke(color, strokeWidth)} />
-  </Svg>
+/** Buy: the supplied wallet mark, sized to the old card icon's 0.83 footprint. */
+export const BuyIcon = ({ size = 24, color = '#000' }: IconProps) => (
+  <Image
+    source={BUY_ASSET}
+    accessibilityIgnoresInvertColors
+    resizeMode="contain"
+    style={{ width: size, height: size, tintColor: color }}
+  />
 );
 
 /* ---------------- header ---------------- */

@@ -44,7 +44,7 @@ beforeAll(() => {
 });
 afterAll(() => { (Animated as any).event = realEvent; });
 
-import { SendIcon, ReceiveIcon } from '../src/components/icons';
+import { SendIcon, ReceiveIcon, SwapIcon, BuyIcon } from '../src/components/icons';
 import HomeScreen from '../src/screens/HomeScreen';
 
 const metrics = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 44, left: 0, right: 0, bottom: 34 } };
@@ -88,10 +88,24 @@ describe('Home quick actions', () => {
       return tile.findAllByType(Image).filter((n: any) => n.props.style && n.props.style.tintColor);
     };
 
-    expect(tileMark('Send').length).toBeGreaterThanOrEqual(1);
-    expect(tileMark('Receive').length).toBeGreaterThanOrEqual(1);
-    // and the other two tiles are still vector, so this is not just "some image"
-    expect(tileMark('Swap').length).toBe(0);
+    ['Send', 'Receive', 'Swap', 'Buy'].forEach((label) => {
+      expect(tileMark(label).length).toBeGreaterThanOrEqual(1);
+    });
+    await act(async () => { tree.unmount(); });
+  });
+});
+
+describe('SwapIcon and BuyIcon', () => {
+  it.each([
+    ['Swap', SwapIcon],
+    ['Buy', BuyIcon],
+  ])('%s draws the supplied mark at 26 dp, tinted by the caller', async (_name, Icon: any) => {
+    let tree!: renderer.ReactTestRenderer;
+    await act(async () => { tree = renderer.create(<Icon size={26} color="#6C63FF" />); });
+    const img = tree.root.findAllByType(Image);
+    expect(img.length).toBe(1);
+    expect(img[0].props.style).toMatchObject({ width: 26, height: 26, tintColor: '#6C63FF' });
+    expect(tree.root.findAll((n) => n.props && 'viewBox' in n.props).length).toBe(0);
     await act(async () => { tree.unmount(); });
   });
 });
@@ -117,26 +131,89 @@ describe('ReceiveIcon', () => {
 describe('the assets themselves', () => {
   const nodeFs = require('fs') as { readFileSync: (p: string) => any };
   const nodePath = require('path') as { join: (...parts: string[]) => string };
+  const nodeZlib = require('zlib') as { inflateSync: (b: any) => any };
+  const Buffer_ = require('buffer').Buffer as any;
   const readPng = (name: string) => nodeFs.readFileSync(nodePath.join('.', 'assets', 'brand', name));
-  const buf = readPng('send.png');
-  const recv = readPng('receive.png');
 
-  it('is a square RGBA PNG that can be tinted', () => {
-    expect([...buf.slice(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-    expect(buf.readUInt32BE(16)).toBe(384);
-    expect(buf.readUInt32BE(20)).toBe(384);
-    expect(buf[25]).toBe(6);
+  /** Minimal RGBA PNG reader: IHDR + inflated IDAT, unfiltered. */
+  const decode = (buf: any) => {
+    const width = buf.readUInt32BE(16);
+    const height = buf.readUInt32BE(20);
+    const colorType = buf[25];
+    let offset = 8;
+    const idat: any[] = [];
+    while (offset < buf.length) {
+      const len = buf.readUInt32BE(offset);
+      const type = buf.toString('ascii', offset + 4, offset + 8);
+      if (type === 'IDAT') idat.push(buf.subarray(offset + 8, offset + 8 + len));
+      offset += 12 + len;
+    }
+    const raw = nodeZlib.inflateSync(Buffer_.concat(idat));
+    const bpp = colorType === 6 ? 4 : 3;
+    const stride = width * bpp;
+    const out = Buffer_.alloc(height * stride);
+    let pos = 0;
+    for (let y = 0; y < height; y++) {
+      const filter = raw[pos++];
+      const row = raw.subarray(pos, pos + stride); pos += stride;
+      for (let x = 0; x < stride; x++) {
+        const a = x >= bpp ? out[y * stride + x - bpp] : 0;
+        const b = y > 0 ? out[(y - 1) * stride + x] : 0;
+        const c = y > 0 && x >= bpp ? out[(y - 1) * stride + x - bpp] : 0;
+        let v = row[x];
+        if (filter === 1) v += a;
+        else if (filter === 2) v += b;
+        else if (filter === 3) v += (a + b) >> 1;
+        else if (filter === 4) {
+          const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+          v += pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+        }
+        out[y * stride + x] = v & 0xff;
+      }
+    }
+    return { width, height, colorType, alphaAt: (x: number, y: number) => out[y * stride + x * bpp + 3] };
+  };
+
+  const inkOf = (name: string) => {
+    const img = decode(readPng(name));
+    let minX = img.width, minY = img.height, maxX = -1, maxY = -1;
+    for (let y = 0; y < img.height; y++) {
+      for (let x = 0; x < img.width; x++) {
+        if (img.alphaAt(x, y) > 8) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    return {
+      w: (maxX - minX + 1) / img.width,
+      h: (maxY - minY + 1) / img.height,
+      width: img.width,
+      height: img.height,
+      colorType: img.colorType,
+    };
+  };
+
+  it('all four are 384 px RGBA squares that can be tinted', () => {
+    ['send.png', 'receive.png', 'buy.png', 'swap.png'].forEach((name) => {
+      const buf = readPng(name);
+      expect([...buf.slice(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      expect(buf.readUInt32BE(16)).toBe(384);
+      expect(buf.readUInt32BE(20)).toBe(384);
+      expect(buf[25]).toBe(6);
+      expect(buf.length).toBeLessThan(120 * 1024);
+    });
   });
 
-  it('the receive mark matches the same contract', () => {
-    expect([...recv.slice(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-    expect(recv.readUInt32BE(16)).toBe(384);
-    expect(recv.readUInt32BE(20)).toBe(384);
-    expect(recv[25]).toBe(6);
-  });
-
-  it('both stay small enough to bundle', () => {
-    expect(buf.length).toBeLessThan(120 * 1024);
-    expect(recv.length).toBeLessThan(120 * 1024);
+  it('keeps the ink the same size the old vector icons had', () => {
+    // measured off the paths they replaced, stroke included, against a 24 box
+    // the longest side of the ink is what reads as "the size of the icon"
+    const longest = (name: string) => { const i = inkOf(name); return Math.max(i.w, i.h); };
+    expect(longest('send.png')).toBeCloseTo(0.50, 1);
+    expect(longest('receive.png')).toBeCloseTo(0.75, 1);
+    expect(longest('swap.png')).toBeCloseTo(0.75, 1);
+    expect(longest('buy.png')).toBeCloseTo(0.83, 1);
   });
 });
