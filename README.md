@@ -544,6 +544,14 @@ A locked wallet is never "active": value movement is refused on every surface, a
 - While the keychain read is in flight the card shows "Checking this wallet…" instead of guessing which form to show.
 - Approve / Set password & Approve now carry accessibility labels.
 
+### The fingerprint is Ijezie's artwork everywhere (Nov 6)
+
+- **Asset** — `assets/brand/fingerprint.png`, from the supplied 512×512 render. The render's glyph is black on alpha, so it is normalised to white-on-alpha and padded to 88% of a 384 px square; `tintColor` then recolours it for every surface. 30 KB, bundled, no network.
+- **Two components, every call site unchanged** — `FingerprintIcon` (lock screen keypad, onboarding passcode screen) and `FingerprintArt` (Biometric Login modal) in `src/components/icons.tsx` now draw that bitmap. `FingerprintArt` keeps the soft brand disc at 66% of its size, so the modal's balance is unchanged.
+- **Why a bitmap here** — the supplied mark has more strokes than a 24 px vector can hold; drawn as an SVG by hand it looked like a generic swirl. The other icons stay vector.
+- **Colour follows the caller** — brand violet when biometrics are ready, `inkMuted` when they are not, so both light and dark surfaces work without a second asset.
+- Tests: `__tests__/fingerprintMark.test.tsx` (7) — asset type/dimensions/alpha/bundle size, size and tint passed through, no SVG left in `FingerprintIcon` (a re-added hand-drawn glyph fails), and the art disc's geometry.
+
 ### Wallet Lock sheet — rebuilt to the fintech reference (Oct 31)
 
 `src/screens/wallet/WalletLockSheet.tsx` was rebuilt against Ijezie's reference mock. The gate itself is untouched; only the presentation changed.

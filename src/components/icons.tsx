@@ -6,6 +6,7 @@
  * bitmap icons.
  */
 import React from 'react';
+import { Image, View } from 'react-native';
 import Svg, {
   Path,
   Circle,
@@ -16,6 +17,9 @@ import Svg, {
   Stop,
   G,
 } from 'react-native-svg';
+
+/** Supplied fingerprint artwork: 384 px, white on alpha (see assets/brand). */
+const FP_ASSET = require('../../assets/brand/fingerprint.png');
 
 interface IconProps {
   size?: number;
@@ -672,13 +676,19 @@ export const GlobeIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: Icon
 );
 
 /* ---------------- Passcode keypad ---------------- */
-export const FingerprintIcon = ({ size = 24, color = '#000', strokeWidth = 1.6 }: IconProps) => (
-  <Svg {...base(size)}>
-    <Path d="M12 4a7 7 0 0 0-7 7v2" {...stroke(color, strokeWidth)} />
-    <Path d="M12 4a7 7 0 0 1 7 7v3.5" {...stroke(color, strokeWidth)} />
-    <Path d="M8.5 20c.8-1.6 1.2-3.4 1.2-5.2V11a2.3 2.3 0 0 1 4.6 0v3.8c0 1.4.3 2.7.9 3.9" {...stroke(color, strokeWidth)} />
-    <Path d="M5 16.5c-.2 1-.6 2-1.1 2.9M19 17.5c.2.6.4 1.1.7 1.6M12 11v4.2c0 1.8-.4 3.6-1.2 5.1" {...stroke(color, strokeWidth)} />
-  </Svg>
+/**
+ * The product's fingerprint mark (Ijezie, 2026-11-06): his supplied artwork
+ * instead of a hand-drawn swirl. The PNG is white on alpha, so `tintColor`
+ * recolours it to exactly the colour each surface asks for — brand violet when
+ * biometrics are ready, muted when they are not.
+ */
+export const FingerprintIcon = ({ size = 24, color = '#000' }: IconProps) => (
+  <Image
+    source={FP_ASSET}
+    accessibilityIgnoresInvertColors
+    resizeMode="contain"
+    style={{ width: size, height: size, tintColor: color }}
+  />
 );
 
 export const BackspaceIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (
@@ -753,23 +763,24 @@ export const ShareIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconPr
   </Svg>
 );
 
-/** Fingerprint illustration art for the Biometric Login popup. */
-export const FingerprintArt = ({ size = 108 }: { size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 120 120" fill="none">
-    <Defs>
-      <SvgGradient id="vFp" x1="0" y1="0" x2="1" y2="1">
-        <Stop offset="0" stopColor="#6C63FF" />
-        <Stop offset="1" stopColor="#4A90D9" />
-      </SvgGradient>
-    </Defs>
-    <Circle cx={60} cy={60} r={50} fill="url(#vFp)" opacity={0.10} />
-    <Path d="M60 32c-15.5 0-28 12.5-28 28v14" stroke="url(#vFp)" strokeWidth={4.5} strokeLinecap="round" />
-    <Path d="M60 42c-10 0-18 8-18 18v22" stroke="url(#vFp)" strokeWidth={4.5} strokeLinecap="round" />
-    <Path d="M60 52c-4.5 0-8 3.5-8 8v26" stroke="url(#vFp)" strokeWidth={4.5} strokeLinecap="round" />
-    <Path d="M78 46c3 4 4.5 8.5 4.5 13.5V88" stroke="url(#vFp)" strokeWidth={4.5} strokeLinecap="round" />
-    <Path d="M88 40c4.5 6 7 13 7 20.5V90" stroke="url(#vFp)" strokeWidth={4.5} strokeLinecap="round" opacity={0.55} />
-    <Path d="M68 60v28" stroke="url(#vFp)" strokeWidth={4.5} strokeLinecap="round" opacity={0.55} />
-  </Svg>
+/**
+ * The Biometric Login artwork: the supplied fingerprint on the same soft brand
+ * disc the old vector had, so the modal keeps its balance while the glyph
+ * matches the rest of the app.
+ */
+export const FingerprintArt = ({ size = 108, color = '#6C63FF' }: { size?: number; color?: string }) => (
+  <View
+    style={{
+      width: size,
+      height: size,
+      borderRadius: size / 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(108,99,255,0.10)',
+    }}
+  >
+    <FingerprintIcon size={Math.round(size * 0.66)} color={color} />
+  </View>
 );
 
 /* ---------------- home redesign icons ---------------- */
