@@ -544,6 +544,18 @@ A locked wallet is never "active": value movement is refused on every surface, a
 - While the keychain read is in flight the card shows "Checking this wallet…" instead of guessing which form to show.
 - Approve / Set password & Approve now carry accessibility labels.
 
+### Onboarding no longer dead-ends after the passcode (Nov 6)
+
+Ijezie hit this on a real device: passcode typed, back on the welcome screen, both buttons spinning with no message and no way forward.
+
+- **Cause of the freeze** — returning from the passcode sets `autoLoadFor`, and the screen waits 2s then calls `onAutoLoadDone`, which creates the wallet. If that call threw, `Navigation.tsx` swallowed the error and returned, leaving `loading` set forever. Nothing else on the screen could be tapped.
+- **Fix** — `onAutoLoadDone` now reports success (`true`) or failure (`false`/throw), and the welcome screen races it against a 25s timeout. On failure it stops both spinners, shows an alert, and leaves the buttons usable, so a tap is a genuine retry. The navigator logs the error instead of hiding it.
+- **Message** — keystore failures (the usual cause: no screen lock or biometrics enrolled on the phone, so the seed cannot be stored under `BIOMETRY_CURRENT_SET`) say so and name the fix. Anything else says "Couldn't finish setting up your wallet. Try again."
+- **Diagnosable from a screenshot** — the raw error is printed small under the alert (`welcomeSetupReason`), because the device cannot be inspected from here.
+- **Also fixed** — the carousel's `scrollToIndex` had no `getItemLayout`, which throws "Invariant Violation" whenever the list has not measured (it surfaced in the new tests, and can happen on a cold first frame on device). Slides are exactly one screen wide, so the layout is now computed.
+- Tests: `__tests__/welcomeSetupFailure.test.tsx` (9) — success hand-over, failure clearing the spinners with a message, keystore wording, the hang timeout, the retry actually starting a flow, no-op when the passcode was not the entry point, and the message helper.
+- **Still open** — if the phone genuinely has no screen lock, creating an account stays blocked until one is set: storing a seed without user-auth access control would weaken the security model, so that is Ijezie's call, not a silent fallback.
+
 ### The Perps tab uses the supplied infinity mark (Nov 6)
 
 - **Asset** — `assets/brand/infinity.png`, from the supplied 512×512 render (black glyph on alpha) normalised to white-on-alpha on a 384 px square: 13 KB, tintable, bundled.

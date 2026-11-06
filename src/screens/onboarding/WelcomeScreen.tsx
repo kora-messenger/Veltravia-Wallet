@@ -71,6 +71,20 @@ const SLIDES: Slide[] = [
   },
 ];
 
+/**
+ * Why setting up the wallet did not finish, in words the user can act on.
+ * The keystore refuses to store a seed when the phone has no biometrics
+ * enrolled, which is by far the most common cause on a new device.
+ */
+export function setupFailureMessage(reason: unknown): string {
+  if (reason === 'timeout') return "That took too long to finish. Try again.";
+  const text = String((reason as any)?.message ?? reason ?? '');
+  if (/biometr|biometric|enrol|not available|keychain|keystore|secure\s*hardware/i.test(text)) {
+    return 'This phone needs a screen lock with a fingerprint or face unlock before a wallet can be stored securely. Turn that on in your phone settings, then try again.';
+  }
+  return "Couldn't finish setting up your wallet. Try again.";
+}
+
 export default function WelcomeScreen({
   onCreate,
   onImport,
@@ -83,7 +97,12 @@ export default function WelcomeScreen({
    * passcode screen: the buttons spin again, then the account is created.
    */
   autoLoadFor?: 'create' | 'import' | null;
-  onAutoLoadDone?: (which: 'create' | 'import') => void;
+  /**
+   * Resolve `true` when the account really exists (the navigator moves on),
+   * `false`/throw when it does not. Returning nothing counts as success, so the
+   * 'import' branch that only navigates stays unchanged.
+   */
+  onAutoLoadDone?: (which: 'create' | 'import') => boolean | void | Promise<boolean | void>;
   /** Phase 2: routes to the seed-reveal + PIN flow. */
   onCreate: () => void;
   /** Phase 2: routes to the recovery-phrase import flow. */
@@ -96,13 +115,46 @@ export default function WelcomeScreen({
   const [removed] = useState(() => takeRemovalNotice());
   // Both CTAs need the network: say so here instead of half-starting a flow.
   const [netNote, setNetNote] = useState<string | null>(null);
+  // The underlying error, shown small under the message: a screenshot of it is
+  // enough to diagnose a device we cannot inspect.
+  const [setupReason, setSetupReason] = useState<string | null>(null);
   const LOAD_MS = 2000;
+  /** A creation that has not finished by now is treated as failed, not hung. */
+  const ACCOUNT_TIMEOUT_MS = 25000;
 
   // Return from passcode: keep spinning for 2s, then finish account creation.
+  //
+  // A failed or hanging creation used to leave both buttons spinning forever
+  // with no message and no way forward (Ijezie hit exactly that on 6 Nov 2026
+  // after typing his passcode). Now: success hands over to the next screen as
+  // before, failure stops the spinners, says what to do, and leaves the buttons
+  // usable so the tap path is a retry.
   useEffect(() => {
     if (!autoLoadFor) return;
-    const t = setTimeout(() => onAutoLoadDone?.(autoLoadFor), LOAD_MS);
-    return () => clearTimeout(t);
+    let cancelled = false;
+    const giveUp = (reason: unknown) => {
+      if (cancelled) return;
+      setLoading(null);
+      setNetNote(setupFailureMessage(reason));
+      const raw = reason instanceof Error ? reason.message : typeof reason === 'string' ? reason : '';
+      setSetupReason(raw && raw !== 'timeout' ? raw : null);
+    };
+    const t = setTimeout(() => {
+      const work = Promise.resolve(onAutoLoadDone?.(autoLoadFor))
+        // ONLY `false` means "no account". Anything else (including undefined,
+        // which the navigator's import branch returns) is a success.
+        .then((v) => (v === false ? 'failed' : 'ok'))
+        .catch((e: unknown) => e as Error);
+      const slow = new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), ACCOUNT_TIMEOUT_MS));
+      Promise.race([work, slow]).then((res) => {
+        if (res === 'ok') return; // success: the next screen covers us
+        giveUp(res);
+      }, giveUp);
+    }, LOAD_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
   }, [autoLoadFor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Tap: both buttons lock + spin for 2s, then the passcode screen opens.
@@ -110,6 +162,7 @@ export default function WelcomeScreen({
     (which: 'create' | 'import') => {
       if (loading) return;
       setNetNote(null);
+      setSetupReason(null);
       setLoading(which);
       (async () => {
         // Network first: creating or restoring an account cannot work offline,
@@ -188,6 +241,10 @@ export default function WelcomeScreen({
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         keyExtractor={(_, i) => String(i)}
+        // Slides are exactly one screen wide, so the list can compute offsets
+        // itself. Without this, the auto-advance's scrollToIndex throws
+        // "Invariant Violation" whenever the list has not measured yet.
+        getItemLayout={(_d, index) => ({ length: SCREEN_W, offset: SCREEN_W * index, index })}
         onScrollBeginDrag={onDragStart}
         onMomentumScrollEnd={onDragEnd}
         onScrollEndDrag={onDragEnd}
@@ -242,6 +299,11 @@ export default function WelcomeScreen({
             {netNote}
           </Text>
         ) : null}
+        {netNote && setupReason ? (
+          <Text testID="welcomeSetupReason" style={[styles.netReason, { color: theme.inkMuted }]}>
+            {setupReason}
+          </Text>
+        ) : null}
 
         {/* Legal line */}
         <Text style={[styles.legal, { color: theme.inkMuted }]}>
@@ -289,6 +351,15 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
   secondaryBtn: { height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center' },
   secondaryBtnText: { fontSize: 16, fontFamily: 'Inter-600', fontWeight: '600' },
+  netReason: {
+    marginTop: 6,
+    fontSize: 11,
+    lineHeight: 15,
+    fontFamily: 'Inter-400',
+    fontWeight: '400',
+    textAlign: 'center',
+    paddingHorizontal: 8,
+  },
   netNote: {
     fontSize: 13,
     lineHeight: 18,

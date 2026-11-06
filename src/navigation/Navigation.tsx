@@ -266,16 +266,19 @@ export default function Navigation() {
                   // later on demand (Wallets → manage → Show secret phrase).
                   try {
                     await walletManager.createWallet();
-                  } catch {
-                    // No CSPRNG / no keystore on this device: do not pretend a
-                    // wallet exists. The welcome screen stays up.
-                    return;
+                  } catch (e) {
+                    // No CSPRNG / no usable keystore: do not pretend a wallet
+                    // exists. Report it so the welcome screen can stop spinning
+                    // and explain, instead of hanging (Ijezie, 6 Nov 2026).
+                    console.warn('[onboarding] wallet creation failed:', e);
+                    return false;
                   }
                   navigationRef.current?.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
                   setNotifPrompt(true);
-                } else {
-                  navigationRef.current?.navigate('SelectRecoveryMethod');
+                  return true;
                 }
+                navigationRef.current?.navigate('SelectRecoveryMethod');
+                return true;
               }}
             />
           )}
