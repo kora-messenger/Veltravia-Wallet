@@ -544,6 +544,14 @@ A locked wallet is never "active": value movement is refused on every surface, a
 - While the keychain read is in flight the card shows "Checking this wallet…" instead of guessing which form to show.
 - Approve / Set password & Approve now carry accessibility labels.
 
+### The Markets tab uses the supplied rising line (Nov 6)
+
+- **Asset** — `assets/brand/markets.png`, from the supplied 512×512 render (black glyph on alpha) normalised to white-on-alpha on a 384 px square: 12 KB, tintable, bundled.
+- **Where it shows** — `MarketsTabIcon` draws it, which is the Markets slot in `FloatingTabBar`. No call sites changed.
+- **Size** — padded to 0.75 of the icon box, the ink height the old trend line had (x 3..21, y 7..18 including its 2pt stroke), so the pill keeps its weight. The supplied shape is portrait (aspect 0.79), so it reads slightly narrower than the old wide arrow at the same height.
+- Tests: `__tests__/tabBarMarks.test.tsx` (7) now covers both tab marks — bitmap not vector, size/tint, and the PNG alpha decode asserting 0.84 for the Perps mark and 0.75 for Markets. Both were confirmed to fail against the old vectors.
+- **Needs an APK** — this adds an image file, and the OTA channel ships `bundle.js` only.
+
 ### Over-the-air JavaScript updates (Nov 6)
 
 Fixes no longer need a fresh APK. Native code does; everything that is JS, styles, copy or layout does not.

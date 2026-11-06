@@ -25,6 +25,7 @@ const RECEIVE_ASSET = require('../../assets/brand/receive.png');
 const BUY_ASSET = require('../../assets/brand/buy.png');
 const SWAP_ASSET = require('../../assets/brand/swap.png');
 const INFINITY_ASSET = require('../../assets/brand/infinity.png');
+const MARKETS_ASSET = require('../../assets/brand/markets.png');
 
 interface IconProps {
   size?: number;
@@ -204,14 +205,18 @@ export const HomeTabIcon = ({ size = 24, color = '#000', filled }: IconProps & {
   </Svg>
 );
 
+/**
+ * Markets tab (Ijezie, 2026-11-06): the supplied rising-line mark replaces the
+ * drawn trend line. Padded to 0.75 of the box, the ink height the old glyph had
+ * (x 3..21, y 7..18 with its 2pt stroke), so the pill keeps its weight.
+ */
 export const MarketsTabIcon = ({ size = 24, color = '#000' }: IconProps) => (
-  /* Trust-style trend line: one uniform wavy stroke rising to a sharp
-     arrow point at the top right, rounded terminals. Untapped the bar
-     renders it in muted grey-blue; tapped it goes violet on the pill. */
-  <Svg {...base(size)}>
-    <Path d="M4 17l5-5 4 4 7-8" {...stroke(color, 2)} />
-    <Path d="M15 8h5v5" {...stroke(color, 2)} />
-  </Svg>
+  <Image
+    source={MARKETS_ASSET}
+    accessibilityIgnoresInvertColors
+    resizeMode="contain"
+    style={{ width: size, height: size, tintColor: color }}
+  />
 );
 
 export const DiscoverTabIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: IconProps) => (

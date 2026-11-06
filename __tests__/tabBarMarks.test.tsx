@@ -1,13 +1,13 @@
 /**
- * The Perps tab draws Ijezie's supplied infinity line (2026-11-06) instead of
- * the hand-drawn lemniscate, and at the same ink size as the glyph it replaced
- * so the tab bar's optical weight does not change.
+ * The bottom pill draws Ijezie's supplied artwork (2026-11-06): the infinity
+ * line for Perps, the rising line for Markets. Each is padded to the same ink
+ * size as the glyph it replaced, so the bar's optical weight does not change.
  */
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import { Image } from 'react-native';
 
-import { InfinityIcon } from '../src/components/icons';
+import { InfinityIcon, MarketsTabIcon } from '../src/components/icons';
 
 jest.mock('../src/theme/ThemeProvider', () => ({
   useTheme: () => ({ theme: require('../src/theme/tokens').themes.light }),
@@ -41,14 +41,33 @@ describe('InfinityIcon (Perps tab)', () => {
   });
 });
 
-describe('the Perps asset', () => {
+describe('MarketsTabIcon', () => {
+  it('draws the supplied mark at the caller size and colour', async () => {
+    const tree = await mount(<MarketsTabIcon size={24} color="#6C63FF" />);
+    const img = tree.root.findAllByType(Image);
+    expect(img.length).toBe(1);
+    expect(img[0].props.style).toMatchObject({ width: 24, height: 24, tintColor: '#6C63FF' });
+    await act(async () => { tree.unmount(); });
+  });
+
+  it('is the bitmap, not the drawn trend line', async () => {
+    const tree = await mount(<MarketsTabIcon size={24} color="#000" />);
+    expect(tree.root.findAll((n) => n.props && 'viewBox' in n.props).length).toBe(0);
+    await act(async () => { tree.unmount(); });
+  });
+});
+
+describe('the tab assets', () => {
   const nodeFs = require('fs') as { readFileSync: (p: string) => any };
   const nodePath = require('path') as { join: (...parts: string[]) => string };
   const nodeZlib = require('zlib') as { inflateSync: (b: any) => any };
   const Buffer_ = require('buffer').Buffer as any;
-  const buf = nodeFs.readFileSync(nodePath.join('.', 'assets', 'brand', 'infinity.png'));
+  const read = (name: string) => nodeFs.readFileSync(nodePath.join('.', 'assets', 'brand', name));
+  const buf = read('infinity.png');
+  const markets = read('markets.png');
 
-  const ink = () => {
+  const inkOf = (img: any) => {
+    const buf = img;
     const width = buf.readUInt32BE(16);
     const height = buf.readUInt32BE(20);
     let offset = 8;
@@ -95,18 +114,22 @@ describe('the Perps asset', () => {
     return { w: (maxX - minX + 1) / width, h: (maxY - minY + 1) / height, width, height };
   };
 
-  it('is a 384 px RGBA square that can be tinted', () => {
-    expect([...buf.slice(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-    expect(buf.readUInt32BE(16)).toBe(384);
-    expect(buf.readUInt32BE(20)).toBe(384);
-    expect(buf[25]).toBe(6); // RGBA
-    expect(buf.length).toBeLessThan(120 * 1024);
+  it('both are 384 px RGBA squares that can be tinted', () => {
+    [buf, markets].forEach((b: any) => {
+      expect([...b.slice(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      expect(b.readUInt32BE(16)).toBe(384);
+      expect(b.readUInt32BE(20)).toBe(384);
+      expect(b[25]).toBe(6); // RGBA
+      expect(b.length).toBeLessThan(120 * 1024);
+    });
   });
 
-  it('keeps the width the old lemniscate had (0.84 of the box)', () => {
-    const i = ink();
-    expect(Math.max(i.w, i.h)).toBeCloseTo(0.84, 1);
-    // and it stays a wide mark, not a square blob
-    expect(i.w).toBeGreaterThan(i.h * 1.5);
+  it('keeps the ink the old tab glyphs had', () => {
+    const perps = inkOf(buf);
+    expect(Math.max(perps.w, perps.h)).toBeCloseTo(0.84, 1); // old lemniscate width
+    expect(perps.w).toBeGreaterThan(perps.h * 1.5);          // still a wide mark
+
+    const marketsInk = inkOf(markets);
+    expect(Math.max(marketsInk.w, marketsInk.h)).toBeCloseTo(0.75, 1); // old trend line
   });
 });
