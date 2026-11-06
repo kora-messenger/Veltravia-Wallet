@@ -80,7 +80,7 @@ const SLIDES: Slide[] = [
 export function setupFailureMessage(reason: unknown): string {
   if (reason === 'timeout') return "That took too long to finish. Try again.";
   const text = String((reason as any)?.message ?? reason ?? '');
-  if (/biometr|biometric|enrol|not available|keychain|keystore|secure\s*hardware/i.test(text)) {
+  if (/biometr|biometric|enrol|not available|keychain|keystore|secure\s*hardware|generate key|secure storage/i.test(text)) {
     return 'This phone needs a screen lock with a fingerprint or face unlock before a wallet can be stored securely. Turn that on in your phone settings, then try again.';
   }
   return "Couldn't finish setting up your wallet. Try again.";

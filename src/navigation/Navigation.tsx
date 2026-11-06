@@ -267,11 +267,13 @@ export default function Navigation() {
                   try {
                     await walletManager.createWallet();
                   } catch (e) {
-                    // No CSPRNG / no usable keystore: do not pretend a wallet
-                    // exists. Report it so the welcome screen can stop spinning
-                    // and explain, instead of hanging (Ijezie, 6 Nov 2026).
+                    // No usable keystore, no entropy, nothing stored: do not
+                    // pretend a wallet exists. Rethrow rather than return
+                    // `false`, so the welcome screen gets the real reason and
+                    // can name it, instead of printing a bare "failed"
+                    // (Ijezie, 6 Nov 2026).
                     console.warn('[onboarding] wallet creation failed:', e);
-                    return false;
+                    throw e;
                   }
                   navigationRef.current?.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
                   setNotifPrompt(true);

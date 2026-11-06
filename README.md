@@ -552,6 +552,22 @@ A locked wallet is never "active": value movement is refused on every surface, a
 - Tests: `__tests__/tabBarMarks.test.tsx` (7) now covers both tab marks — bitmap not vector, size/tint, and the PNG alpha decode asserting 0.84 for the Perps mark and 0.75 for Markets. Both were confirmed to fail against the old vectors.
 - **Needs an APK** — this adds an image file, and the OTA channel ships `bundle.js` only.
 
+### Creating a wallet on a phone without biometrics (Nov 6, fixes "Couldn't finish setting up")
+
+Ijezie hit this on his test phone: tapping Create ran through the passcode, then came back to the welcome screen with "Couldn't finish setting up your wallet. Try again." and a red `failed` underneath.
+
+Two separate faults, both fixed:
+
+1. **The real reason was thrown away.** The navigator's `catch` logged the error and returned `false`, so the welcome screen only knew "failed". It now rethrows, which means the message under the button names the actual cause, and `setupFailureMessage` maps keystore/biometric text to "turn on a screen lock" advice.
+2. **The seed was bound to biometrics or nothing.** `storeSeed` asked for `ACCESS_CONTROL.BIOMETRY_CURRENT_SET`; on a phone with no enrolled fingerprint or face, Android refuses to generate that key and creation failed outright. It now walks a ladder and records the level it got:
+   - `biometric` — key needs the enrolled biometrics (unchanged, ideal)
+   - `device-lock` — key needs the phone's screen lock (PIN/pattern/face)
+   - `app-lock` — Keystore-encrypted, no hardware gate; the app's own Wallet Lock is the gate
+
+   The level is stored with the account (`settings.seedProtection`) and a warning is logged when it degrades, so the UI can be honest about it. If all three fail, nothing is written, no account marker is set, and the error lists every attempt.
+- Trade-off, stated plainly: `app-lock` is weaker than a hardware-bound key. It is still encrypted at rest in the Keystore and still behind the two-step Wallet Lock, and it is better than a wallet that cannot be created. Settings does not surface the level yet; that is the next UI gap to close.
+- Tests: `__tests__/seedProtection.test.ts` (4) covers all three rungs, the recorded level, and the all-fail path leaving no account behind. Reverting to the single-level code fails three of them.
+
 ### Over-the-air JavaScript updates (Nov 6)
 
 Fixes no longer need a fresh APK. Native code does; everything that is JS, styles, copy or layout does not.
