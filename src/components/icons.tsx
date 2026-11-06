@@ -24,6 +24,7 @@ const SEND_ASSET = require('../../assets/brand/send.png');
 const RECEIVE_ASSET = require('../../assets/brand/receive.png');
 const BUY_ASSET = require('../../assets/brand/buy.png');
 const SWAP_ASSET = require('../../assets/brand/swap.png');
+const INFINITY_ASSET = require('../../assets/brand/infinity.png');
 
 interface IconProps {
   size?: number;
@@ -405,14 +406,18 @@ export const PerpsIcon = ({ size = 24, color = '#000', strokeWidth = 1.8 }: Icon
   </Svg>
 );
 
-/** Infinity lemniscate: Perps tab (perpetuals never expire). */
-export const InfinityIcon = ({ size = 24, color = '#000', strokeWidth = 2.2 }: IconProps) => (
-  <Svg {...base(size)}>
-    <Path
-      d="M7.4 9C4.9 9 3 10.8 3 12s1.9 3 4.4 3c4.4 0 4.8-6 9.2-6 2.5 0 4.4 1.8 4.4 3s-1.9 3-4.4 3c-4.4 0-4.8-6-9.2-6z"
-      {...stroke(color, strokeWidth)}
-    />
-  </Svg>
+/**
+ * Perps mark (Ijezie, 2026-11-06): the supplied infinity line replaces the drawn
+ * lemniscate on the tab bar and the small badge on the Home perps card. Padded to
+ * 0.842 of the box, the ink size the old lemniscate had (x 3..21 + 2.2 stroke).
+ */
+export const InfinityIcon = ({ size = 24, color = '#000' }: IconProps) => (
+  <Image
+    source={INFINITY_ASSET}
+    accessibilityIgnoresInvertColors
+    resizeMode="contain"
+    style={{ width: size, height: size, tintColor: color }}
+  />
 );
 
 /** Generic brand tile for any asset/network without a dedicated logo. */

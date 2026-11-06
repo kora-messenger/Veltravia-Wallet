@@ -544,6 +544,13 @@ A locked wallet is never "active": value movement is refused on every surface, a
 - While the keychain read is in flight the card shows "Checking this wallet…" instead of guessing which form to show.
 - Approve / Set password & Approve now carry accessibility labels.
 
+### The Perps tab uses the supplied infinity mark (Nov 6)
+
+- **Asset** — `assets/brand/infinity.png`, from the supplied 512×512 render (black glyph on alpha) normalised to white-on-alpha on a 384 px square: 13 KB, tintable, bundled.
+- **Where it shows** — `InfinityIcon` now draws it, which is the Perps tab in `FloatingTabBar` and the small 10 dp badge on the Home perps card. No call sites changed. Settings → Perps still uses `PerpsIcon` (the candles glyph), since that row is a menu entry rather than the tab.
+- **Size** — padded to 0.842 of the icon box, the ink width the old lemniscate had (x 3..21 plus its 2.2 stroke), so the tab keeps its optical weight. The test decodes the PNG alpha and fails if a re-export changes it.
+- Tests: `__tests__/perpsMark.test.tsx` (5) — size and tint at 24 dp and at the 10 dp badge, no SVG left in the icon, asset type/dimensions/bundle size, and the 0.84 ink width plus its wide aspect.
+
 ### The Home quick actions use the supplied marks (Nov 6)
 
 - **Assets** — `assets/brand/send.png` (paper plane), `receive.png` (arrow over a line), `swap.png` and `buy.png` (wallet). All four are supplied 512×512 renders (black glyph on alpha) normalised to white-on-alpha on a 384 px square: 8–12 KB each, tintable, bundled.
