@@ -152,10 +152,17 @@ export function isNewer(a: string, b: string | null | undefined): boolean {
 
 const APP_VERSION = '1.0.0'; // bumped with each store build; guards minAppVersion
 
-export function manifestUrl(): string | null {
+/**
+ * Where the signed manifest lives. The published bundle goes to a fixed release
+ * tag, so the app needs no configuration; `.env` can override it per build.
+ */
+export const DEFAULT_MANIFEST_URL =
+  'https://github.com/kora-messenger/Veltravia-Wallet/releases/download/ota-latest/manifest.json';
+
+export function manifestUrl(): string {
   const explicit = (Config as any)?.OTA_MANIFEST_URL;
   if (explicit && /^https:\/\//i.test(explicit)) return explicit;
-  return null;
+  return DEFAULT_MANIFEST_URL;
 }
 
 export type UpdateOutcome =

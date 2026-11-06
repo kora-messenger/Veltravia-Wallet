@@ -27,6 +27,8 @@ jest.mock('react-native-config', () => ({ OTA_MANIFEST_URL: '' }), { virtual: tr
 
 // eslint-disable-next-line import/first
 import {
+  manifestUrl,
+  DEFAULT_MANIFEST_URL,
   canonicalPayload,
   verifyManifest,
   isNewer,
@@ -126,6 +128,13 @@ describe('verifyManifest', () => {
   });
 });
 
+describe('manifestUrl', () => {
+  it('falls back to the ota-latest release, so no build config is needed', () => {
+    expect(manifestUrl()).toBe(DEFAULT_MANIFEST_URL);
+    expect(DEFAULT_MANIFEST_URL).toMatch(/^https:\/\//);
+  });
+});
+
 describe('isNewer', () => {
   it('compares numerically, not as strings', () => {
     expect(isNewer('1.0.10', '1.0.9')).toBe(true);
@@ -145,9 +154,17 @@ describe('checkForUpdate', () => {
     expect(res).toEqual({ status: 'no-native' });
   });
 
-  it('does nothing when no manifest URL is configured', async () => {
-    const res = await checkForUpdate({ url: null, fetchImpl: okFetch(baseManifest()) as any });
+  it('does nothing when the channel is switched off', async () => {
+    const fetchImpl = jest.fn();
+    const res = await checkForUpdate({ url: '', fetchImpl: fetchImpl as any });
     expect(res.status).toBe('no-url');
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('uses the ota-latest release when no URL is given', async () => {
+    const fetchImpl = okFetch(baseManifest());
+    await checkForUpdate({ fetchImpl: fetchImpl as any, publicKeyB64: pub });
+    expect(fetchImpl).toHaveBeenCalledWith(DEFAULT_MANIFEST_URL, expect.anything());
   });
 
   it('installs a newer, correctly signed bundle', async () => {
