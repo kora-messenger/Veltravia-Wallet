@@ -3,6 +3,11 @@
  * failed, both buttons span forever with no message (Ijezie, 6 Nov 2026, after
  * typing his passcode on a real device). These pin the way out.
  */
+let mockFocused = true;
+jest.mock('@react-navigation/native', () => ({
+  useIsFocused: () => mockFocused,
+}));
+
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 
@@ -38,6 +43,12 @@ const mount = async (props: any) => {
 const buttonLoading = (tree: renderer.ReactTestRenderer, label: string) => {
   const node = tree.root.findAll((n) => n.props.label === label && typeof n.props.onPress === 'function')[0];
   return node.props.loading;
+};
+
+const pressLabel = async (tree: renderer.ReactTestRenderer, label: string) => {
+  const node = tree.root.findAll((n) => n.props.label === label && typeof n.props.onPress === 'function')[0];
+  expect(node).toBeTruthy();
+  await act(async () => { node.props.onPress(); });
 };
 
 const note = (tree: renderer.ReactTestRenderer) =>
@@ -115,6 +126,74 @@ describe('returning from the passcode', () => {
     await act(async () => { jest.advanceTimersByTime(5000); });
     expect(onAutoLoadDone).not.toHaveBeenCalled();
     expect(note(t)).toBeUndefined();
+    await act(async () => { t.unmount(); });
+  });
+});
+
+describe('cancelling the passcode step', () => {
+  it('clears spinners that a hanging tap left running when the user comes back', async () => {
+    const connectivity = require('../src/services/connectivity');
+    // a probe that never answers used to strand both buttons
+    (connectivity.checkOnline as jest.Mock).mockImplementationOnce(() => new Promise(() => {}));
+    mockFocused = true;
+    const onCreate = jest.fn();
+    const t = await mount({ onCreate, onImport: jest.fn() });
+
+    const btn = t.root.findAll((n) => n.props.label === 'Create a wallet' && typeof n.props.onPress === 'function')[0];
+    mockFocused = false; // the passcode/prompt has taken over
+    await act(async () => { btn.props.onPress(); });
+    await act(async () => { jest.advanceTimersByTime(3000); });
+    expect(buttonLoading(t, 'Create a wallet')).toBe(true);
+    expect(onCreate).not.toHaveBeenCalled();
+
+    // back on this screen: nothing is pending, so nothing may keep spinning
+    mockFocused = true;
+    await act(async () => { t.update(<WelcomeScreen onCreate={onCreate} onImport={jest.fn()} />); });
+    expect(buttonLoading(t, 'Create a wallet')).toBe(false);
+
+    // and the tap path works again
+    await act(async () => { btn.props.onPress(); });
+    await act(async () => { jest.advanceTimersByTime(3000); });
+    await act(async () => { jest.advanceTimersByTime(600); });
+    expect(onCreate).toHaveBeenCalledTimes(1);
+    await act(async () => { t.unmount(); });
+  });
+
+  it('leaves the buttons usable after the passcode step was cancelled', async () => {
+    mockFocused = true;
+    const onCreate = jest.fn();
+    const t = await mount({ onCreate, onImport: jest.fn() });
+    await pressLabel(t, 'I already have a wallet');
+    await act(async () => { jest.advanceTimersByTime(3000); });
+    await act(async () => {});
+
+    expect(onCreate).not.toHaveBeenCalled();
+    expect(buttonLoading(t, 'Create a wallet')).toBe(false);
+    expect(buttonLoading(t, 'I already have a wallet')).toBe(false);
+    await act(async () => { t.unmount(); });
+  });
+
+  it('never strands the buttons when the network probe itself throws', async () => {
+    const connectivity = require('../src/services/connectivity');
+    (connectivity.checkOnline as jest.Mock).mockRejectedValueOnce(new Error('NetInfo unavailable'));
+    const onCreate = jest.fn();
+    const t = await mount({ onCreate, onImport: jest.fn() });
+    await pressLabel(t, 'Create a wallet');
+    await act(async () => { jest.advanceTimersByTime(3000); });
+    await act(async () => { jest.advanceTimersByTime(600); });
+    expect(onCreate).toHaveBeenCalled();          // unknown network: let it try
+    expect(buttonLoading(t, 'Create a wallet')).toBe(false);
+    await act(async () => { t.unmount(); });
+  });
+
+  it('releases the buttons when the passcode screen refuses to open', async () => {
+    const onCreate = jest.fn(() => { throw new Error('navigator not ready'); });
+    const t = await mount({ onCreate, onImport: jest.fn() });
+    await pressLabel(t, 'Create a wallet');
+    await act(async () => { jest.advanceTimersByTime(3000); });
+    await act(async () => {});
+    expect(buttonLoading(t, 'Create a wallet')).toBe(false);
+    expect(JSON.stringify(note(t).props.children)).toMatch(/Try again/);
     await act(async () => { t.unmount(); });
   });
 });

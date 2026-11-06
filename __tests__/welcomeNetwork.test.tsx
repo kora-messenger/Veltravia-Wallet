@@ -1,3 +1,8 @@
+let mockFocused = true;
+jest.mock('@react-navigation/native', () => ({
+  useIsFocused: () => mockFocused,
+}));
+
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 

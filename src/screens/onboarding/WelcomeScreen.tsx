@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { openInBrowser } from '../../services/browserState';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useIsFocused } from '@react-navigation/native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { takeRemovalNotice } from '../../core/security/deviceRemoval';
 import { checkOnline, offlineMessage } from '../../services/connectivity';
@@ -157,6 +158,16 @@ export default function WelcomeScreen({
     };
   }, [autoLoadFor]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /**
+   * Back on this screen with no account-creation in flight means the passcode
+   * step was abandoned (back, or a cancel inside it). Whatever the tap path had
+   * left spinning is cleared here, so the buttons are always usable again.
+   */
+  const isFocused = useIsFocused();
+  useEffect(() => {
+    if (isFocused && !autoLoadFor) setLoading(null);
+  }, [isFocused, autoLoadFor]);
+
   // Tap: both buttons lock + spin for 2s, then the passcode screen opens.
   const start = useCallback(
     (which: 'create' | 'import') => {
@@ -168,14 +179,30 @@ export default function WelcomeScreen({
         // Network first: creating or restoring an account cannot work offline,
         // and a flow that dies halfway leaves the user with a passcode and no
         // account. Refuse to start instead.
-        const net = await checkOnline();
-        if (!net.online) {
+        //
+        // A probe that THROWS is not proof of being offline. It used to reject
+        // out of this function and leave both buttons spinning forever
+        // (Ijezie, 6 Nov 2026), so it is caught and treated as unknown.
+        let net: { online: boolean; reason?: any } | null = null;
+        try {
+          net = await checkOnline();
+        } catch {
+          net = null;
+        }
+        if (net && !net.online) {
           setLoading(null);
           setNetNote(offlineMessage(net.reason));
           return;
         }
         setTimeout(() => {
-          (which === 'create' ? onCreate : onImport)();
+          try {
+            (which === 'create' ? onCreate : onImport)();
+          } catch (e) {
+            console.warn('[onboarding] could not open the passcode step:', e);
+            setLoading(null);
+            setNetNote("Couldn't start that. Try again.");
+            return;
+          }
           // release after the next screen has covered us
           setTimeout(() => setLoading(null), 400);
         }, LOAD_MS);
