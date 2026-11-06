@@ -1,3 +1,4 @@
+import { nativeRandomBytes } from './csprng';
 /**
  * Veltravia Wallet — the only cryptographic primitives we hand-roll.
  *
@@ -113,6 +114,8 @@ export function randomBytes(n: number): Uint8Array {
   } catch {
     /* fall through */
   }
+  const native = nativeRandomBytes(n);
+  if (native) return native;
   for (let i = 0; i < n; i++) out[i] = Math.floor(Math.random() * 256);
   return out;
 }
@@ -135,10 +138,14 @@ export function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
 export function secureRandomBytes(n: number): Uint8Array {
   const g: any = globalThis as any;
   const c = g.crypto ?? g.msCrypto;
-  if (!c || typeof c.getRandomValues !== 'function') {
-    throw new Error('no CSPRNG available: refusing to generate a nonce');
+  if (c && typeof c.getRandomValues === 'function') {
+    const out = new Uint8Array(n);
+    c.getRandomValues(out);
+    return out;
   }
-  const out = new Uint8Array(n);
-  c.getRandomValues(out);
-  return out;
+  // Hermes without the shim installed yet: ask the platform directly rather
+  // than failing a wallet creation over import order.
+  const native = nativeRandomBytes(n);
+  if (native) return native;
+  throw new Error('no CSPRNG available: refusing to generate a nonce');
 }

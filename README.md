@@ -552,6 +552,16 @@ A locked wallet is never "active": value movement is refused on every surface, a
 - Tests: `__tests__/tabBarMarks.test.tsx` (7) now covers both tab marks — bitmap not vector, size/tint, and the PNG alpha decode asserting 0.84 for the Perps mark and 0.75 for Markets. Both were confirmed to fail against the old vectors.
 - **Needs an APK** — this adds an image file, and the OTA channel ships `bundle.js` only.
 
+### No CSPRNG on the phone: the real cause of "Couldn't finish setting up" (Nov 6)
+
+The message under the button on Ijezie's screenshot was the honest one: `no CSPRNG available: refusing to generate a nonce`. Hermes ships no `crypto.getRandomValues`, nothing polyfilled it, so the app had **no entropy source at all** on a release build. `secureRandomBytes` refused to mint a seed or a nonce from `Math.random` — correct behaviour — and creation stopped there. The biometric-ladder fix earlier the same day was real but secondary; this was the blocker.
+
+- **Native source** — `RandomModule.kt` exposes `java.security.SecureRandom` (the platform CSPRNG) over a blocking synchronous bridge call, because the Web API is synchronous. One `SecureRandom` instance per process.
+- **Shim** — `src/core/crypto/csprng.ts` installs `globalThis.crypto.getRandomValues` from it, and `src/core/crypto/csprngInstall.ts` is the first import in `index.js`, so the shim exists before anything can ask for randomness.
+- **Bridgeless fallback** — `newArchEnabled=true` means a host may refuse synchronous native calls. So `RandomModule` also has an async twin, JS primes a pool from it at startup, and `nativeRandomBytes` drains that pool when the sync call throws. Two independent routes to the same `SecureRandom`.
+- **Still refuses** — with neither route available, `secureRandomBytes` throws exactly as before. No Math.random, ever, for seeds or nonces.
+- Tests: `__tests__/csprng.test.ts` (12) covers decode, short/malformed answers, both fallbacks and the refusal; `__tests__/walletCreateWithoutWebCrypto.test.ts` (2) creates a real wallet with Web Crypto deleted, which is the shipped configuration that failed. Reverting the native fallback fails them.
+
 ### Our own biometric screen (Nov 6)
 
 Ijezie: build the fingerprint interface the way Trust did, connected to the device biometric.

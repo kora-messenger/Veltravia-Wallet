@@ -8,7 +8,7 @@ import com.veltravia.wallet.ota.OtaModule
 
 class SecurePackage : ReactPackage {
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> =
-      listOf(SecureModule(reactContext), ClipboardModule(reactContext), ShareModule(reactContext), DateTimePickerModule(reactContext), ScanFeedbackModule(reactContext), OtaModule(reactContext))
+      listOf(SecureModule(reactContext), RandomModule(reactContext), ClipboardModule(reactContext), ShareModule(reactContext), DateTimePickerModule(reactContext), ScanFeedbackModule(reactContext), OtaModule(reactContext))
 
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> =
       emptyList()
