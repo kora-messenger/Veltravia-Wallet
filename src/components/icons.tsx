@@ -18,8 +18,9 @@ import Svg, {
   G,
 } from 'react-native-svg';
 
-/** Supplied fingerprint artwork: 384 px, white on alpha (see assets/brand). */
+/** Supplied artwork: 384 px, white on alpha, recoloured with `tintColor`. */
 const FP_ASSET = require('../../assets/brand/fingerprint.png');
+const SEND_ASSET = require('../../assets/brand/send.png');
 
 interface IconProps {
   size?: number;
@@ -44,11 +45,19 @@ const stroke = (color: string, w: number) => ({
 });
 
 /* ---------------- quick actions ---------------- */
-export const SendIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (
-  <Svg {...base(size)}>
-    <Path d="M7 17L17 7" {...stroke(color, strokeWidth)} />
-    <Path d="M8 7h9v9" {...stroke(color, strokeWidth)} />
-  </Svg>
+/**
+ * Send (Ijezie, 2026-11-06): his supplied paper-plane artwork, used on the Home
+ * quick actions. White-on-alpha PNG, so `tintColor` keeps it on whichever chip
+ * colour the theme asks for. `strokeWidth` is accepted and ignored so the call
+ * signature stays identical to the vector icons beside it.
+ */
+export const SendIcon = ({ size = 24, color = '#000' }: IconProps) => (
+  <Image
+    source={SEND_ASSET}
+    accessibilityIgnoresInvertColors
+    resizeMode="contain"
+    style={{ width: size, height: size, tintColor: color }}
+  />
 );
 
 export const ReceiveIcon = ({ size = 24, color = '#000', strokeWidth = 2 }: IconProps) => (

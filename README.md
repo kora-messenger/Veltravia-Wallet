@@ -544,6 +544,12 @@ A locked wallet is never "active": value movement is refused on every surface, a
 - While the keychain read is in flight the card shows "Checking this wallet…" instead of guessing which form to show.
 - Approve / Set password & Approve now carry accessibility labels.
 
+### The Home Send tile uses the supplied paper plane (Nov 6)
+
+- **Asset** — `assets/brand/send.png`, from the supplied 512×512 render (black glyph on alpha) normalised to white-on-alpha at 88% of a 384 px square: 18 KB, tintable, bundled.
+- **Swap** — `SendIcon` in `src/components/icons.tsx` now draws that bitmap, so `HomeScreen`'s quick-action list picks it up with no call-site change (`{ key: 'send', Icon: SendIcon }`, drawn at 26 dp in the chip's foreground colour). No other screen imports `SendIcon`.
+- Tests: `__tests__/sendMark.test.tsx` (5) — the mark's size/tint, no SVG left in `SendIcon`, the Home tile actually containing the bitmap (confirmed to fail against the old arrow), and the asset's type/dimensions/bundle size.
+
 ### The fingerprint is Ijezie's artwork everywhere (Nov 6)
 
 - **Asset** — `assets/brand/fingerprint.png`, from the supplied 512×512 render. The render's glyph is black on alpha, so it is normalised to white-on-alpha and padded to 88% of a 384 px square; `tintColor` then recolours it for every surface. 30 KB, bundled, no network.
