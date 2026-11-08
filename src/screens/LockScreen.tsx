@@ -15,7 +15,7 @@
  *   - 5 wrong attempts: 30s lockout, like Trust's fail counter
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Animated, Easing, StatusBar, Vibration, AppState } from 'react-native';
+import { View, Text, Image, Pressable, StyleSheet, Animated, Easing, StatusBar, Vibration, AppState } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
 import BiometricVerify, { type BiometricVerifyState } from '../components/BiometricVerify';
@@ -240,6 +240,17 @@ export default function LockScreen({ onUnlock, onScan }: { onUnlock: () => void;
     <SafeAreaView style={[styles.root, { backgroundColor: theme.background }]}>
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
 
+      <View style={styles.mark}>
+        {/* The real app icon (same asset as the launcher), above the keypad.
+            Ijezie asked for it back on 8 Nov: it was here until 13 Oct. */}
+        <Image
+          source={require('../assets/veltravia-shield.png')}
+          style={styles.markImg}
+          resizeMode="contain"
+          accessibilityIgnoresInvertColors
+        />
+      </View>
+
       <View style={styles.top}>
         <Text style={[styles.title, { color: theme.ink }]}>Enter passcode</Text>
 
@@ -311,6 +322,8 @@ export default function LockScreen({ onUnlock, onScan }: { onUnlock: () => void;
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  mark: { alignItems: 'center', paddingTop: 48 },
+  markImg: { width: 88, height: 88 },
   top: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
   title: { fontFamily: 'Inter-600', fontSize: 18, lineHeight: 24, marginBottom: 28 },
   boxes: { flexDirection: 'row', gap: 10, marginBottom: 28 },

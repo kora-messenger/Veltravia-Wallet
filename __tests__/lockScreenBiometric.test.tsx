@@ -21,7 +21,7 @@ jest.mock('../src/core/security/biometrics', () => ({
   promptBiometrics: (...a: any[]) => mockPrompt(...a),
 }));
 
-import { AppState } from 'react-native';
+import { AppState, Image } from 'react-native';
 import LockScreen from '../src/screens/LockScreen';
 
 // The lock screen refuses to prompt from the background; in the test env the
@@ -60,6 +60,19 @@ const settle = async (tree: any, ms: number) => {
   });
   return tree;
 };
+
+describe('lock screen layout', () => {
+  it('shows the app mark above the keypad (Ijezie asked for it back, 8 Nov)', async () => {
+    mockPrompt.mockReturnValue(new Promise(() => {}));
+    const tree = await mount();
+    // Image renders a wrapper too; the mark is the one carrying the sizing.
+    const marks = tree.root.findAllByType(Image).filter((n: any) => n.props.style?.width === 88);
+    expect(marks.length).toBe(1);
+    expect(marks[0].props.style).toMatchObject({ width: 88, height: 88 });
+    expect(textOf(tree)).toContain('Enter passcode');
+    await act(async () => tree.unmount());
+  });
+});
 
 describe('lock screen biometrics', () => {
   it('presents our screen while the device dialog is up', async () => {

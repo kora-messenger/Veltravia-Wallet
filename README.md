@@ -578,6 +578,12 @@ The message under the button on Ijezie's screenshot was the honest one: `no CSPR
 - **Still refuses** — with neither route available, `secureRandomBytes` throws exactly as before. No Math.random, ever, for seeds or nonces.
 - Tests: `__tests__/csprng.test.ts` (12) covers decode, short/malformed answers, both fallbacks and the refusal; `__tests__/walletCreateWithoutWebCrypto.test.ts` (2) creates a real wallet with Web Crypto deleted, which is the shipped configuration that failed. Reverting the native fallback fails them.
 
+### The lock screen shows the app mark again (Nov 8)
+
+Ijezie asked for the passcode screen to look the way it did before: the Veltravia shield sits 48 dp from the top, 88×88, above "Enter passcode" and the keypad. It was removed on 13 Oct (commit b091369) when the screen was simplified; restored on top of the biometric work, so neither the keypad nor the biometric screen changed.
+
+- Test: `__tests__/lockScreenBiometric.test.tsx` now also pins the layout (one 88×88 image, "Enter passcode" present), so a future tidy-up cannot quietly drop it again.
+
 ### Our own biometric screen (Nov 6)
 
 Ijezie: build the fingerprint interface the way Trust did, connected to the device biometric.
