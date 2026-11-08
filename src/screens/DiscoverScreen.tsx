@@ -22,7 +22,7 @@ import { useNavigation } from '@react-navigation/native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { useTheme } from '../theme/ThemeProvider';
 import { SkeletonBlock } from '../components/Skeleton';
-import { CloseIcon, SearchIcon } from '../components/icons';
+import { CloseIcon, SearchIcon, TrendingIcon } from '../components/icons';
 import { pasteFromClipboard } from '../core/clipboard';
 import { showToast } from '../components/Toast';
 import { openInBrowser } from '../services/browserState';
@@ -383,7 +383,10 @@ export default function DiscoverScreen() {
           <RecentsStrip recents={recents} onTap={onRecentTap} />
 
           <View style={styles.trendHead}>
-            <Text style={[styles.sectionTitle, { color: theme.ink }]}>Trending</Text>
+            <View style={styles.sectionHead}>
+              <TrendingIcon size={22} color={theme.brand} />
+              <Text style={[styles.sectionTitle, { color: theme.ink }]}>Trending</Text>
+            </View>
             <View style={[styles.capsule, { backgroundColor: theme.surfaceAlt }]}>
               {(['tokens', 'dapps'] as Page[]).map((p) => {
                 const on = page === p;
@@ -471,6 +474,9 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
 
   sectionTitle: { fontSize: 18, fontFamily: 'Inter-700', fontWeight: '700' },
+  // Flame + label share a baseline row; 6dp is the gap at which the mark reads
+  // as part of the word rather than a separate glyph.
+  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   groupTitle: { fontSize: 18, fontFamily: 'Inter-700', fontWeight: '700', marginTop: 18, marginBottom: 6 },
 
   /* recents */

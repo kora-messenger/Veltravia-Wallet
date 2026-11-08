@@ -26,6 +26,7 @@ const BUY_ASSET = require('../../assets/brand/buy.png');
 const SWAP_ASSET = require('../../assets/brand/swap.png');
 const INFINITY_ASSET = require('../../assets/brand/infinity.png');
 const MARKETS_ASSET = require('../../assets/brand/markets.png');
+const TRENDING_ASSET = require('../../assets/brand/trending.png');
 
 interface IconProps {
   size?: number;
@@ -213,6 +214,20 @@ export const HomeTabIcon = ({ size = 24, color = '#000', filled }: IconProps & {
 export const MarketsTabIcon = ({ size = 24, color = '#000' }: IconProps) => (
   <Image
     source={MARKETS_ASSET}
+    accessibilityIgnoresInvertColors
+    resizeMode="contain"
+    style={{ width: size, height: size, tintColor: color }}
+  />
+);
+
+/**
+ * Trending (Ijezie, 2026-11-08): the supplied flame marks the Trending header on
+ * Discover, tinted in the brand colour. Padded to 0.83 of the box, i.e. a flame
+ * ~20dp tall against the 18pt label.
+ */
+export const TrendingIcon = ({ size = 24, color = '#000' }: IconProps) => (
+  <Image
+    source={TRENDING_ASSET}
     accessibilityIgnoresInvertColors
     resizeMode="contain"
     style={{ width: size, height: size, tintColor: color }}

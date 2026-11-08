@@ -544,6 +544,13 @@ A locked wallet is never "active": value movement is refused on every surface, a
 - While the keychain read is in flight the card shows "Checking this wallet…" instead of guessing which form to show.
 - Approve / Set password & Approve now carry accessibility labels.
 
+### The Trending header carries the supplied flame (Nov 8)
+
+- **Asset** — `assets/brand/trending.png`, from the supplied 512×512 flame (black glyph on alpha) normalised to white-on-alpha on a 384 px square: 15 KB, tintable, bundled.
+- **Where it shows** — `TrendingIcon` in the Discover header row, before the word "Trending", tinted `theme.brand`, 22 dp box at 0.83 ink height (a flame roughly 20 dp tall against the 18 pt label) with a 6 dp gap.
+- Tests: `__tests__/trendingHeaderMark.test.tsx` (3) — the header draws exactly one mark in the brand colour, plus a PNG contract check that decodes the file (all five scanline filters) and asserts the artwork is white with alpha, so `tintColor` alone colours it. Removing the mark from the header fails the suite.
+- **Needs an APK** — this adds an image file, and the OTA channel ships `bundle.js` only.
+
 ### The Markets tab uses the supplied rising line (Nov 6)
 
 - **Asset** — `assets/brand/markets.png`, from the supplied 512×512 render (black glyph on alpha) normalised to white-on-alpha on a 384 px square: 12 KB, tintable, bundled.
