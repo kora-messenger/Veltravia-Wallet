@@ -544,6 +544,15 @@ A locked wallet is never "active": value movement is refused on every surface, a
 - While the keychain read is in flight the card shows "Checking this wallet…" instead of guessing which form to show.
 - Approve / Set password & Approve now carry accessibility labels.
 
+### The Home tab uses the supplied house mark (Nov 8)
+
+- **Asset** — `assets/brand/home.png`, from the supplied 512×512 house (glyph on alpha, RGB all black so only the stroke shape survives) normalised to white-on-alpha on a 384 px square: 9 KB, tintable, bundled.
+- **Where it shows** — `HomeTabIcon`, the Home slot in `FloatingTabBar`. No call sites changed; the bar passes the same `size` and colour it always did.
+- **Size** — padded to 0.74 of the icon box, the ink the old drawn path had (x 4..20, y 4..20 including its 1.8 stroke), and roughly square like the original.
+- **Focus** — a bitmap cannot be "filled" like the old vector, so the focused state is colour only (`#6C4CF5` vs `inkMuted`), exactly as the Markets and Perps marks already behave. The `filled` prop is gone from the tab bar.
+- Tests: `__tests__/tabBarMarks.test.tsx` now covers all three tab marks (9) including the Home ink measurement. Reverting to the drawn path fails two of them.
+- **Needs an APK** — this adds an image file, and the OTA channel ships `bundle.js` only.
+
 ### The Trending header carries the supplied flame (Nov 8)
 
 - **Asset** — `assets/brand/trending.png`, from the supplied 512×512 flame (black glyph on alpha) normalised to white-on-alpha on a 384 px square: 15 KB, tintable, bundled.

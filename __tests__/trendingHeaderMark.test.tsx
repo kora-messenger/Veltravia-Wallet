@@ -54,6 +54,7 @@ describe('Trending header', () => {
 
 /** Minimal PNG reader for the asset contract: 8-bit RGBA, every filter type. */
 function decodePng(buf: any) {
+  const Buffer = require('buffer').Buffer;
   const zlib = require('zlib');
   let pos = 8;
   let width = 0;

@@ -7,7 +7,7 @@ import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import { Image } from 'react-native';
 
-import { InfinityIcon, MarketsTabIcon } from '../src/components/icons';
+import { HomeTabIcon, InfinityIcon, MarketsTabIcon } from '../src/components/icons';
 
 jest.mock('../src/theme/ThemeProvider', () => ({
   useTheme: () => ({ theme: require('../src/theme/tokens').themes.light }),
@@ -41,6 +41,22 @@ describe('InfinityIcon (Perps tab)', () => {
   });
 });
 
+describe('HomeTabIcon', () => {
+  it('draws the supplied house at the caller size and colour', async () => {
+    const tree = await mount(<HomeTabIcon size={24} color="#6C4CF5" />);
+    const img = tree.root.findAllByType(Image);
+    expect(img.length).toBe(1);
+    expect(img[0].props.style).toMatchObject({ width: 24, height: 24, tintColor: '#6C4CF5' });
+    await act(async () => { tree.unmount(); });
+  });
+
+  it('is the bitmap, not the drawn path', async () => {
+    const tree = await mount(<HomeTabIcon size={24} color="#000" />);
+    expect(tree.root.findAll((n) => n.props && 'viewBox' in n.props).length).toBe(0);
+    await act(async () => { tree.unmount(); });
+  });
+});
+
 describe('MarketsTabIcon', () => {
   it('draws the supplied mark at the caller size and colour', async () => {
     const tree = await mount(<MarketsTabIcon size={24} color="#6C63FF" />);
@@ -65,6 +81,7 @@ describe('the tab assets', () => {
   const read = (name: string) => nodeFs.readFileSync(nodePath.join('.', 'assets', 'brand', name));
   const buf = read('infinity.png');
   const markets = read('markets.png');
+  const home = read('home.png');
 
   const inkOf = (img: any) => {
     const buf = img;
@@ -114,8 +131,8 @@ describe('the tab assets', () => {
     return { w: (maxX - minX + 1) / width, h: (maxY - minY + 1) / height, width, height };
   };
 
-  it('both are 384 px RGBA squares that can be tinted', () => {
-    [buf, markets].forEach((b: any) => {
+  it('all three are 384 px RGBA squares that can be tinted', () => {
+    [buf, markets, home].forEach((b: any) => {
       expect([...b.slice(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
       expect(b.readUInt32BE(16)).toBe(384);
       expect(b.readUInt32BE(20)).toBe(384);
@@ -131,5 +148,9 @@ describe('the tab assets', () => {
 
     const marketsInk = inkOf(markets);
     expect(Math.max(marketsInk.w, marketsInk.h)).toBeCloseTo(0.75, 1); // old trend line
+
+    const homeInk = inkOf(home);
+    expect(Math.max(homeInk.w, homeInk.h)).toBeCloseTo(0.74, 1); // old house path
+    expect(homeInk.w).toBeCloseTo(homeInk.h, 1);                  // roughly square
   });
 });

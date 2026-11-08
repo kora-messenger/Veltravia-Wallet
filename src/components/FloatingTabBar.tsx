@@ -138,7 +138,7 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
           <AnimatedTabIcon
             ref={(h) => { tabRefs.current[name] = h; }}
           >
-            <Icon size={24} color={focused ? '#6C4CF5' : theme.inkMuted} filled={focused} />
+            <Icon size={24} color={focused ? '#6C4CF5' : theme.inkMuted} />
           </AnimatedTabIcon>
         </View>
       </Pressable>

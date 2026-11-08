@@ -27,6 +27,7 @@ const SWAP_ASSET = require('../../assets/brand/swap.png');
 const INFINITY_ASSET = require('../../assets/brand/infinity.png');
 const MARKETS_ASSET = require('../../assets/brand/markets.png');
 const TRENDING_ASSET = require('../../assets/brand/trending.png');
+const HOME_ASSET = require('../../assets/brand/home.png');
 
 interface IconProps {
   size?: number;
@@ -194,16 +195,20 @@ export const DashSmall = ({ size = 12, color = '#000' }: IconProps) => (
 );
 
 /* ---------------- tab bar ---------------- */
-export const HomeTabIcon = ({ size = 24, color = '#000', filled }: IconProps & { filled?: boolean }) => (
-  <Svg {...base(size)}>
-    <Path
-      d="M4 11.2L12 4l8 7.2V19a1 1 0 01-1 1h-4.5v-5.5h-5V20H5a1 1 0 01-1-1v-7.8z"
-      fill={filled ? color : 'none'}
-      stroke={color}
-      strokeWidth={1.8}
-      strokeLinejoin="round"
-    />
-  </Svg>
+/**
+ * Home tab (Ijezie, 2026-11-08): the supplied house mark replaces the drawn
+ * path. Padded to 0.74 of the box, the same ink the old path had (x 4..20,
+ * y 4..20 with its 1.8 stroke), so the pill keeps its weight. It cannot be
+ * "filled" like a vector, so focus is carried by colour alone, as the Markets
+ * and Perps marks already do.
+ */
+export const HomeTabIcon = ({ size = 24, color = '#000' }: IconProps) => (
+  <Image
+    source={HOME_ASSET}
+    accessibilityIgnoresInvertColors
+    resizeMode="contain"
+    style={{ width: size, height: size, tintColor: color }}
+  />
 );
 
 /**
